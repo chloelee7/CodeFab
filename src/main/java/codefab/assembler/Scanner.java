@@ -24,6 +24,7 @@ public final class Scanner {
             Map.entry("true", TRUE),
             Map.entry("false", FALSE),
             Map.entry("for", FOR),
+            Map.entry("while", WHILE),
             Map.entry("var", VAR),
             Map.entry("print", PRINT));
 

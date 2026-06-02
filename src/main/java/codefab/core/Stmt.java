@@ -14,6 +14,7 @@ public abstract class Stmt {
         R visitBlockStmt(BlockStmt stmt);
         R visitIfStmt(IfStmt stmt);
         R visitForStmt(ForStmt stmt);
+        R visitWhileStmt(WhileStmt stmt);
     }
 
     public abstract <R> R accept(Visitor<R> visitor);
@@ -105,6 +106,21 @@ public abstract class Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitForStmt(this);
+        }
+    }
+
+    public static final class WhileStmt extends Stmt {
+        public final Expr condition;
+        public final Stmt body;
+
+        public WhileStmt(Expr condition, Stmt body) {
+            this.condition = condition;
+            this.body = body;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitWhileStmt(this);
         }
     }
 }

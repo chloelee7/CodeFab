@@ -14,3 +14,4 @@ Java 17 트리워킹 인터프리터. 소스를 Assembler(Scanner→Parser) → 
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |------|----------|------|------|
 | 2026-06-02 | 초기 구성 (에이전트 6 + 스킬 7) | 전체 | CodeFab 인터프리터 개발 하네스 구축 |
+| 2026-06-02 | while 문 추가 (부분 재실행) | TokenType·Scanner·Stmt·Parser·Checker·Executor + WhileTest | 하네스 라이브 구동: 새 문법 추가 데모 |

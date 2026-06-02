@@ -96,6 +96,16 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         return null;
     }
 
+    @Override
+    public Void visitWhileStmt(Stmt.WhileStmt stmt) {
+        // No dedicated scope: while declares no loop variable. If the body is a
+        // BlockStmt, visitBlockStmt opens and restores its own environment.
+        while (isTruthy(evaluate(stmt.condition))) {
+            execute(stmt.body);
+        }
+        return null;
+    }
+
     /** Run statements in a fresh environment, always restoring the previous one. */
     private void executeBlock(List<Stmt> statements, Environment blockEnv) {
         Environment previous = this.environment;

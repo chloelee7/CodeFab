@@ -22,7 +22,7 @@ public enum TokenType {
 
     // Keywords.
     AND, OR,
-    IF, ELSE, TRUE, FALSE, FOR, VAR, PRINT,
+    IF, ELSE, TRUE, FALSE, FOR, WHILE, VAR, PRINT,
 
     EOF
 }

@@ -36,9 +36,10 @@ LEFT_PAREN RIGHT_PAREN LEFT_BRACE RIGHT_BRACE COMMA DOT SEMICOLON
 PLUS MINUS STAR SLASH
 BANG BANG_EQUAL EQUAL EQUAL_EQUAL GREATER GREATER_EQUAL LESS LESS_EQUAL
 IDENTIFIER STRING NUMBER
-AND OR IF ELSE TRUE FALSE FOR VAR PRINT
+AND OR IF ELSE TRUE FALSE FOR WHILE VAR PRINT
 EOF
 ```
+키워드 맵에 `"while" -> WHILE` 포함.
 토큰 리스트는 항상 `EOF` 토큰으로 끝난다. Parser는 이를 종료 신호로 의존한다.
 
 ## 3. Expr / Stmt AST 계약
@@ -61,6 +62,7 @@ EOF
 - `BlockStmt(List<Stmt> statements)`
 - `IfStmt(Expr condition, Stmt thenBranch, Stmt elseBranch)` — elseBranch nullable
 - `ForStmt(Stmt initializer, Expr condition, Expr increment, Stmt body)` — initializer/condition/increment nullable
+- `WhileStmt(Expr condition, Stmt body)` — 조건 참인 동안 body 반복. 전용 Environment 불필요(while은 루프 변수를 선언하지 않음)
 
 nullable 필드는 소비자(Checker/Executor)가 반드시 null 체크한다. 이것이 경계면 버그의 주요 지점이다.
 

@@ -79,6 +79,15 @@ public final class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitWhileStmt(Stmt.WhileStmt stmt) {
+        // While declares no loop variable, so it opens no scope of its own;
+        // a BlockStmt body opens its own scope when resolved.
+        resolve(stmt.condition);
+        resolve(stmt.body);
+        return null;
+    }
+
+    @Override
     public Void visitPrintStmt(Stmt.PrintStmt stmt) {
         resolve(stmt.expression);
         return null;

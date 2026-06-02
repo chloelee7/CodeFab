@@ -41,10 +41,11 @@ scanner, parser, checker, and executor are all hand-written.
 program        -> declaration* EOF ;
 declaration    -> varDecl | statement ;
 varDecl        -> "var" IDENTIFIER ( "=" expression )? ";" ;
-statement      -> printStmt | ifStmt | forStmt | block | exprStmt ;
+statement      -> printStmt | ifStmt | forStmt | whileStmt | block | exprStmt ;
 printStmt      -> "print" expression ";" ;
 ifStmt         -> "if" "(" expression ")" statement ( "else" statement )? ;
 forStmt        -> "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement ;
+whileStmt      -> "while" "(" expression ")" statement ;
 block          -> "{" declaration* "}" ;
 exprStmt       -> expression ";" ;
 expression     -> assignment ;
@@ -95,6 +96,9 @@ print x;                         // global
 if (false) print "no"; else print "kfc";   // kfc
 
 for (var j = 0; j < 3; j = j + 1) print j;  // 0 1 2
+
+var i = 0;
+while (i < 3) { print i; i = i + 1; }        // 0 1 2
 ```
 
 ## Running
