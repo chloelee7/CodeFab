@@ -5,7 +5,9 @@ import codefab.core.Token;
 import codefab.core.TokenType;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Turns source text into a flat list of tokens. Errors are reported as
@@ -13,6 +15,19 @@ import java.util.List;
  * gathers as many tokens as possible.
  */
 public final class Scanner {
+    private static final Map<String, TokenType> KEYWORDS = new HashMap<>();
+    static {
+        KEYWORDS.put("and", TokenType.AND);
+        KEYWORDS.put("or", TokenType.OR);
+        KEYWORDS.put("if", TokenType.IF);
+        KEYWORDS.put("else", TokenType.ELSE);
+        KEYWORDS.put("true", TokenType.TRUE);
+        KEYWORDS.put("false", TokenType.FALSE);
+        KEYWORDS.put("for", TokenType.FOR);
+        KEYWORDS.put("var", TokenType.VAR);
+        KEYWORDS.put("print", TokenType.PRINT);
+    }
+
     private final String source;
     private final List<Diagnostic> diagnostics;
     private final List<Token> tokens = new ArrayList<>();
@@ -58,6 +73,8 @@ public final class Scanner {
             default:
                 if (isDigit(c)) {
                     number();
+                } else if (isAlpha(c)) {
+                    identifier();
                 }
                 break;
         }
@@ -101,8 +118,23 @@ public final class Scanner {
         addToken(TokenType.NUMBER, Double.parseDouble(source.substring(start, current)));
     }
 
+    private void identifier() {
+        while (isAlphaNumeric(peek())) advance();
+        String text = source.substring(start, current);
+        TokenType type = KEYWORDS.getOrDefault(text, TokenType.IDENTIFIER);
+        addToken(type);
+    }
+
     private boolean isDigit(char c) {
         return c >= '0' && c <= '9';
+    }
+
+    private boolean isAlpha(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    }
+
+    private boolean isAlphaNumeric(char c) {
+        return isAlpha(c) || isDigit(c);
     }
 
     private void addToken(TokenType type) {
