@@ -5,7 +5,6 @@ import codefab.core.Token;
 import codefab.core.TokenType;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,18 +14,16 @@ import java.util.Map;
  * gathers as many tokens as possible.
  */
 public final class Scanner {
-    private static final Map<String, TokenType> KEYWORDS = new HashMap<>();
-    static {
-        KEYWORDS.put("and", TokenType.AND);
-        KEYWORDS.put("or", TokenType.OR);
-        KEYWORDS.put("if", TokenType.IF);
-        KEYWORDS.put("else", TokenType.ELSE);
-        KEYWORDS.put("true", TokenType.TRUE);
-        KEYWORDS.put("false", TokenType.FALSE);
-        KEYWORDS.put("for", TokenType.FOR);
-        KEYWORDS.put("var", TokenType.VAR);
-        KEYWORDS.put("print", TokenType.PRINT);
-    }
+    private static final Map<String, TokenType> KEYWORDS = Map.of(
+            "and", TokenType.AND,
+            "or", TokenType.OR,
+            "if", TokenType.IF,
+            "else", TokenType.ELSE,
+            "true", TokenType.TRUE,
+            "false", TokenType.FALSE,
+            "for", TokenType.FOR,
+            "var", TokenType.VAR,
+            "print", TokenType.PRINT);
 
     private final String source;
     private final List<Diagnostic> diagnostics;
