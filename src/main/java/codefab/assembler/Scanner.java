@@ -54,7 +54,11 @@ public final class Scanner {
             case ' ':
             case '\t':
             case '\r': break;
-            default: break;
+            default:
+                if (isDigit(c)) {
+                    number();
+                }
+                break;
         }
     }
 
@@ -66,6 +70,29 @@ public final class Scanner {
         if (isAtEnd() || source.charAt(current) != expected) return false;
         current++;
         return true;
+    }
+
+    private char peek() {
+        if (isAtEnd()) return '\0';
+        return source.charAt(current);
+    }
+
+    private char peekNext() {
+        if (current + 1 >= source.length()) return '\0';
+        return source.charAt(current + 1);
+    }
+
+    private void number() {
+        while (isDigit(peek())) advance();
+        if (peek() == '.' && isDigit(peekNext())) {
+            advance(); // consume the '.'
+            while (isDigit(peek())) advance();
+        }
+        addToken(TokenType.NUMBER, Double.parseDouble(source.substring(start, current)));
+    }
+
+    private boolean isDigit(char c) {
+        return c >= '0' && c <= '9';
     }
 
     private void addToken(TokenType type) {
