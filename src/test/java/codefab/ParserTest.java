@@ -1,5 +1,16 @@
 package codefab;
 
+import static codefab.core.DiagnosticMessage.ERR_EXPECT_EXPRESSION;
+import static codefab.core.DiagnosticMessage.ERR_INVALID_ASSIGN_TARGET;
+import static codefab.core.DiagnosticMessage.ERR_LEFT_PAREN_AFTER_FOR;
+import static codefab.core.DiagnosticMessage.ERR_LEFT_PAREN_AFTER_IF;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_BRACE_AFTER_BLOCK;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_EXPR;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_IF_COND;
+import static codefab.core.DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE;
+import static codefab.core.DiagnosticMessage.ERR_SEMICOLON_AFTER_VAR_DECL;
+import static codefab.core.DiagnosticMessage.ERR_VARIABLE_NAME;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -14,14 +25,21 @@ import codefab.core.Token;
 import codefab.core.TokenType;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ParserTest {
 
+    List<Diagnostic> diags;
+
+    @BeforeEach
+    void setUp() {
+        diags = new ArrayList<>();
+    }
+
     @Test
     void print문과_var선언을_파싱한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan("var a = 1 ; print a ;");
+        List<Token> tokens = mockScanner("var a = 1 ; print a ;");
         List<Stmt> stmts = new Parser(tokens, diags).parse();
 
         assertTrue(diags.isEmpty(), () -> "unexpected diagnostics: " + diags);
@@ -32,8 +50,7 @@ class ParserTest {
 
     @Test
     void 블록과_제어흐름을_파싱한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan(
+        List<Token> tokens = mockScanner(
             "if ( true ) { print 1 ; } else print 2 ; for ( ; ; ) print 3 ;");
         List<Stmt> stmts = new Parser(tokens, diags).parse();
 
@@ -44,108 +61,97 @@ class ParserTest {
 
     @Test
     void 세미콜론_누락을_보고한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan("print 1 + 2");
+        List<Token> tokens = mockScanner("print 1 + 2");
         new Parser(tokens, diags).parse();
 
-        assertTrue(diags.stream().anyMatch(d -> d.message.contains("Expect ';' after value.")));
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_SEMICOLON_AFTER_VALUE)));
     }
 
     @Test
     void 닫는_괄호_누락을_보고한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan("print ( 1 + 2 ;");
+        List<Token> tokens = mockScanner("print ( 1 + 2 ;");
         new Parser(tokens, diags).parse();
 
         assertTrue(
-            diags.stream().anyMatch(d -> d.message.contains("Expect ')' after expression.")));
+            diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_EXPR)));
     }
 
     @Test
     void 잘못된_대입_대상을_보고한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan("var a = 1 ; var b = 2 ; a + b = 3 ;");
+        List<Token> tokens = mockScanner("var a = 1 ; var b = 2 ; a + b = 3 ;");
         new Parser(tokens, diags).parse();
 
-        assertTrue(diags.stream().anyMatch(d -> d.message.contains("Invalid assignment target.")));
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_INVALID_ASSIGN_TARGET)));
     }
 
     @Test
     void 잘못된_표현식_시작을_보고한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan("print * 5 ;");
+        List<Token> tokens = mockScanner("print * 5 ;");
         new Parser(tokens, diags).parse();
 
-        assertTrue(diags.stream().anyMatch(d -> d.message.contains("Expect expression.")));
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_EXPECT_EXPRESSION)));
     }
 
     @Test
     void 변수명_누락을_보고한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan("var = 1 ;");
+        List<Token> tokens = mockScanner("var = 1 ;");
         new Parser(tokens, diags).parse();
 
-        assertTrue(diags.stream().anyMatch(d -> d.message.contains("Expect variable name.")));
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_VARIABLE_NAME)));
     }
 
     @Test
     void 변수_선언_세미콜론_누락을_보고한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan("var a = 1");
+        List<Token> tokens = mockScanner("var a = 1");
         new Parser(tokens, diags).parse();
 
         assertTrue(diags.stream()
-            .anyMatch(d -> d.message.contains("Expect ';' after variable declaration.")));
+            .anyMatch(d -> d.message.contains(ERR_SEMICOLON_AFTER_VAR_DECL)));
     }
 
     @Test
     void if_여는_괄호_누락을_보고한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan("if true ) print 1 ;");
+        List<Token> tokens = mockScanner("if true ) print 1 ;");
         new Parser(tokens, diags).parse();
 
-        assertTrue(diags.stream().anyMatch(d -> d.message.contains("Expect '(' after 'if'.")));
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_LEFT_PAREN_AFTER_IF)));
     }
 
     @Test
     void if_닫는_괄호_누락을_보고한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan("if ( true print 1 ;");
+        List<Token> tokens = mockScanner("if ( true print 1 ;");
         new Parser(tokens, diags).parse();
 
         assertTrue(
-            diags.stream().anyMatch(d -> d.message.contains("Expect ')' after if condition.")));
+            diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_IF_COND)));
     }
 
     @Test
     void for_여는_괄호_누락을_보고한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan("for ; ; ) print 1 ;");
+        List<Token> tokens = mockScanner("for ; ; ) print 1 ;");
         new Parser(tokens, diags).parse();
 
-        assertTrue(diags.stream().anyMatch(d -> d.message.contains("Expect '(' after 'for'.")));
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_LEFT_PAREN_AFTER_FOR)));
     }
 
     @Test
     void for_절_닫는_괄호_누락을_보고한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan("for ( ; ; 1");
+        List<Token> tokens = mockScanner("for ( ; ; 1");
         new Parser(tokens, diags).parse();
 
         assertTrue(
-            diags.stream().anyMatch(d -> d.message.contains("Expect ')' after for clauses.")));
+            diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES)));
     }
 
     @Test
     void 블록_닫는_중괄호_누락을_보고한다() {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = mockScan("{ print 1 ;");
+        List<Token> tokens = mockScanner("{ print 1 ;");
         new Parser(tokens, diags).parse();
 
-        assertTrue(diags.stream().anyMatch(d -> d.message.contains("Expect '}' after block.")));
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_BRACE_AFTER_BLOCK)));
     }
 
-    private static List<Token> mockScan(String source) {
+    private static List<Token> mockScanner(String source) {
         List<Token> tokens = new ArrayList<>();
         for (String lexeme : source.split(" ")) {
             if (!lexeme.isEmpty()) {

@@ -1,5 +1,18 @@
 package codefab.assembler;
 
+import static codefab.core.DiagnosticMessage.ERR_EXPECT_EXPRESSION;
+import static codefab.core.DiagnosticMessage.ERR_INVALID_ASSIGN_TARGET;
+import static codefab.core.DiagnosticMessage.ERR_LEFT_PAREN_AFTER_FOR;
+import static codefab.core.DiagnosticMessage.ERR_LEFT_PAREN_AFTER_IF;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_BRACE_AFTER_BLOCK;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_EXPR;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_IF_COND;
+import static codefab.core.DiagnosticMessage.ERR_SEMICOLON_AFTER_LOOP_COND;
+import static codefab.core.DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE;
+import static codefab.core.DiagnosticMessage.ERR_SEMICOLON_AFTER_VAR_DECL;
+import static codefab.core.DiagnosticMessage.ERR_VARIABLE_NAME;
+
 import codefab.core.Diagnostic;
 import codefab.core.Expr;
 import codefab.core.Stmt;
@@ -54,7 +67,7 @@ public final class Parser {
                 where = " at '" + tokens.get(current).lexeme + "'";
             }
             diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, "Expect variable name." + where));
+                tokens.get(current).line, ERR_VARIABLE_NAME + where));
             throw new ParseError();
         }
         if (tokens.get(current).type != TokenType.EOF) {
@@ -78,7 +91,7 @@ public final class Parser {
                 where = " at '" + tokens.get(current).lexeme + "'";
             }
             diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, "Expect ';' after variable declaration." + where));
+                tokens.get(current).line, ERR_SEMICOLON_AFTER_VAR_DECL + where));
             throw new ParseError();
         }
         if (tokens.get(current).type != TokenType.EOF) {
@@ -125,7 +138,7 @@ public final class Parser {
                 where = " at '" + tokens.get(current).lexeme + "'";
             }
             diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, "Expect ';' after value." + where));
+                tokens.get(current).line, ERR_SEMICOLON_AFTER_VALUE + where));
             throw new ParseError();
         }
         if (tokens.get(current).type != TokenType.EOF) {
@@ -143,7 +156,7 @@ public final class Parser {
                 where = " at '" + tokens.get(current).lexeme + "'";
             }
             diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, "Expect '(' after 'if'." + where));
+                tokens.get(current).line, ERR_LEFT_PAREN_AFTER_IF + where));
             throw new ParseError();
         }
         if (tokens.get(current).type != TokenType.EOF) {
@@ -160,7 +173,7 @@ public final class Parser {
                 where = " at '" + tokens.get(current).lexeme + "'";
             }
             diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, "Expect ')' after if condition." + where));
+                tokens.get(current).line, ERR_RIGHT_PAREN_AFTER_IF_COND + where));
             throw new ParseError();
         }
         if (tokens.get(current).type != TokenType.EOF) {
@@ -187,7 +200,7 @@ public final class Parser {
                 where = " at '" + tokens.get(current).lexeme + "'";
             }
             diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, "Expect '(' after 'for'." + where));
+                tokens.get(current).line, ERR_LEFT_PAREN_AFTER_FOR + where));
             throw new ParseError();
         }
         if (tokens.get(current).type != TokenType.EOF) {
@@ -221,7 +234,7 @@ public final class Parser {
                 where = " at '" + tokens.get(current).lexeme + "'";
             }
             diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, "Expect ';' after loop condition." + where));
+                tokens.get(current).line, ERR_SEMICOLON_AFTER_LOOP_COND + where));
             throw new ParseError();
         }
         if (tokens.get(current).type != TokenType.EOF) {
@@ -240,7 +253,7 @@ public final class Parser {
                 where = " at '" + tokens.get(current).lexeme + "'";
             }
             diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, "Expect ')' after for clauses." + where));
+                tokens.get(current).line, ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES + where));
             throw new ParseError();
         }
         if (tokens.get(current).type != TokenType.EOF) {
@@ -268,7 +281,7 @@ public final class Parser {
                 where = " at '" + tokens.get(current).lexeme + "'";
             }
             diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, "Expect '}' after block." + where));
+                tokens.get(current).line, ERR_RIGHT_BRACE_AFTER_BLOCK + where));
             throw new ParseError();
         }
         if (tokens.get(current).type != TokenType.EOF) {
@@ -287,7 +300,7 @@ public final class Parser {
                 where = " at '" + tokens.get(current).lexeme + "'";
             }
             diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, "Expect ';' after value." + where));
+                tokens.get(current).line, ERR_SEMICOLON_AFTER_VALUE + where));
             throw new ParseError();
         }
         if (tokens.get(current).type != TokenType.EOF) {
@@ -319,7 +332,7 @@ public final class Parser {
                 where = " at '" + equals.lexeme + "'";
             }
             diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                equals.line, "Invalid assignment target." + where));
+                equals.line, ERR_INVALID_ASSIGN_TARGET + where));
         }
         return expr;
     }
@@ -461,7 +474,7 @@ public final class Parser {
                     where = " at '" + tokens.get(current).lexeme + "'";
                 }
                 diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                    tokens.get(current).line, "Expect ')' after expression." + where));
+                    tokens.get(current).line, ERR_RIGHT_PAREN_AFTER_EXPR + where));
                 throw new ParseError();
             }
             if (tokens.get(current).type != TokenType.EOF) {
@@ -477,7 +490,7 @@ public final class Parser {
             where = " at '" + tokens.get(current).lexeme + "'";
         }
         diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-            tokens.get(current).line, "Expect expression." + where));
+            tokens.get(current).line, ERR_EXPECT_EXPRESSION + where));
         throw new ParseError();
     }
 
