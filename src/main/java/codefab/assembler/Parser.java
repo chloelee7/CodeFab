@@ -1,25 +1,45 @@
 package codefab.assembler;
 
-import static codefab.core.DiagnosticMessage.ERR_EXPECT_EXPRESSION;
-import static codefab.core.DiagnosticMessage.ERR_INVALID_ASSIGN_TARGET;
-import static codefab.core.DiagnosticMessage.ERR_LEFT_PAREN_AFTER_FOR;
-import static codefab.core.DiagnosticMessage.ERR_LEFT_PAREN_AFTER_IF;
-import static codefab.core.DiagnosticMessage.ERR_RIGHT_BRACE_AFTER_BLOCK;
-import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_EXPR;
-import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES;
-import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_IF_COND;
-import static codefab.core.DiagnosticMessage.ERR_SEMICOLON_AFTER_LOOP_COND;
-import static codefab.core.DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE;
-import static codefab.core.DiagnosticMessage.ERR_SEMICOLON_AFTER_VAR_DECL;
-import static codefab.core.DiagnosticMessage.ERR_VARIABLE_NAME;
+import static codefab.core.TokenType.AND;
+import static codefab.core.TokenType.BANG;
+import static codefab.core.TokenType.BANG_EQUAL;
+import static codefab.core.TokenType.ELSE;
+import static codefab.core.TokenType.EOF;
+import static codefab.core.TokenType.EQUAL;
+import static codefab.core.TokenType.EQUAL_EQUAL;
+import static codefab.core.TokenType.FALSE;
+import static codefab.core.TokenType.FOR;
+import static codefab.core.TokenType.GREATER;
+import static codefab.core.TokenType.GREATER_EQUAL;
+import static codefab.core.TokenType.IDENTIFIER;
+import static codefab.core.TokenType.IF;
+import static codefab.core.TokenType.LEFT_BRACE;
+import static codefab.core.TokenType.LEFT_PAREN;
+import static codefab.core.TokenType.LESS;
+import static codefab.core.TokenType.LESS_EQUAL;
+import static codefab.core.TokenType.MINUS;
+import static codefab.core.TokenType.NUMBER;
+import static codefab.core.TokenType.OR;
+import static codefab.core.TokenType.PLUS;
+import static codefab.core.TokenType.PRINT;
+import static codefab.core.TokenType.RIGHT_BRACE;
+import static codefab.core.TokenType.RIGHT_PAREN;
+import static codefab.core.TokenType.SEMICOLON;
+import static codefab.core.TokenType.SLASH;
+import static codefab.core.TokenType.STAR;
+import static codefab.core.TokenType.STRING;
+import static codefab.core.TokenType.TRUE;
+import static codefab.core.TokenType.VAR;
 
 import codefab.core.Diagnostic;
+import codefab.core.DiagnosticMessage;
 import codefab.core.Expr;
 import codefab.core.Stmt;
 import codefab.core.Token;
 import codefab.core.TokenType;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public final class Parser {
 
@@ -34,7 +54,7 @@ public final class Parser {
 
     public List<Stmt> parse() {
         List<Stmt> statements = new ArrayList<>();
-        while (tokens.get(current).type != TokenType.EOF) {
+        while (!isAtEnd()) {
             Stmt decl = declaration();
             if (decl != null) {
                 statements.add(decl);
@@ -45,10 +65,7 @@ public final class Parser {
 
     private Stmt declaration() {
         try {
-            if (tokens.get(current).type == TokenType.VAR) {
-                if (tokens.get(current).type != TokenType.EOF) {
-                    current++;
-                }
+            if (match(VAR)) {
                 return varDeclaration();
             }
             return statement();
@@ -59,70 +76,26 @@ public final class Parser {
     }
 
     private Stmt varDeclaration() {
-        if (tokens.get(current).type != TokenType.IDENTIFIER) {
-            String where;
-            if (tokens.get(current).type == TokenType.EOF) {
-                where = " at end";
-            } else {
-                where = " at '" + tokens.get(current).lexeme + "'";
-            }
-            diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, ERR_VARIABLE_NAME + where));
-            throw new ParseError();
-        }
-        if (tokens.get(current).type != TokenType.EOF) {
-            current++;
-        }
-        Token name = tokens.get(current - 1);
-
+        Token name = consume(IDENTIFIER, DiagnosticMessage.ERR_VARIABLE_NAME);
         Expr initializer = null;
-        if (tokens.get(current).type == TokenType.EQUAL) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
+        if (match(EQUAL)) {
             initializer = expression();
         }
-
-        if (tokens.get(current).type != TokenType.SEMICOLON) {
-            String where;
-            if (tokens.get(current).type == TokenType.EOF) {
-                where = " at end";
-            } else {
-                where = " at '" + tokens.get(current).lexeme + "'";
-            }
-            diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, ERR_SEMICOLON_AFTER_VAR_DECL + where));
-            throw new ParseError();
-        }
-        if (tokens.get(current).type != TokenType.EOF) {
-            current++;
-        }
+        consume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_VAR_DECL);
         return new Stmt.VarStmt(name, initializer);
     }
 
     private Stmt statement() {
-        if (tokens.get(current).type == TokenType.PRINT) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
+        if (match(PRINT)) {
             return printStatement();
         }
-        if (tokens.get(current).type == TokenType.IF) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
+        if (match(IF)) {
             return ifStatement();
         }
-        if (tokens.get(current).type == TokenType.FOR) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
+        if (match(FOR)) {
             return forStatement();
         }
-        if (tokens.get(current).type == TokenType.LEFT_BRACE) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
+        if (match(LEFT_BRACE)) {
             return new Stmt.BlockStmt(block());
         }
         return expressionStatement();
@@ -130,135 +103,37 @@ public final class Parser {
 
     private Stmt printStatement() {
         Expr value = expression();
-        if (tokens.get(current).type != TokenType.SEMICOLON) {
-            String where;
-            if (tokens.get(current).type == TokenType.EOF) {
-                where = " at end";
-            } else {
-                where = " at '" + tokens.get(current).lexeme + "'";
-            }
-            diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, ERR_SEMICOLON_AFTER_VALUE + where));
-            throw new ParseError();
-        }
-        if (tokens.get(current).type != TokenType.EOF) {
-            current++;
-        }
+        consume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE);
         return new Stmt.PrintStmt(value);
     }
 
     private Stmt ifStatement() {
-        if (tokens.get(current).type != TokenType.LEFT_PAREN) {
-            String where;
-            if (tokens.get(current).type == TokenType.EOF) {
-                where = " at end";
-            } else {
-                where = " at '" + tokens.get(current).lexeme + "'";
-            }
-            diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, ERR_LEFT_PAREN_AFTER_IF + where));
-            throw new ParseError();
-        }
-        if (tokens.get(current).type != TokenType.EOF) {
-            current++;
-        }
-
+        consume(LEFT_PAREN, DiagnosticMessage.ERR_LEFT_PAREN_AFTER_IF);
         Expr condition = expression();
-
-        if (tokens.get(current).type != TokenType.RIGHT_PAREN) {
-            String where;
-            if (tokens.get(current).type == TokenType.EOF) {
-                where = " at end";
-            } else {
-                where = " at '" + tokens.get(current).lexeme + "'";
-            }
-            diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, ERR_RIGHT_PAREN_AFTER_IF_COND + where));
-            throw new ParseError();
-        }
-        if (tokens.get(current).type != TokenType.EOF) {
-            current++;
-        }
+        consume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_IF_COND);
 
         Stmt thenBranch = statement();
-        Stmt elseBranch = null;
-        if (tokens.get(current).type == TokenType.ELSE) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
-            elseBranch = statement();
-        }
+        Stmt elseBranch = match(ELSE) ? statement() : null;
         return new Stmt.IfStmt(condition, thenBranch, elseBranch);
     }
 
     private Stmt forStatement() {
-        if (tokens.get(current).type != TokenType.LEFT_PAREN) {
-            String where;
-            if (tokens.get(current).type == TokenType.EOF) {
-                where = " at end";
-            } else {
-                where = " at '" + tokens.get(current).lexeme + "'";
-            }
-            diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, ERR_LEFT_PAREN_AFTER_FOR + where));
-            throw new ParseError();
-        }
-        if (tokens.get(current).type != TokenType.EOF) {
-            current++;
-        }
+        consume(LEFT_PAREN, DiagnosticMessage.ERR_LEFT_PAREN_AFTER_FOR);
 
         Stmt initializer;
-        if (tokens.get(current).type == TokenType.SEMICOLON) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
+        if (match(SEMICOLON)) {
             initializer = null;
-        } else if (tokens.get(current).type == TokenType.VAR) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
+        } else if (match(VAR)) {
             initializer = varDeclaration();
         } else {
             initializer = expressionStatement();
         }
 
-        Expr condition = null;
-        if (tokens.get(current).type != TokenType.SEMICOLON) {
-            condition = expression();
-        }
-        if (tokens.get(current).type != TokenType.SEMICOLON) {
-            String where;
-            if (tokens.get(current).type == TokenType.EOF) {
-                where = " at end";
-            } else {
-                where = " at '" + tokens.get(current).lexeme + "'";
-            }
-            diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, ERR_SEMICOLON_AFTER_LOOP_COND + where));
-            throw new ParseError();
-        }
-        if (tokens.get(current).type != TokenType.EOF) {
-            current++;
-        }
+        Expr condition = check(SEMICOLON) ? null : expression();
+        consume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_LOOP_COND);
 
-        Expr increment = null;
-        if (tokens.get(current).type != TokenType.RIGHT_PAREN) {
-            increment = expression();
-        }
-        if (tokens.get(current).type != TokenType.RIGHT_PAREN) {
-            String where;
-            if (tokens.get(current).type == TokenType.EOF) {
-                where = " at end";
-            } else {
-                where = " at '" + tokens.get(current).lexeme + "'";
-            }
-            diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES + where));
-            throw new ParseError();
-        }
-        if (tokens.get(current).type != TokenType.EOF) {
-            current++;
-        }
+        Expr increment = check(RIGHT_PAREN) ? null : expression();
+        consume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES);
 
         Stmt body = statement();
         return new Stmt.ForStmt(initializer, condition, increment, body);
@@ -266,46 +141,19 @@ public final class Parser {
 
     private List<Stmt> block() {
         List<Stmt> statements = new ArrayList<>();
-        while (tokens.get(current).type != TokenType.RIGHT_BRACE
-            && tokens.get(current).type != TokenType.EOF) {
+        while (!check(RIGHT_BRACE) && !isAtEnd()) {
             Stmt decl = declaration();
             if (decl != null) {
                 statements.add(decl);
             }
         }
-        if (tokens.get(current).type != TokenType.RIGHT_BRACE) {
-            String where;
-            if (tokens.get(current).type == TokenType.EOF) {
-                where = " at end";
-            } else {
-                where = " at '" + tokens.get(current).lexeme + "'";
-            }
-            diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, ERR_RIGHT_BRACE_AFTER_BLOCK + where));
-            throw new ParseError();
-        }
-        if (tokens.get(current).type != TokenType.EOF) {
-            current++;
-        }
+        consume(RIGHT_BRACE, DiagnosticMessage.ERR_RIGHT_BRACE_AFTER_BLOCK);
         return statements;
     }
 
     private Stmt expressionStatement() {
         Expr expr = expression();
-        if (tokens.get(current).type != TokenType.SEMICOLON) {
-            String where;
-            if (tokens.get(current).type == TokenType.EOF) {
-                where = " at end";
-            } else {
-                where = " at '" + tokens.get(current).lexeme + "'";
-            }
-            diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                tokens.get(current).line, ERR_SEMICOLON_AFTER_VALUE + where));
-            throw new ParseError();
-        }
-        if (tokens.get(current).type != TokenType.EOF) {
-            current++;
-        }
+        consume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE);
         return new Stmt.ExpressionStmt(expr);
     }
 
@@ -315,200 +163,150 @@ public final class Parser {
 
     private Expr assignment() {
         Expr expr = or();
-        if (tokens.get(current).type == TokenType.EQUAL) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
-            Token equals = tokens.get(current - 1);
+        if (match(EQUAL)) {
+            Token equals = previous();
             Expr value = assignment();
             if (expr instanceof Expr.Variable) {
-                Token name = ((Expr.Variable) expr).name;
-                return new Expr.Assign(name, value);
+                return new Expr.Assign(((Expr.Variable) expr).name, value);
             }
-            String where;
-            if (equals.type == TokenType.EOF) {
-                where = " at end";
-            } else {
-                where = " at '" + equals.lexeme + "'";
-            }
-            diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                equals.line, ERR_INVALID_ASSIGN_TARGET + where));
+            error(equals, DiagnosticMessage.ERR_INVALID_ASSIGN_TARGET);
         }
         return expr;
     }
 
     private Expr or() {
-        Expr expr = and();
-        while (tokens.get(current).type == TokenType.OR) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
-            Token operator = tokens.get(current - 1);
-            Expr right = and();
-            expr = new Expr.Logical(expr, operator, right);
-        }
-        return expr;
+        return leftAssocLogical(this::and, OR);
     }
 
     private Expr and() {
-        Expr expr = equality();
-        while (tokens.get(current).type == TokenType.AND) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
-            Token operator = tokens.get(current - 1);
-            Expr right = equality();
-            expr = new Expr.Logical(expr, operator, right);
-        }
-        return expr;
+        return leftAssocLogical(this::equality, AND);
     }
 
     private Expr equality() {
-        Expr expr = comparison();
-        while (tokens.get(current).type == TokenType.BANG_EQUAL
-            || tokens.get(current).type == TokenType.EQUAL_EQUAL) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
-            Token operator = tokens.get(current - 1);
-            Expr right = comparison();
-            expr = new Expr.Binary(expr, operator, right);
-        }
-        return expr;
+        return leftAssocBinary(this::comparison, BANG_EQUAL, EQUAL_EQUAL);
     }
 
     private Expr comparison() {
-        Expr expr = term();
-        while (tokens.get(current).type == TokenType.GREATER
-            || tokens.get(current).type == TokenType.GREATER_EQUAL
-            || tokens.get(current).type == TokenType.LESS
-            || tokens.get(current).type == TokenType.LESS_EQUAL) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
-            Token operator = tokens.get(current - 1);
-            Expr right = term();
-            expr = new Expr.Binary(expr, operator, right);
-        }
-        return expr;
+        return leftAssocBinary(this::term, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL);
     }
 
     private Expr term() {
-        Expr expr = factor();
-        while (tokens.get(current).type == TokenType.MINUS
-            || tokens.get(current).type == TokenType.PLUS) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
-            Token operator = tokens.get(current - 1);
-            Expr right = factor();
-            expr = new Expr.Binary(expr, operator, right);
-        }
-        return expr;
+        return leftAssocBinary(this::factor, MINUS, PLUS);
     }
 
     private Expr factor() {
-        Expr expr = unary();
-        while (tokens.get(current).type == TokenType.SLASH
-            || tokens.get(current).type == TokenType.STAR) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
-            Token operator = tokens.get(current - 1);
-            Expr right = unary();
-            expr = new Expr.Binary(expr, operator, right);
-        }
-        return expr;
+        return leftAssocBinary(this::unary, SLASH, STAR);
     }
 
     private Expr unary() {
-        if (tokens.get(current).type == TokenType.BANG
-            || tokens.get(current).type == TokenType.MINUS
-            || tokens.get(current).type == TokenType.PLUS) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
-            Token operator = tokens.get(current - 1);
-            Expr right = unary();
-            return new Expr.Unary(operator, right);
+        if (match(BANG, MINUS, PLUS)) {
+            Token operator = previous();
+            return new Expr.Unary(operator, unary());
         }
         return primary();
     }
 
     private Expr primary() {
-        if (tokens.get(current).type == TokenType.FALSE) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
+        if (match(FALSE)) {
             return new Expr.Literal(false);
         }
-        if (tokens.get(current).type == TokenType.TRUE) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
+        if (match(TRUE)) {
             return new Expr.Literal(true);
         }
-        if (tokens.get(current).type == TokenType.NUMBER
-            || tokens.get(current).type == TokenType.STRING) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
-            return new Expr.Literal(tokens.get(current - 1).literal);
+        if (match(NUMBER, STRING)) {
+            return new Expr.Literal(previous().literal);
         }
-        if (tokens.get(current).type == TokenType.IDENTIFIER) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
-            return new Expr.Variable(tokens.get(current - 1));
+        if (match(IDENTIFIER)) {
+            return new Expr.Variable(previous());
         }
-        if (tokens.get(current).type == TokenType.LEFT_PAREN) {
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
+        if (match(LEFT_PAREN)) {
             Expr expr = expression();
-            if (tokens.get(current).type != TokenType.RIGHT_PAREN) {
-                String where;
-                if (tokens.get(current).type == TokenType.EOF) {
-                    where = " at end";
-                } else {
-                    where = " at '" + tokens.get(current).lexeme + "'";
-                }
-                diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-                    tokens.get(current).line, ERR_RIGHT_PAREN_AFTER_EXPR + where));
-                throw new ParseError();
-            }
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
-            }
+            consume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_EXPR);
             return new Expr.Grouping(expr);
         }
+        throw error(peek(), DiagnosticMessage.ERR_EXPECT_EXPRESSION);
+    }
 
-        String where;
-        if (tokens.get(current).type == TokenType.EOF) {
-            where = " at end";
-        } else {
-            where = " at '" + tokens.get(current).lexeme + "'";
+    private Expr leftAssocBinary(Supplier<Expr> operand, TokenType... operators) {
+        Expr expr = operand.get();
+        while (match(operators)) {
+            Token operator = previous();
+            Expr right = operand.get();
+            expr = new Expr.Binary(expr, operator, right);
         }
-        diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER,
-            tokens.get(current).line, ERR_EXPECT_EXPRESSION + where));
-        throw new ParseError();
+        return expr;
+    }
+
+    private Expr leftAssocLogical(Supplier<Expr> operand, TokenType operator) {
+        Expr expr = operand.get();
+        while (match(operator)) {
+            Token op = previous();
+            Expr right = operand.get();
+            expr = new Expr.Logical(expr, op, right);
+        }
+        return expr;
+    }
+
+    private boolean match(TokenType... types) {
+        for (TokenType type : types) {
+            if (check(type)) {
+                advance();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Token consume(TokenType type, String message) {
+        if (check(type)) {
+            return advance();
+        }
+        throw error(peek(), message);
+    }
+
+    private boolean check(TokenType type) {
+        return !isAtEnd() && peek().type == type;
+    }
+
+    private Token advance() {
+        if (!isAtEnd()) {
+            current++;
+        }
+        return previous();
+    }
+
+    private boolean isAtEnd() {
+        return peek().type == EOF;
+    }
+
+    private Token peek() {
+        return tokens.get(current);
+    }
+
+    private Token previous() {
+        return tokens.get(current - 1);
+    }
+
+    private ParseError error(Token token, String message) {
+        String where = token.type == EOF ? " at end" : " at '" + token.lexeme + "'";
+        diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER, token.line, message + where));
+        return new ParseError();
     }
 
     private void synchronize() {
-        if (tokens.get(current).type != TokenType.EOF) {
-            current++;
-        }
-        while (tokens.get(current).type != TokenType.EOF) {
-            if (tokens.get(current - 1).type == TokenType.SEMICOLON) {
+        advance();
+        while (!isAtEnd()) {
+            if (previous().type == SEMICOLON) {
                 return;
             }
-            TokenType t = tokens.get(current).type;
-            if (t == TokenType.VAR || t == TokenType.FOR
-                || t == TokenType.IF || t == TokenType.PRINT) {
-                return;
-            }
-            if (tokens.get(current).type != TokenType.EOF) {
-                current++;
+            switch (peek().type) {
+                case VAR:
+                case FOR:
+                case IF:
+                case PRINT:
+                    return;
+                default:
+                    advance();
             }
         }
     }
