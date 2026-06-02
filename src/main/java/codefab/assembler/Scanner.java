@@ -54,6 +54,7 @@ public final class Scanner {
             case ' ':
             case '\t':
             case '\r': break;
+            case '"': string(); break;
             default:
                 if (isDigit(c)) {
                     number();
@@ -80,6 +81,15 @@ public final class Scanner {
     private char peekNext() {
         if (current + 1 >= source.length()) return '\0';
         return source.charAt(current + 1);
+    }
+
+    private void string() {
+        while (peek() != '"' && !isAtEnd()) {
+            advance();
+        }
+        advance(); // consume the closing '"'
+        String value = source.substring(start + 1, current - 1);
+        addToken(TokenType.STRING, value);
     }
 
     private void number() {
