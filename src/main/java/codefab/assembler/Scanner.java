@@ -82,6 +82,9 @@ public final class Scanner {
                     number();
                 } else if (isAlpha(c)) {
                     identifier();
+                } else {
+                    diagnostics.add(new Diagnostic(
+                            Diagnostic.Stage.SCANNER, line, "unexpected character '" + c + "'"));
                 }
                 break;
         }
