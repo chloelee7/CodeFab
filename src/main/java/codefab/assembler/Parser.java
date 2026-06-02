@@ -54,7 +54,7 @@ public final class Parser {
 
     public List<Stmt> parse() {
         List<Stmt> statements = new ArrayList<>();
-        while (!isAtEnd()) {
+        while (!reachedEof()) {
             Stmt decl = declaration();
             if (decl != null) {
                 statements.add(decl);
@@ -65,37 +65,37 @@ public final class Parser {
 
     private Stmt declaration() {
         try {
-            if (match(VAR)) {
+            if (matchAndAdvance(VAR)) {
                 return varDeclaration();
             }
             return statement();
         } catch (ParseError error) {
-            synchronize();
+            recoverToNextStatement();
             return null;
         }
     }
 
     private Stmt varDeclaration() {
-        Token name = consume(IDENTIFIER, DiagnosticMessage.ERR_VARIABLE_NAME);
+        Token name = expectAndConsume(IDENTIFIER, DiagnosticMessage.ERR_VARIABLE_NAME);
         Expr initializer = null;
-        if (match(EQUAL)) {
+        if (matchAndAdvance(EQUAL)) {
             initializer = expression();
         }
-        consume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_VAR_DECL);
+        expectAndConsume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_VAR_DECL);
         return new Stmt.VarStmt(name, initializer);
     }
 
     private Stmt statement() {
-        if (match(PRINT)) {
+        if (matchAndAdvance(PRINT)) {
             return printStatement();
         }
-        if (match(IF)) {
+        if (matchAndAdvance(IF)) {
             return ifStatement();
         }
-        if (match(FOR)) {
+        if (matchAndAdvance(FOR)) {
             return forStatement();
         }
-        if (match(LEFT_BRACE)) {
+        if (matchAndAdvance(LEFT_BRACE)) {
             return new Stmt.BlockStmt(block());
         }
         return expressionStatement();
@@ -103,37 +103,37 @@ public final class Parser {
 
     private Stmt printStatement() {
         Expr value = expression();
-        consume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE);
+        expectAndConsume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE);
         return new Stmt.PrintStmt(value);
     }
 
     private Stmt ifStatement() {
-        consume(LEFT_PAREN, DiagnosticMessage.ERR_LEFT_PAREN_AFTER_IF);
+        expectAndConsume(LEFT_PAREN, DiagnosticMessage.ERR_LEFT_PAREN_AFTER_IF);
         Expr condition = expression();
-        consume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_IF_COND);
+        expectAndConsume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_IF_COND);
 
         Stmt thenBranch = statement();
-        Stmt elseBranch = match(ELSE) ? statement() : null;
+        Stmt elseBranch = matchAndAdvance(ELSE) ? statement() : null;
         return new Stmt.IfStmt(condition, thenBranch, elseBranch);
     }
 
     private Stmt forStatement() {
-        consume(LEFT_PAREN, DiagnosticMessage.ERR_LEFT_PAREN_AFTER_FOR);
+        expectAndConsume(LEFT_PAREN, DiagnosticMessage.ERR_LEFT_PAREN_AFTER_FOR);
 
         Stmt initializer;
-        if (match(SEMICOLON)) {
+        if (matchAndAdvance(SEMICOLON)) {
             initializer = null;
-        } else if (match(VAR)) {
+        } else if (matchAndAdvance(VAR)) {
             initializer = varDeclaration();
         } else {
             initializer = expressionStatement();
         }
 
-        Expr condition = check(SEMICOLON) ? null : expression();
-        consume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_LOOP_COND);
+        Expr condition = currentTokenIs(SEMICOLON) ? null : expression();
+        expectAndConsume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_LOOP_COND);
 
-        Expr increment = check(RIGHT_PAREN) ? null : expression();
-        consume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES);
+        Expr increment = currentTokenIs(RIGHT_PAREN) ? null : expression();
+        expectAndConsume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES);
 
         Stmt body = statement();
         return new Stmt.ForStmt(initializer, condition, increment, body);
@@ -141,19 +141,19 @@ public final class Parser {
 
     private List<Stmt> block() {
         List<Stmt> statements = new ArrayList<>();
-        while (!check(RIGHT_BRACE) && !isAtEnd()) {
+        while (!currentTokenIs(RIGHT_BRACE) && !reachedEof()) {
             Stmt decl = declaration();
             if (decl != null) {
                 statements.add(decl);
             }
         }
-        consume(RIGHT_BRACE, DiagnosticMessage.ERR_RIGHT_BRACE_AFTER_BLOCK);
+        expectAndConsume(RIGHT_BRACE, DiagnosticMessage.ERR_RIGHT_BRACE_AFTER_BLOCK);
         return statements;
     }
 
     private Stmt expressionStatement() {
         Expr expr = expression();
-        consume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE);
+        expectAndConsume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE);
         return new Stmt.ExpressionStmt(expr);
     }
 
@@ -163,13 +163,13 @@ public final class Parser {
 
     private Expr assignment() {
         Expr expr = or();
-        if (match(EQUAL)) {
-            Token equals = previous();
+        if (matchAndAdvance(EQUAL)) {
+            Token equals = previousToken();
             Expr value = assignment();
             if (expr instanceof Expr.Variable) {
                 return new Expr.Assign(((Expr.Variable) expr).name, value);
             }
-            error(equals, DiagnosticMessage.ERR_INVALID_ASSIGN_TARGET);
+            reportError(equals, DiagnosticMessage.ERR_INVALID_ASSIGN_TARGET);
         }
         return expr;
     }
@@ -199,38 +199,38 @@ public final class Parser {
     }
 
     private Expr unary() {
-        if (match(BANG, MINUS, PLUS)) {
-            Token operator = previous();
+        if (matchAndAdvance(BANG, MINUS, PLUS)) {
+            Token operator = previousToken();
             return new Expr.Unary(operator, unary());
         }
         return primary();
     }
 
     private Expr primary() {
-        if (match(FALSE)) {
+        if (matchAndAdvance(FALSE)) {
             return new Expr.Literal(false);
         }
-        if (match(TRUE)) {
+        if (matchAndAdvance(TRUE)) {
             return new Expr.Literal(true);
         }
-        if (match(NUMBER, STRING)) {
-            return new Expr.Literal(previous().literal);
+        if (matchAndAdvance(NUMBER, STRING)) {
+            return new Expr.Literal(previousToken().literal);
         }
-        if (match(IDENTIFIER)) {
-            return new Expr.Variable(previous());
+        if (matchAndAdvance(IDENTIFIER)) {
+            return new Expr.Variable(previousToken());
         }
-        if (match(LEFT_PAREN)) {
+        if (matchAndAdvance(LEFT_PAREN)) {
             Expr expr = expression();
-            consume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_EXPR);
+            expectAndConsume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_EXPR);
             return new Expr.Grouping(expr);
         }
-        throw error(peek(), DiagnosticMessage.ERR_EXPECT_EXPRESSION);
+        throw reportError(currentToken(), DiagnosticMessage.ERR_EXPECT_EXPRESSION);
     }
 
     private Expr leftAssocBinary(Supplier<Expr> operand, TokenType... operators) {
         Expr expr = operand.get();
-        while (match(operators)) {
-            Token operator = previous();
+        while (matchAndAdvance(operators)) {
+            Token operator = previousToken();
             Expr right = operand.get();
             expr = new Expr.Binary(expr, operator, right);
         }
@@ -239,74 +239,74 @@ public final class Parser {
 
     private Expr leftAssocLogical(Supplier<Expr> operand, TokenType operator) {
         Expr expr = operand.get();
-        while (match(operator)) {
-            Token op = previous();
+        while (matchAndAdvance(operator)) {
+            Token op = previousToken();
             Expr right = operand.get();
             expr = new Expr.Logical(expr, op, right);
         }
         return expr;
     }
 
-    private boolean match(TokenType... types) {
+    private boolean matchAndAdvance(TokenType... types) {
         for (TokenType type : types) {
-            if (check(type)) {
-                advance();
+            if (currentTokenIs(type)) {
+                advanceCursor();
                 return true;
             }
         }
         return false;
     }
 
-    private Token consume(TokenType type, String message) {
-        if (check(type)) {
-            return advance();
+    private Token expectAndConsume(TokenType type, String message) {
+        if (currentTokenIs(type)) {
+            return advanceCursor();
         }
-        throw error(peek(), message);
+        throw reportError(currentToken(), message);
     }
 
-    private boolean check(TokenType type) {
-        return !isAtEnd() && peek().type == type;
+    private boolean currentTokenIs(TokenType type) {
+        return !reachedEof() && currentToken().type == type;
     }
 
-    private Token advance() {
-        if (!isAtEnd()) {
+    private Token advanceCursor() {
+        if (!reachedEof()) {
             current++;
         }
-        return previous();
+        return previousToken();
     }
 
-    private boolean isAtEnd() {
-        return peek().type == EOF;
+    private boolean reachedEof() {
+        return currentToken().type == EOF;
     }
 
-    private Token peek() {
+    private Token currentToken() {
         return tokens.get(current);
     }
 
-    private Token previous() {
+    private Token previousToken() {
         return tokens.get(current - 1);
     }
 
-    private ParseError error(Token token, String message) {
+    private ParseError reportError(Token token, String message) {
         String where = token.type == EOF ? " at end" : " at '" + token.lexeme + "'";
         diagnostics.add(new Diagnostic(Diagnostic.Stage.PARSER, token.line, message + where));
         return new ParseError();
     }
 
-    private void synchronize() {
-        advance();
-        while (!isAtEnd()) {
-            if (previous().type == SEMICOLON) {
+    private void recoverToNextStatement() {
+        advanceCursor();
+        while (!reachedEof()) {
+            if (previousToken().type == SEMICOLON) {
                 return;
             }
-            switch (peek().type) {
+            switch (currentToken().type) {
                 case VAR:
                 case FOR:
                 case IF:
                 case PRINT:
                     return;
                 default:
-                    advance();
+                    advanceCursor();
             }
         }
     }

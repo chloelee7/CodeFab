@@ -38,7 +38,7 @@ class ParserTest {
     }
 
     @Test
-    void print문과_var선언을_파싱한다() {
+    void var선언문은_VarStmt로_print문은_PrintStmt로_파싱한다() {
         List<Token> tokens = mockScanner("var a = 1 ; print a ;");
         List<Stmt> stmts = new Parser(tokens, diags).parse();
 
@@ -49,7 +49,7 @@ class ParserTest {
     }
 
     @Test
-    void 블록과_제어흐름을_파싱한다() {
+    void if_else문은_IfStmt로_for문은_ForStmt로_파싱한다() {
         List<Token> tokens = mockScanner(
             "if ( true ) { print 1 ; } else print 2 ; for ( ; ; ) print 3 ;");
         List<Stmt> stmts = new Parser(tokens, diags).parse();
@@ -60,7 +60,7 @@ class ParserTest {
     }
 
     @Test
-    void 세미콜론_누락을_보고한다() {
+    void print문_값뒤에_세미콜론이_없으면_에러를_보고한다() {
         List<Token> tokens = mockScanner("print 1 + 2");
         new Parser(tokens, diags).parse();
 
@@ -68,7 +68,7 @@ class ParserTest {
     }
 
     @Test
-    void 닫는_괄호_누락을_보고한다() {
+    void 그룹화_표현식에_닫는괄호가_없으면_에러를_보고한다() {
         List<Token> tokens = mockScanner("print ( 1 + 2 ;");
         new Parser(tokens, diags).parse();
 
@@ -77,7 +77,7 @@ class ParserTest {
     }
 
     @Test
-    void 잘못된_대입_대상을_보고한다() {
+    void 대입_좌변이_변수가_아니면_에러를_보고한다() {
         List<Token> tokens = mockScanner("var a = 1 ; var b = 2 ; a + b = 3 ;");
         new Parser(tokens, diags).parse();
 
@@ -85,7 +85,7 @@ class ParserTest {
     }
 
     @Test
-    void 잘못된_표현식_시작을_보고한다() {
+    void 표현식이_이항연산자로_시작하면_에러를_보고한다() {
         List<Token> tokens = mockScanner("print * 5 ;");
         new Parser(tokens, diags).parse();
 
@@ -93,7 +93,7 @@ class ParserTest {
     }
 
     @Test
-    void 변수명_누락을_보고한다() {
+    void var뒤에_변수명이_없으면_에러를_보고한다() {
         List<Token> tokens = mockScanner("var = 1 ;");
         new Parser(tokens, diags).parse();
 
@@ -101,7 +101,7 @@ class ParserTest {
     }
 
     @Test
-    void 변수_선언_세미콜론_누락을_보고한다() {
+    void var선언_끝에_세미콜론이_없으면_에러를_보고한다() {
         List<Token> tokens = mockScanner("var a = 1");
         new Parser(tokens, diags).parse();
 
@@ -110,7 +110,7 @@ class ParserTest {
     }
 
     @Test
-    void if_여는_괄호_누락을_보고한다() {
+    void if_조건앞에_여는괄호가_없으면_에러를_보고한다() {
         List<Token> tokens = mockScanner("if true ) print 1 ;");
         new Parser(tokens, diags).parse();
 
@@ -118,7 +118,7 @@ class ParserTest {
     }
 
     @Test
-    void if_닫는_괄호_누락을_보고한다() {
+    void if_조건뒤에_닫는괄호가_없으면_에러를_보고한다() {
         List<Token> tokens = mockScanner("if ( true print 1 ;");
         new Parser(tokens, diags).parse();
 
@@ -127,7 +127,7 @@ class ParserTest {
     }
 
     @Test
-    void for_여는_괄호_누락을_보고한다() {
+    void for_절앞에_여는괄호가_없으면_에러를_보고한다() {
         List<Token> tokens = mockScanner("for ; ; ) print 1 ;");
         new Parser(tokens, diags).parse();
 
@@ -135,7 +135,7 @@ class ParserTest {
     }
 
     @Test
-    void for_절_닫는_괄호_누락을_보고한다() {
+    void for_절뒤에_닫는괄호가_없으면_에러를_보고한다() {
         List<Token> tokens = mockScanner("for ( ; ; 1");
         new Parser(tokens, diags).parse();
 
@@ -144,7 +144,7 @@ class ParserTest {
     }
 
     @Test
-    void 블록_닫는_중괄호_누락을_보고한다() {
+    void 블록_끝에_닫는중괄호가_없으면_에러를_보고한다() {
         List<Token> tokens = mockScanner("{ print 1 ;");
         new Parser(tokens, diags).parse();
 
