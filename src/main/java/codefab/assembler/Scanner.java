@@ -60,7 +60,13 @@ public final class Scanner {
             case '+': addToken(TokenType.PLUS); break;
             case '-': addToken(TokenType.MINUS); break;
             case '*': addToken(TokenType.STAR); break;
-            case '/': addToken(TokenType.SLASH); break;
+            case '/':
+                if (match('/')) {
+                    while (peek() != '\n' && !isAtEnd()) advance();
+                } else {
+                    addToken(TokenType.SLASH);
+                }
+                break;
             case ';': addToken(TokenType.SEMICOLON); break;
             case '!': addToken(match('=') ? TokenType.BANG_EQUAL : TokenType.BANG); break;
             case '=': addToken(match('=') ? TokenType.EQUAL_EQUAL : TokenType.EQUAL); break;
@@ -69,6 +75,7 @@ public final class Scanner {
             case ' ':
             case '\t':
             case '\r': break;
+            case '\n': line++; break;
             case '"': string(); break;
             default:
                 if (isDigit(c)) {
