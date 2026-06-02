@@ -112,7 +112,13 @@ public final class Scanner {
 
     private void string() {
         while (peek() != '"' && !isAtEnd()) {
+            if (peek() == '\n') line++;
             advance();
+        }
+        if (isAtEnd()) {
+            diagnostics.add(new Diagnostic(
+                    Diagnostic.Stage.SCANNER, line, "unterminated string"));
+            return;
         }
         advance(); // consume the closing '"'
         String value = source.substring(start + 1, current - 1);
