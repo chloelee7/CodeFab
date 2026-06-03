@@ -66,18 +66,21 @@ class NormalOperationTest {
         assertEquals(List.of("15"), out("var a = 10; a = a + 5; print a;"));
     }
 
+    @DisplayName("블록 스코프 - 변수 섀도잉")
     @Test
     void blockScopeShadowing() {
         String src = "var x = \"global\";\n{\n  var x = \"inner\";\n  print x;\n}\nprint x;";
         assertEquals(List.of("inner", "global"), out(src));
     }
 
+    @DisplayName("블록 스코프 - 외부 변수 접근")
     @Test
     void assignmentToOuterVariableInsideBlock() {
         String src = "var count = 0;\n{\n  count = count + 1;\n}\nprint count;";
         assertEquals(List.of("1"), out(src));
     }
 
+    @DisplayName("블록 스코프 - 중첩 섀도잉")
     @Test
     void nestedShadowingReadsOuterVariables() {
         String src = "var outer = \"A\";\n{\n  var inner = \"B\";\n  {\n    print outer + inner;\n  }\n}";
