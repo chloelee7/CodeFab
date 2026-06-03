@@ -81,4 +81,11 @@ class ExecutorTest {
         run(print(lit(true)));
         verify(output).print("true");
     }
+
+    @DisplayName("null→nil 출력")
+    @Test
+    void printsNilForNullValue() {
+        run(print(lit(null)));
+        verify(output).print("nil");
+    }
 }
