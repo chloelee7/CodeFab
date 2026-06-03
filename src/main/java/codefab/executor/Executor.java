@@ -47,7 +47,8 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Void visitBlockStmt(Stmt.BlockStmt stmt) {
-        throw new UnsupportedOperationException("visitBlockStmt not implemented");
+        executeBlock(stmt.statements, new Environment(environment));
+        return null;
     }
 
     @Override
@@ -154,6 +155,18 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     private Object evaluate(Expr expr) {
         return expr.accept(this);
+    }
+
+    private void executeBlock(List<Stmt> statements, Environment blockEnv) {
+        Environment previous = this.environment;
+        try {
+            this.environment = blockEnv;
+            for (Stmt statement : statements) {
+                statement.accept(this);
+            }
+        } finally {
+            this.environment = previous;
+        }
     }
 
     private boolean isTruthy(Object value) {
