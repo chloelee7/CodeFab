@@ -53,7 +53,12 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Void visitIfStmt(Stmt.IfStmt stmt) {
-        throw new UnsupportedOperationException("visitIfStmt not implemented");
+        if (isTruthy(evaluate(stmt.condition))) {
+            stmt.thenBranch.accept(this);
+        } else if (stmt.elseBranch != null) {
+            stmt.elseBranch.accept(this);
+        }
+        return null;
     }
 
     @Override
