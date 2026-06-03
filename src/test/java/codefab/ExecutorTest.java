@@ -1,6 +1,10 @@
 package codefab;
 
+import static org.mockito.Mockito.verify;
+
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -46,5 +50,14 @@ class ExecutorTest {
 
     private void run(Stmt... statements) {
         executor.execute(List.of(statements));
+    }
+
+    // --- stage 1: print + literal stringify -------------------------------
+
+    @DisplayName("정수형 숫자 출력")
+    @Test
+    void printsIntegralNumberWithoutDecimalPoint() {
+        run(print(lit(42.0)));
+        verify(output).print("42");
     }
 }
