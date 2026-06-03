@@ -21,14 +21,33 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         }
     }
 
+    private Object evaluate(Expr expr) {
+        return expr.accept(this);
+    }
+
+    public static String stringify(Object value) {
+        if (value == null) return "nil";
+        if (value instanceof Double) {
+            double d = (Double) value;
+            if (d == Math.floor(d) && !Double.isInfinite(d) && !Double.isNaN(d)) {
+                return Long.toString((long) d);
+            }
+            return Double.toString(d);
+        }
+        return value.toString();
+    }
+
     @Override
     public Void visitExpressionStmt(Stmt.ExpressionStmt stmt) {
-        throw new UnsupportedOperationException("visitExpressionStmt not implemented");
+        evaluate(stmt.expression);
+        return null;
     }
 
     @Override
     public Void visitPrintStmt(Stmt.PrintStmt stmt) {
-        throw new UnsupportedOperationException("visitPrintStmt not implemented");
+        Object value = evaluate(stmt.expression);
+        output.print(stringify(value));
+        return null;
     }
 
     @Override
@@ -53,7 +72,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Object visitLiteral(Expr.Literal expr) {
-        throw new UnsupportedOperationException("visitLiteral not implemented");
+        return expr.value;
     }
 
     @Override
