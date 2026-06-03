@@ -74,4 +74,11 @@ class ExecutorTest {
         run(print(lit("hello")));
         verify(output).print("hello");
     }
+
+    @DisplayName("불리언 출력")
+    @Test
+    void printsBooleanValue() {
+        run(print(lit(true)));
+        verify(output).print("true");
+    }
 }
