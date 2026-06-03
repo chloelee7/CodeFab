@@ -1,5 +1,7 @@
 package codefab;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -87,5 +89,12 @@ class ExecutorTest {
     void printsNilForNullValue() {
         run(print(lit(null)));
         verify(output).print("nil");
+    }
+
+    @DisplayName("표현식 문장 출력 없음")
+    @Test
+    void expressionStatementProducesNoOutput() {
+        run(exprStmt(lit(99.0)));
+        verify(output, never()).print(anyString());
     }
 }
