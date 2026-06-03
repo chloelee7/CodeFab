@@ -1,8 +1,11 @@
 package codefab.executor;
 
 import codefab.core.Expr;
+import codefab.core.InterpreterRuntimeError;
 import codefab.core.OutputSink;
 import codefab.core.Stmt;
+import codefab.core.Token;
+import codefab.core.TokenType;
 
 import java.util.List;
 
@@ -76,12 +79,63 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Object visitUnary(Expr.Unary expr) {
-        throw new UnsupportedOperationException("visitUnary not implemented");
+        Object right = evaluate(expr.right);
+        switch (expr.operator.type) {
+            case MINUS:
+                checkNumberOperand(expr.operator, right);
+                return -(double) right;
+            case PLUS:
+                checkNumberOperand(expr.operator, right);
+                return (double) right;
+            case BANG:
+                return !isTruthy(right);
+            default:
+                throw new InterpreterRuntimeError(expr.operator, "Unknown unary operator.");
+        }
     }
 
     @Override
     public Object visitBinary(Expr.Binary expr) {
-        throw new UnsupportedOperationException("visitBinary not implemented");
+        Object left = evaluate(expr.left);
+        Object right = evaluate(expr.right);
+        Token op = expr.operator;
+        switch (op.type) {
+            case PLUS:
+                if (left instanceof Double && right instanceof Double)
+                    return (double) left + (double) right;
+                if (left instanceof String && right instanceof String)
+                    return (String) left + (String) right;
+                throw new InterpreterRuntimeError(op, "Operands must be two numbers or two strings.");
+            case MINUS:
+                checkNumberOperands(op, left, right);
+                return (double) left - (double) right;
+            case STAR:
+                checkNumberOperands(op, left, right);
+                return (double) left * (double) right;
+            case SLASH:
+                checkNumberOperands(op, left, right);
+                if ((double) right == 0.0)
+                    throw new InterpreterRuntimeError(op, "Division by zero.");
+                return (double) left / (double) right;
+            case GREATER:
+                checkNumberOperands(op, left, right);
+                return (double) left > (double) right;
+            case GREATER_EQUAL:
+                checkNumberOperands(op, left, right);
+                return (double) left >= (double) right;
+            case LESS:
+                checkNumberOperands(op, left, right);
+                return (double) left < (double) right;
+            case LESS_EQUAL:
+                checkNumberOperands(op, left, right);
+                return (double) left <= (double) right;
+            case EQUAL_EQUAL:
+                return isEqual(left, right);
+            case BANG_EQUAL:
+                return !isEqual(left, right);
+            default:
+                throw new InterpreterRuntimeError(op, "Unknown binary operator.");
+        }
     }
 
     @Override
@@ -91,13 +145,35 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Object visitGrouping(Expr.Grouping expr) {
-        throw new UnsupportedOperationException("visitGrouping not implemented");
+        return evaluate(expr.expression);
     }
 
     // --- helpers -----------------------------------------------------------
 
     private Object evaluate(Expr expr) {
         return expr.accept(this);
+    }
+
+    private boolean isTruthy(Object value) {
+        if (value == null) return false;
+        if (value instanceof Boolean) return (Boolean) value;
+        return true;
+    }
+
+    private boolean isEqual(Object a, Object b) {
+        if (a == null && b == null) return true;
+        if (a == null) return false;
+        return a.equals(b);
+    }
+
+    private void checkNumberOperand(Token operator, Object operand) {
+        if (operand instanceof Double) return;
+        throw new InterpreterRuntimeError(operator, "Operand must be a number.");
+    }
+
+    private void checkNumberOperands(Token operator, Object left, Object right) {
+        if (left instanceof Double && right instanceof Double) return;
+        throw new InterpreterRuntimeError(operator, "Operands must be numbers.");
     }
 
     public static String stringify(Object value) {
