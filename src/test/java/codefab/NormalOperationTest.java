@@ -129,6 +129,7 @@ class NormalOperationTest {
         assertEquals(List.of("1"), out("// header comment\nprint 1; // trailing comment"));
     }
 
+    @DisplayName("논리 연산자(and/or) 단락 평가")
     @Test
     void logicalOperators() {
         assertEquals("true", single("print true or false;"));
