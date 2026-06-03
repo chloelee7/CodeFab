@@ -67,4 +67,11 @@ class ExecutorTest {
         run(print(lit(1.5)));
         verify(output).print("1.5");
     }
+
+    @DisplayName("문자열 출력")
+    @Test
+    void printsStringValueVerbatim() {
+        run(print(lit("hello")));
+        verify(output).print("hello");
+    }
 }
