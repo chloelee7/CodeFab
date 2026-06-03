@@ -1,8 +1,8 @@
 package codefab.core;
 
 /**
- * All token categories the Scanner can produce.
- * Grouped by single-character, one-or-two-character, literals and keywords.
+ * All token categories the Scanner can produce. Grouped by single-character, one-or-two-character,
+ * literals and keywords.
  */
 public enum TokenType {
     // Single-character tokens.
@@ -22,7 +22,7 @@ public enum TokenType {
 
     // Keywords.
     AND, OR,
-    IF, ELSE, TRUE, FALSE, FOR, VAR, PRINT,
+    IF, ELSE, TRUE, FALSE, FOR, WHILE, VAR, PRINT,
 
     EOF
 }

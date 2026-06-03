@@ -30,6 +30,7 @@ import static codefab.core.TokenType.STAR;
 import static codefab.core.TokenType.STRING;
 import static codefab.core.TokenType.TRUE;
 import static codefab.core.TokenType.VAR;
+import static codefab.core.TokenType.WHILE;
 
 import codefab.core.Diagnostic;
 import codefab.core.DiagnosticMessage;
@@ -95,6 +96,9 @@ public final class Parser {
         if (matchAndAdvance(FOR)) {
             return forStatement();
         }
+        if (matchAndAdvance(WHILE)) {
+            return whileStatement();
+        }
         if (matchAndAdvance(LEFT_BRACE)) {
             return new Stmt.BlockStmt(block());
         }
@@ -137,6 +141,14 @@ public final class Parser {
 
         Stmt body = statement();
         return new Stmt.ForStmt(initializer, condition, increment, body);
+    }
+
+    private Stmt whileStatement() {
+        expectAndConsume(LEFT_PAREN, DiagnosticMessage.ERR_LEFT_PAREN_AFTER_WHILE);
+        Expr condition = expression();
+        expectAndConsume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_CONDITION);
+        Stmt body = statement();
+        return new Stmt.WhileStmt(condition, body);
     }
 
     private List<Stmt> block() {
