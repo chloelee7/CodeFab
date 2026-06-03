@@ -59,6 +59,7 @@ class NormalOperationTest {
         assertEquals("3.14", single("print 3.14;"));
     }
 
+    @DisplayName("변수 재할당")
     @Test
     void variablesAndAssignment() {
         assertEquals(List.of("30"), out("var a = 10; var b = 20; print a + b;"));
