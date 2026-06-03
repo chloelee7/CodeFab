@@ -97,4 +97,15 @@ class ExecutorTest {
         run(exprStmt(lit(99.0)));
         verify(output, never()).print(anyString());
     }
+
+    // --- stage 2: variable declaration / lookup ----------------------------
+
+    @DisplayName("변수 선언 및 읽기")
+    @Test
+    void declaresAndReadsInitializedVariable() {
+        Stmt declare = new Stmt.VarStmt(tok(TokenType.IDENTIFIER, "x"), lit(7.0));
+        Stmt show = print(new Expr.Variable(tok(TokenType.IDENTIFIER, "x")));
+        run(declare, show);
+        verify(output).print("7");
+    }
 }

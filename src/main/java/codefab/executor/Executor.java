@@ -37,7 +37,9 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Void visitVarStmt(Stmt.VarStmt stmt) {
-        throw new UnsupportedOperationException("visitVarStmt not implemented");
+        Object value = stmt.initializer != null ? evaluate(stmt.initializer) : null;
+        environment.define(stmt.name.lexeme, value);
+        return null;
     }
 
     @Override
@@ -64,7 +66,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Object visitVariable(Expr.Variable expr) {
-        throw new UnsupportedOperationException("visitVariable not implemented");
+        return environment.get(expr.name);
     }
 
     @Override
