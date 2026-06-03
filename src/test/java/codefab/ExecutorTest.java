@@ -60,4 +60,11 @@ class ExecutorTest {
         run(print(lit(42.0)));
         verify(output).print("42");
     }
+
+    @DisplayName("소수점 숫자 출력")
+    @Test
+    void printsFractionalNumberWithDecimalPoint() {
+        run(print(lit(1.5)));
+        verify(output).print("1.5");
+    }
 }
