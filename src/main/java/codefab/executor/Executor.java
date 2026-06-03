@@ -63,7 +63,18 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Void visitForStmt(Stmt.ForStmt stmt) {
-        throw new UnsupportedOperationException("visitForStmt not implemented");
+        Environment previous = this.environment;
+        try {
+            this.environment = new Environment(previous);
+            if (stmt.initializer != null) stmt.initializer.accept(this);
+            while (stmt.condition == null || isTruthy(evaluate(stmt.condition))) {
+                stmt.body.accept(this);
+                if (stmt.increment != null) evaluate(stmt.increment);
+            }
+        } finally {
+            this.environment = previous;
+        }
+        return null;
     }
 
     // --- expressions -------------------------------------------------------

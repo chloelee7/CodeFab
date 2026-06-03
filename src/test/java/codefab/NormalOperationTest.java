@@ -107,12 +107,14 @@ class NormalOperationTest {
         assertEquals(List.of("bbq"), out(src));
     }
 
+    @DisplayName("for 루프")
     @Test
     void forLoop() {
         String src = "for (var j = 0; j < 3; j = j + 1) {\n  print j;\n}";
         assertEquals(List.of("0", "1", "2"), out(src));
     }
 
+    @DisplayName("for 루프 - 변수 누설 방지")
     @Test
     void forLoopVariableDoesNotLeak() {
         String src = "for (var j = 0; j < 1; j = j + 1) { print j; }\nprint j;";
@@ -121,6 +123,7 @@ class NormalOperationTest {
         assertTrue(r.diagnostics().stream().anyMatch(d -> d.message.contains("Undefined variable 'j'.")));
     }
 
+    @DisplayName("주석 무시")
     @Test
     void commentsAreIgnored() {
         assertEquals(List.of("1"), out("// header comment\nprint 1; // trailing comment"));
