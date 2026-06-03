@@ -1,8 +1,12 @@
 package codefab;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+
+import codefab.core.InterpreterRuntimeError;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -116,5 +120,14 @@ class ExecutorTest {
         Stmt show = print(new Expr.Variable(tok(TokenType.IDENTIFIER, "x")));
         run(declare, show);
         verify(output).print("nil");
+    }
+
+    @DisplayName("미정의 변수 예외")
+    @Test
+    void readingUndefinedVariableThrows() {
+        Stmt show = print(new Expr.Variable(tok(TokenType.IDENTIFIER, "missing")));
+        InterpreterRuntimeError error =
+            assertThrows(InterpreterRuntimeError.class, () -> run(show));
+        assertTrue(error.getMessage().contains("Undefined variable"));
     }
 }
