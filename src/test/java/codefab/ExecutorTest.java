@@ -108,4 +108,13 @@ class ExecutorTest {
         run(declare, show);
         verify(output).print("7");
     }
+
+    @DisplayName("미초기화 변수 nil 보유")
+    @Test
+    void uninitializedVariableHoldsNil() {
+        Stmt declare = new Stmt.VarStmt(tok(TokenType.IDENTIFIER, "x"), null);
+        Stmt show = print(new Expr.Variable(tok(TokenType.IDENTIFIER, "x")));
+        run(declare, show);
+        verify(output).print("nil");
+    }
 }
