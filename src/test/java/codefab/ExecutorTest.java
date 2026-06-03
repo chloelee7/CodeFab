@@ -6,7 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import codefab.core.InterpreterRuntimeError;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,14 +16,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import codefab.core.Expr;
+import codefab.core.InterpreterRuntimeError;
 import codefab.core.OutputSink;
 import codefab.core.Stmt;
 import codefab.core.Token;
 import codefab.core.TokenType;
 import codefab.executor.Environment;
 import codefab.executor.Executor;
-
-import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
 class ExecutorTest {
