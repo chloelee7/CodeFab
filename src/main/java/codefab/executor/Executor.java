@@ -47,7 +47,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Void visitBlockStmt(Stmt.BlockStmt stmt) {
-        executeBlock(stmt.statements, new Environment(environment));
+        withNewScope(() -> stmt.statements.forEach(s -> s.accept(this)));
         return null;
     }
 
@@ -63,17 +63,13 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Void visitForStmt(Stmt.ForStmt stmt) {
-        Environment previous = this.environment;
-        try {
-            this.environment = new Environment(previous);
+        withNewScope(() -> {
             if (stmt.initializer != null) stmt.initializer.accept(this);
             while (stmt.condition == null || isTruthy(evaluate(stmt.condition))) {
                 stmt.body.accept(this);
                 if (stmt.increment != null) evaluate(stmt.increment);
             }
-        } finally {
-            this.environment = previous;
-        }
+        });
         return null;
     }
 
@@ -173,13 +169,12 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         return expr.accept(this);
     }
 
-    private void executeBlock(List<Stmt> statements, Environment blockEnv) {
+
+    private void withNewScope(Runnable body) {
         Environment previous = this.environment;
         try {
-            this.environment = blockEnv;
-            for (Stmt statement : statements) {
-                statement.accept(this);
-            }
+            this.environment = new Environment(previous);
+            body.run();
         } finally {
             this.environment = previous;
         }
