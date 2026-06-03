@@ -1,5 +1,6 @@
 package codefab;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -25,6 +26,7 @@ class NormalOperationTest {
         return lines.get(0);
     }
 
+    @DisplayName("이항/단항/그룹 표현식 - 산술 우선순위")
     @Test
     void arithmeticPrecedence() {
         assertEquals("7", single("print 1 + 2 * 3;"));
@@ -34,6 +36,7 @@ class NormalOperationTest {
         assertEquals("-1", single("print -3 + 2;"));
     }
 
+    @DisplayName("이항/단항/그룹 표현식 - 비교 연산과 불리언")
     @Test
     void comparisonsAndBooleans() {
         assertEquals("true", single("print 1 < 2;"));
@@ -42,11 +45,13 @@ class NormalOperationTest {
         assertEquals("false", single("print false;"));
     }
 
+    @DisplayName("이항/단항/그룹 표현식 - 문자열 연결")
     @Test
     void stringConcatenation() {
         assertEquals("Hello, CodeFab!", single("print \"Hello, \" + \"CodeFab!\";"));
     }
 
+    @DisplayName("이항/단항/그룹 표현식 - 숫자 포맷")
     @Test
     void numberFormatting() {
         assertEquals("5", single("print 5;"));
