@@ -87,17 +87,20 @@ class NormalOperationTest {
         assertEquals(List.of("AB"), out(src));
     }
 
+    @DisplayName("if/else 조건문 - else 없는 if")
     @Test
     void ifWithoutElse() {
         assertEquals(List.of("bbq"), out("if (true) print \"bbq\";"));
         assertTrue(out("if (false) print \"no\";").isEmpty());
     }
 
+    @DisplayName("if/else 조건문")
     @Test
     void ifElse() {
         assertEquals(List.of("kfc"), out("if (false) print \"no\"; else print \"kfc\";"));
     }
 
+    @DisplayName("if/else 조건문 - dangling else")
     @Test
     void danglingElseBindsToNearestIf() {
         String src = "if (true)\n  if (false) print \"kfc\";\n  else print \"bbq\";";
