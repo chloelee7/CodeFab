@@ -4,7 +4,9 @@ import static codefab.core.DiagnosticMessage.ERR_EXPECT_EXPRESSION;
 import static codefab.core.DiagnosticMessage.ERR_INVALID_ASSIGN_TARGET;
 import static codefab.core.DiagnosticMessage.ERR_LEFT_PAREN_AFTER_FOR;
 import static codefab.core.DiagnosticMessage.ERR_LEFT_PAREN_AFTER_IF;
+import static codefab.core.DiagnosticMessage.ERR_LEFT_PAREN_AFTER_WHILE;
 import static codefab.core.DiagnosticMessage.ERR_RIGHT_BRACE_AFTER_BLOCK;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_CONDITION;
 import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_EXPR;
 import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES;
 import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_IF_COND;
@@ -144,6 +146,32 @@ class ParserTest {
     }
 
     @Test
+    void while문은_WhileStmt로_파싱한다() {
+        List<Token> tokens = mockScanner("while ( true ) print 1 ;");
+        List<Stmt> stmts = new Parser(tokens, diags).parse();
+
+        assertTrue(diags.isEmpty(), () -> "unexpected diagnostics: " + diags);
+        assertEquals(1, stmts.size());
+        assertInstanceOf(Stmt.WhileStmt.class, stmts.get(0));
+    }
+
+    @Test
+    void while_조건앞에_여는괄호가_없으면_에러를_보고한다() {
+        List<Token> tokens = mockScanner("while true ) print 1 ;");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_LEFT_PAREN_AFTER_WHILE)));
+    }
+
+    @Test
+    void while_조건뒤에_닫는괄호가_없으면_에러를_보고한다() {
+        List<Token> tokens = mockScanner("while ( true print 1 ;");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_CONDITION)));
+    }
+
+    @Test
     void 블록_끝에_닫는중괄호가_없으면_에러를_보고한다() {
         List<Token> tokens = mockScanner("{ print 1 ;");
         new Parser(tokens, diags).parse();
@@ -177,6 +205,8 @@ class ParserTest {
                 return new Token(TokenType.ELSE, lexeme, null, 1);
             case "for":
                 return new Token(TokenType.FOR, lexeme, null, 1);
+            case "while":
+                return new Token(TokenType.WHILE, lexeme, null, 1);
             case "true":
                 return new Token(TokenType.TRUE, lexeme, null, 1);
             case "false":
