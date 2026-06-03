@@ -74,7 +74,9 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Object visitAssign(Expr.Assign expr) {
-        throw new UnsupportedOperationException("visitAssign not implemented");
+        Object value = evaluate(expr.value);
+        environment.assign(expr.name, value);
+        return value;
     }
 
     @Override
