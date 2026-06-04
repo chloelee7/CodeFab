@@ -123,6 +123,12 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitForStmt(ForStmt stmt) {
+        scopes.push(new HashSet<>());
+        visitIfPresent(stmt.initializer);
+        visitIfPresent(stmt.condition);
+        stmt.body.accept(this);
+        visitIfPresent(stmt.increment);
+        scopes.pop();
         return null;
     }
 

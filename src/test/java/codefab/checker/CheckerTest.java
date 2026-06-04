@@ -109,6 +109,61 @@ class CheckerTest {
     }
 
     @Test
+    @DisplayName("for 루프에서 선언된 변수를 조건식·증감식·body에서 참조할 때 에러가 없다")
+    void for_루프에서_선언된_변수를_조건식_증감식_body에서_참조할_때_에러가_없다() {
+        // given: for (var i = 0; i < 3; i = i + 1) { print i; }
+        Token iDecl   = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iCond   = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iIncLhs = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iIncRhs = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iPrint  = new Token(TokenType.IDENTIFIER, "i", null, 2);
+        Token less    = new Token(TokenType.LESS, "<", null, 1);
+        Token plus    = new Token(TokenType.PLUS, "+", null, 1);
+
+        Stmt.VarStmt   init      = new Stmt.VarStmt(iDecl, new Expr.Literal(0.0));
+        Expr.Binary    condition = new Expr.Binary(new Expr.Variable(iCond), less, new Expr.Literal(3.0));
+        Expr.Assign    increment = new Expr.Assign(iIncLhs,
+                new Expr.Binary(new Expr.Variable(iIncRhs), plus, new Expr.Literal(1.0)));
+        Stmt.BlockStmt body      = new Stmt.BlockStmt(List.of(
+                new Stmt.PrintStmt(new Expr.Variable(iPrint))));
+        Stmt.ForStmt forStmt = new Stmt.ForStmt(init, condition, increment, body);
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(forStmt));
+
+        // then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("for 루프 body에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
+    void for_루프_body에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
+        // given: for (var i = 0; i < 3; i = i + 1) { print z; }
+        Token iDecl   = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iCond   = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iIncLhs = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iIncRhs = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token zPrint  = new Token(TokenType.IDENTIFIER, "z", null, 2);
+        Token less    = new Token(TokenType.LESS, "<", null, 1);
+        Token plus    = new Token(TokenType.PLUS, "+", null, 1);
+
+        Stmt.VarStmt   init      = new Stmt.VarStmt(iDecl, new Expr.Literal(0.0));
+        Expr.Binary    condition = new Expr.Binary(new Expr.Variable(iCond), less, new Expr.Literal(3.0));
+        Expr.Assign    increment = new Expr.Assign(iIncLhs,
+                new Expr.Binary(new Expr.Variable(iIncRhs), plus, new Expr.Literal(1.0)));
+        Stmt.BlockStmt body      = new Stmt.BlockStmt(List.of(
+                new Stmt.PrintStmt(new Expr.Variable(zPrint))));
+        Stmt.ForStmt forStmt = new Stmt.ForStmt(init, condition, increment, body);
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(forStmt));
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).stage).isEqualTo(Diagnostic.Stage.CHECKER);
+    }
+
+    @Test
     @DisplayName("블록 안에서 선언된 변수를 블록 안에서 참조할 때 에러가 없다")
     void 블록_안에서_선언된_변수를_블록_안에서_참조할_때_에러가_없다() {
         // given: { var a = 1; print a; }
