@@ -29,10 +29,12 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private List<Diagnostic> errors;
     private Deque<Set<String>> scopes;
+    private String initializingVar;
 
     public List<Diagnostic> check(List<Stmt> statements) {
         errors = new ArrayList<>();
         scopes = new ArrayDeque<>();
+        initializingVar = null;
         scopes.push(new HashSet<>());
         for (Stmt stmt : statements) {
             stmt.accept(this);
@@ -100,7 +102,9 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitVarStmt(VarStmt stmt) {
+        initializingVar = stmt.name.lexeme;
         visitIfPresent(stmt.initializer);
+        initializingVar = null;
         declare(stmt.name);
         return null;
     }
@@ -164,6 +168,10 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     private void checkDeclared(Token name) {
+        if (name.lexeme.equals(initializingVar)) {
+            error(name.line, "Can't read local variable '" + name.lexeme + "' in its own initializer.");
+            return;
+        }
         for (Set<String> scope : scopes) {
             if (scope.contains(name.lexeme)) return;
         }

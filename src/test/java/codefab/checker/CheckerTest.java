@@ -109,6 +109,45 @@ class CheckerTest {
     }
 
     @Test
+    @DisplayName("[스크립트] 블록 내 자기 초기화 참조 - 에러 메시지에 initializer가 포함된다")
+    void 블록_내_자기_초기화_참조_에러_메시지에_initializer가_포함된다() {
+        // given: { var a = a; }
+        Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aRef  = new Token(TokenType.IDENTIFIER, "a", null, 1);
+
+        Stmt.BlockStmt block = new Stmt.BlockStmt(List.of(
+                new Stmt.VarStmt(aDecl, new Expr.Variable(aRef))));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(block));
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).stage).isEqualTo(Diagnostic.Stage.CHECKER);
+        assertThat(result.get(0).message).containsIgnoringCase("initializer");
+    }
+
+    @Test
+    @DisplayName("[스크립트] 블록 내 로컬 스코프 중복 선언 - 에러 메시지에 Already가 포함된다")
+    void 블록_내_로컬_스코프_중복_선언_에러_메시지에_Already가_포함된다() {
+        // given: { var a = "hi"; var a = 3; }
+        Token aFirst  = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aSecond = new Token(TokenType.IDENTIFIER, "a", null, 2);
+
+        Stmt.BlockStmt block = new Stmt.BlockStmt(List.of(
+                new Stmt.VarStmt(aFirst,  new Expr.Literal("hi")),
+                new Stmt.VarStmt(aSecond, new Expr.Literal(3.0))));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(block));
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).stage).isEqualTo(Diagnostic.Stage.CHECKER);
+        assertThat(result.get(0).message).containsIgnoringCase("already");
+    }
+
+    @Test
     @DisplayName("같은 스코프에서 변수를 재선언하면 CHECKER 에러가 1개 발생한다")
     void 같은_스코프에서_변수를_재선언하면_CHECKER_에러가_1개_발생한다() {
         // given: var a = 1; var a = 2;
