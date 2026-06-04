@@ -165,6 +165,10 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private void declare(Token name) {
         Set<String> current = scopes.peek();
+        if (current == null) {
+            throw new RuntimeException("scopes is empty");
+        }
+
         if (current.contains(name.lexeme)) {
             error(name.line, "variable '" + name.lexeme + "' is already declared in this scope");
         }
