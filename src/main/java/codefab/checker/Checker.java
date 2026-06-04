@@ -44,10 +44,13 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     @Override
     public Void visitVariable(Variable expr) {
         if (!declaredVars.contains(expr.name.lexeme)) {
-            errors.add(new Diagnostic(Diagnostic.Stage.CHECKER, expr.name.line,
-                    "undefined variable '" + expr.name.lexeme + "'"));
+            error(expr.name.line, "undefined variable '" + expr.name.lexeme + "'");
         }
         return null;
+    }
+
+    private void error(int line, String message) {
+        errors.add(new Diagnostic(Diagnostic.Stage.CHECKER, line, message));
     }
 
     @Override
