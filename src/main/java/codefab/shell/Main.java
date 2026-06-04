@@ -13,6 +13,9 @@ import java.nio.file.Path;
 
 public final class Main {
 
+    private static final int EX_DATA_ERR = 65;
+    private static final int EX_NO_INPUT = 66;
+
     public static void main(String[] args) {
         if (args.length == 0) {
             BufferedReader reader = new BufferedReader(
@@ -35,7 +38,7 @@ public final class Main {
             source = Files.readString(Path.of(path), StandardCharsets.UTF_8);
         } catch (IOException e) {
             System.err.println("Could not read file '" + path + "': " + e.getMessage());
-            System.exit(66); // EX_NOINPUT
+            System.exit(EX_NO_INPUT);
             return;
         }
 
@@ -47,7 +50,7 @@ public final class Main {
             System.err.println(diagnostic.render());
         }
         if (!result.success()) {
-            System.exit(65); // EX_DATAERR
+            System.exit(EX_DATA_ERR);
         }
     }
 
