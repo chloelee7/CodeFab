@@ -22,7 +22,7 @@ import java.util.List;
 
 public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
-    private List<Diagnostic> errors = new ArrayList<>();
+    private List<Diagnostic> errors;
 
     public List<Diagnostic> check(List<Stmt> statements) {
         errors = new ArrayList<>();
