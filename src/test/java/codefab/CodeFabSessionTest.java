@@ -1,16 +1,16 @@
 package codefab;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-/** REPL semantics: a session keeps variables alive across run() calls. */
-class SessionTest {
+class CodeFabSessionTest {
 
     @Test
-    void variablesPersistAcrossInputs() {
+    void 변수는_여러_입력에_걸쳐_유지된다() {
         CodeFabSession session = new CodeFabSession();
         assertTrue(session.run("var a = 5;").success());
         assertTrue(session.run("var b = 10;").success());
@@ -20,7 +20,7 @@ class SessionTest {
     }
 
     @Test
-    void eachRunReportsOnlyItsOwnOutput() {
+    void 각_실행은_자신의_출력만_보고한다() {
         CodeFabSession session = new CodeFabSession();
         session.run("var x = 1;");
         RunResult r = session.run("print x;");
@@ -28,9 +28,7 @@ class SessionTest {
     }
 
     @Test
-    void redeclaringExistingGlobalAcrossInputsIsAllowedInRepl() {
-        // A fresh top-level scope per input means re-declaring `a` in a later
-        // input is not a duplicate within a single scope.
+    void REPL에서_입력_간_기존_전역변수_재선언이_허용된다() {
         CodeFabSession session = new CodeFabSession();
         assertTrue(session.run("var a = 1;").success());
         RunResult r = session.run("var a = 2; print a;");
@@ -39,7 +37,7 @@ class SessionTest {
     }
 
     @Test
-    void runtimeErrorInOneInputDoesNotKillSession() {
+    void 한_입력의_런타임_오류가_세션을_죽이지_않는다() {
         CodeFabSession session = new CodeFabSession();
         session.run("var a = 1;");
         assertFalse(session.run("print missing;").success());
