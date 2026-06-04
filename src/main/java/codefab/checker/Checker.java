@@ -1,0 +1,198 @@
+package codefab.checker;
+
+import codefab.core.Diagnostic;
+import codefab.core.Expr;
+import codefab.core.Expr.Assign;
+import codefab.core.Expr.Binary;
+import codefab.core.Expr.Grouping;
+import codefab.core.Expr.Literal;
+import codefab.core.Expr.Logical;
+import codefab.core.Expr.Unary;
+import codefab.core.Expr.Variable;
+import codefab.core.Stmt;
+import codefab.core.Stmt.BlockStmt;
+import codefab.core.Stmt.ExpressionStmt;
+import codefab.core.Stmt.ForStmt;
+import codefab.core.Stmt.IfStmt;
+import codefab.core.Stmt.PrintStmt;
+import codefab.core.Stmt.VarStmt;
+import codefab.core.Stmt.WhileStmt;
+import codefab.core.Token;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
+
+    private List<Diagnostic> errors;
+    private Deque<Set<String>> scopes;
+    private String initializingVar;
+
+    public List<Diagnostic> check(List<Stmt> statements) {
+        errors = new ArrayList<>();
+        scopes = new ArrayDeque<>();
+        initializingVar = null;
+        scopes.push(new HashSet<>());
+        for (Stmt stmt : statements) {
+            stmt.accept(this);
+        }
+        return errors;
+    }
+
+    // ── Expr visitors ──────────────────────────────────────────────────────────
+
+    @Override
+    public Void visitLiteral(Literal expr) {
+        return null;
+    }
+
+    @Override
+    public Void visitVariable(Variable expr) {
+        checkDeclared(expr.name);
+        return null;
+    }
+
+    @Override
+    public Void visitAssign(Assign expr) {
+        expr.value.accept(this);
+        checkDeclared(expr.name);
+        return null;
+    }
+
+    @Override
+    public Void visitUnary(Unary expr) {
+        expr.right.accept(this);
+        return null;
+    }
+
+    @Override
+    public Void visitBinary(Binary expr) {
+        visitChildren(expr.left, expr.right);
+        return null;
+    }
+
+    @Override
+    public Void visitLogical(Logical expr) {
+        visitChildren(expr.left, expr.right);
+        return null;
+    }
+
+    @Override
+    public Void visitGrouping(Grouping expr) {
+        expr.expression.accept(this);
+        return null;
+    }
+
+    // ── Stmt visitors ──────────────────────────────────────────────────────────
+
+    @Override
+    public Void visitExpressionStmt(ExpressionStmt stmt) {
+        stmt.expression.accept(this);
+        return null;
+    }
+
+    @Override
+    public Void visitPrintStmt(PrintStmt stmt) {
+        stmt.expression.accept(this);
+        return null;
+    }
+
+    @Override
+    public Void visitVarStmt(VarStmt stmt) {
+        String previous = initializingVar;
+        initializingVar = stmt.name.lexeme;
+        try {
+            visitIfPresent(stmt.initializer);
+        } finally {
+            initializingVar = previous;
+        }
+        declare(stmt.name);
+        return null;
+    }
+
+    @Override
+    public Void visitBlockStmt(BlockStmt stmt) {
+        withNewScope(() -> {
+            for (Stmt s : stmt.statements) {
+                s.accept(this);
+            }
+        });
+        return null;
+    }
+
+    @Override
+    public Void visitIfStmt(IfStmt stmt) {
+        stmt.condition.accept(this);
+        stmt.thenBranch.accept(this);
+        visitIfPresent(stmt.elseBranch);
+        return null;
+    }
+
+    @Override
+    public Void visitForStmt(ForStmt stmt) {
+        withNewScope(() -> {
+            visitIfPresent(stmt.initializer);
+            visitIfPresent(stmt.condition);
+            stmt.body.accept(this);
+            visitIfPresent(stmt.increment);
+        });
+        return null;
+    }
+
+    @Override
+    public Void visitWhileStmt(WhileStmt stmt) {
+        return null;
+    }
+
+    // ── private helpers ────────────────────────────────────────────────────────
+
+    private void visitChildren(Expr left, Expr right) {
+        left.accept(this);
+        right.accept(this);
+    }
+
+    private void withNewScope(Runnable body) {
+        scopes.push(new HashSet<>());
+        body.run();
+        scopes.pop();
+    }
+
+    private void visitIfPresent(Expr expr) {
+        if (expr != null) expr.accept(this);
+    }
+
+    private void visitIfPresent(Stmt stmt) {
+        if (stmt != null) stmt.accept(this);
+    }
+
+    private void declare(Token name) {
+        Set<String> current = scopes.peek();
+        if (current == null) {
+            throw new RuntimeException("scopes is empty");
+        }
+
+        if (current.contains(name.lexeme)) {
+            error(name.line, "variable '" + name.lexeme + "' is already declared in this scope");
+        }
+        current.add(name.lexeme);
+    }
+
+    private void checkDeclared(Token name) {
+        if (name.lexeme.equals(initializingVar)) {
+            error(name.line, "Can't read local variable '" + name.lexeme + "' in its own initializer.");
+            return;
+        }
+        for (Set<String> scope : scopes) {
+            if (scope.contains(name.lexeme)) return;
+        }
+        error(name.line, "undefined variable '" + name.lexeme + "'");
+    }
+
+    private void error(int line, String message) {
+        errors.add(new Diagnostic(Diagnostic.Stage.CHECKER, line, message));
+    }
+}
