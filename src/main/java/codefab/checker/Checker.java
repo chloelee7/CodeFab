@@ -49,8 +49,8 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         if (this.diagnostics == null) {
             this.diagnostics = new ArrayList<>();
         }
-        this.scopes = new ArrayDeque<>();
         this.initializingVar = null;
+        this.scopes = new ArrayDeque<>();
         this.scopes.push(new HashSet<>());
         for (Stmt stmt : statements) {
             stmt.accept(this);
@@ -187,9 +187,15 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     private void declare(Token name) {
+        boolean isGlobalScope = false;
+        if (this.scopes.isEmpty()) {
+            throw new RuntimeException("scopes is empty");
+        } else if (this.scopes.size() == 1) {
+            isGlobalScope = true;
+        }
+
         Set<String> current = this.scopes.peek();
-        if (current == null) throw new RuntimeException("scopes is empty");
-        boolean isGlobalScope = (this.scopes.size() <= 1);
+
         if (current.contains(name.lexeme) && !(this.replMode && isGlobalScope)) {
             error(name.line, "Already a variable with this name in this scope.");
         }
