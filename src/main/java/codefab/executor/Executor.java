@@ -73,6 +73,14 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         return null;
     }
 
+    @Override
+    public Void visitWhileStmt(Stmt.WhileStmt stmt) {
+        while (isTruthy(evaluate(stmt.condition))) {
+            stmt.body.accept(this);
+        }
+        return null;
+    }
+
     // --- expressions -------------------------------------------------------
 
     @Override

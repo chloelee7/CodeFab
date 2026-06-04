@@ -135,4 +135,17 @@ class NormalOperationTest {
         assertEquals("true", single("print true or false;"));
         assertEquals("false", single("print true and false;"));
     }
+
+    @DisplayName("while 루프")
+    @Test
+    void whileLoop() {
+        String src = "var i = 0;\nwhile (i < 3) {\n  print i;\n  i = i + 1;\n}";
+        assertEquals(List.of("0", "1", "2"), out(src));
+    }
+
+    @DisplayName("while 루프 - 조건 처음부터 false")
+    @Test
+    void whileLoopSkipsBodyWhenConditionIsFalse() {
+        assertTrue(out("while (false) { print \"never\"; }").isEmpty());
+    }
 }
