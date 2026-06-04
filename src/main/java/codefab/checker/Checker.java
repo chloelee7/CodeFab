@@ -28,19 +28,34 @@ import java.util.Set;
 
 public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
-    private List<Diagnostic> errors;
+    // true  → REPL 모드: 전역 스코프 미선언/재선언은 Executor에 위임
+    // false → 정적 분석 모드: 전역 포함 전체 스코프 검사 (CheckerTest 전용)
+    private final boolean replMode;
+    private List<Diagnostic> diagnostics;
     private Deque<Set<String>> scopes;
     private String initializingVar;
 
+    public Checker() {
+        this.replMode = false;
+        this.diagnostics = null;
+    }
+
+    public Checker(List<Diagnostic> diagnostics) {
+        this.replMode = true;
+        this.diagnostics = diagnostics;
+    }
+
     public List<Diagnostic> check(List<Stmt> statements) {
-        errors = new ArrayList<>();
-        scopes = new ArrayDeque<>();
-        initializingVar = null;
-        scopes.push(new HashSet<>());
+        if (this.diagnostics == null) {
+            this.diagnostics = new ArrayList<>();
+        }
+        this.scopes = new ArrayDeque<>();
+        this.initializingVar = null;
+        this.scopes.push(new HashSet<>());
         for (Stmt stmt : statements) {
             stmt.accept(this);
         }
-        return errors;
+        return this.diagnostics;
     }
 
     // ── Expr visitors ──────────────────────────────────────────────────────────
@@ -103,12 +118,12 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitVarStmt(VarStmt stmt) {
-        String previous = initializingVar;
-        initializingVar = stmt.name.lexeme;
+        String previous = this.initializingVar;
+        this.initializingVar = stmt.name.lexeme;
         try {
             visitIfPresent(stmt.initializer);
         } finally {
-            initializingVar = previous;
+            this.initializingVar = previous;
         }
         declare(stmt.name);
         return null;
@@ -145,6 +160,8 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitWhileStmt(WhileStmt stmt) {
+        stmt.condition.accept(this);
+        stmt.body.accept(this);
         return null;
     }
 
@@ -156,9 +173,9 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     private void withNewScope(Runnable body) {
-        scopes.push(new HashSet<>());
+        this.scopes.push(new HashSet<>());
         body.run();
-        scopes.pop();
+        this.scopes.pop();
     }
 
     private void visitIfPresent(Expr expr) {
@@ -170,29 +187,30 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     private void declare(Token name) {
-        Set<String> current = scopes.peek();
-        if (current == null) {
-            throw new RuntimeException("scopes is empty");
-        }
-
-        if (current.contains(name.lexeme)) {
-            error(name.line, "variable '" + name.lexeme + "' is already declared in this scope");
+        Set<String> current = this.scopes.peek();
+        if (current == null) throw new RuntimeException("scopes is empty");
+        boolean isGlobalScope = (this.scopes.size() <= 1);
+        if (current.contains(name.lexeme) && !(this.replMode && isGlobalScope)) {
+            error(name.line, "Already a variable with this name in this scope.");
         }
         current.add(name.lexeme);
     }
 
     private void checkDeclared(Token name) {
-        if (name.lexeme.equals(initializingVar)) {
-            error(name.line, "Can't read local variable '" + name.lexeme + "' in its own initializer.");
+        if (name.lexeme.equals(this.initializingVar)) {
+            error(name.line, "Can't read local variable in initializer.");
             return;
         }
-        for (Set<String> scope : scopes) {
+        if (this.replMode && this.scopes.size() <= 1) {
+            return;
+        }
+        for (Set<String> scope : this.scopes) {
             if (scope.contains(name.lexeme)) return;
         }
         error(name.line, "undefined variable '" + name.lexeme + "'");
     }
 
     private void error(int line, String message) {
-        errors.add(new Diagnostic(Diagnostic.Stage.CHECKER, line, message));
+        this.diagnostics.add(new Diagnostic(Diagnostic.Stage.CHECKER, line, message));
     }
 }
