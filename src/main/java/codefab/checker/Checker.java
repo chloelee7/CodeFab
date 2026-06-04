@@ -18,16 +18,18 @@ import codefab.core.Stmt.PrintStmt;
 import codefab.core.Stmt.VarStmt;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private List<Diagnostic> errors;
-    private List<String> declaredVars = new ArrayList<>();
+    private Set<String> declaredVars;
 
     public List<Diagnostic> check(List<Stmt> statements) {
         errors = new ArrayList<>();
-        declaredVars = new ArrayList<>();
+        declaredVars = new HashSet<>();
         for (Stmt stmt : statements) {
             stmt.accept(this);
         }
