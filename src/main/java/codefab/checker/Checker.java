@@ -98,9 +98,7 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitVarStmt(VarStmt stmt) {
-        if (stmt.initializer != null) {
-            stmt.initializer.accept(this);
-        }
+        visitIfPresent(stmt.initializer);
         scopes.peek().add(stmt.name.lexeme);
         return null;
     }
@@ -119,9 +117,7 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     public Void visitIfStmt(IfStmt stmt) {
         stmt.condition.accept(this);
         stmt.thenBranch.accept(this);
-        if (stmt.elseBranch != null) {
-            stmt.elseBranch.accept(this);
-        }
+        visitIfPresent(stmt.elseBranch);
         return null;
     }
 
@@ -131,6 +127,14 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     // ── private helpers ────────────────────────────────────────────────────────
+
+    private void visitIfPresent(Expr expr) {
+        if (expr != null) expr.accept(this);
+    }
+
+    private void visitIfPresent(Stmt stmt) {
+        if (stmt != null) stmt.accept(this);
+    }
 
     private void checkDeclared(Token name) {
         for (Set<String> scope : scopes) {
