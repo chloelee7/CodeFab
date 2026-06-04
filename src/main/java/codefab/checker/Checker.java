@@ -23,9 +23,11 @@ import java.util.List;
 public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private List<Diagnostic> errors;
+    private List<String> declaredVars = new ArrayList<>();
 
     public List<Diagnostic> check(List<Stmt> statements) {
         errors = new ArrayList<>();
+        declaredVars = new ArrayList<>();
         for (Stmt stmt : statements) {
             stmt.accept(this);
         }
@@ -39,6 +41,10 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitVariable(Variable expr) {
+        if (!declaredVars.contains(expr.name.lexeme)) {
+            errors.add(new Diagnostic(Diagnostic.Stage.CHECKER, expr.name.line,
+                    "undefined variable '" + expr.name.lexeme + "'"));
+        }
         return null;
     }
 
@@ -54,6 +60,8 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitBinary(Binary expr) {
+        expr.left.accept(this);
+        expr.right.accept(this);
         return null;
     }
 
@@ -79,6 +87,10 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitVarStmt(VarStmt stmt) {
+        if (stmt.initializer != null) {
+            stmt.initializer.accept(this);
+        }
+        declaredVars.add(stmt.name.lexeme);
         return null;
     }
 

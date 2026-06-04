@@ -32,4 +32,24 @@ class CheckerTest {
         // then
         assertThat(result).isEmpty();
     }
+
+    @Test
+    @DisplayName("초기화 식에서 선언 중인 변수를 자기 참조하면 CHECKER 에러가 1개 발생한다")
+    void 초기화_식에서_선언_중인_변수를_자기_참조하면_CHECKER_에러가_1개_발생한다() {
+        // given: var a = a + 1;
+        Token nameToken = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aRefToken = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token plusToken = new Token(TokenType.PLUS, "+", null, 1);
+
+        Expr.Variable aRef = new Expr.Variable(aRefToken);
+        Expr.Binary binary = new Expr.Binary(aRef, plusToken, new Expr.Literal(1.0));
+        Stmt.VarStmt varStmt = new Stmt.VarStmt(nameToken, binary);
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(varStmt));
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).stage).isEqualTo(Diagnostic.Stage.CHECKER);
+    }
 }
