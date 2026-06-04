@@ -109,6 +109,59 @@ class CheckerTest {
     }
 
     @Test
+    @DisplayName("단항 연산식에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
+    void 단항_연산식에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
+        // given: !x  (x 미선언)
+        Token bang = new Token(TokenType.BANG, "!", null, 1);
+        Token xRef = new Token(TokenType.IDENTIFIER, "x", null, 1);
+        Stmt.ExpressionStmt stmt = new Stmt.ExpressionStmt(
+                new Expr.Unary(bang, new Expr.Variable(xRef)));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(stmt));
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).stage).isEqualTo(Diagnostic.Stage.CHECKER);
+    }
+
+    @Test
+    @DisplayName("논리 연산식에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
+    void 논리_연산식에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
+        // given: a and b  (a, b 미선언)
+        Token and  = new Token(TokenType.AND, "and", null, 1);
+        Token aRef = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token bRef = new Token(TokenType.IDENTIFIER, "b", null, 1);
+        Stmt.ExpressionStmt stmt = new Stmt.ExpressionStmt(
+                new Expr.Logical(new Expr.Variable(aRef), and, new Expr.Variable(bRef)));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(stmt));
+
+        // then
+        assertThat(result).hasSize(2);
+        assertThat(result).allMatch(d -> d.stage == Diagnostic.Stage.CHECKER);
+    }
+
+    @Test
+    @DisplayName("그룹핑 식에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
+    void 그룹핑_식에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
+        // given: (x + 1)  (x 미선언)
+        Token plus = new Token(TokenType.PLUS, "+", null, 1);
+        Token xRef = new Token(TokenType.IDENTIFIER, "x", null, 1);
+        Stmt.ExpressionStmt stmt = new Stmt.ExpressionStmt(
+                new Expr.Grouping(
+                        new Expr.Binary(new Expr.Variable(xRef), plus, new Expr.Literal(1.0))));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(stmt));
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).stage).isEqualTo(Diagnostic.Stage.CHECKER);
+    }
+
+    @Test
     @DisplayName("for 루프에서 선언된 변수를 조건식·증감식·body에서 참조할 때 에러가 없다")
     void for_루프에서_선언된_변수를_조건식_증감식_body에서_참조할_때_에러가_없다() {
         // given: for (var i = 0; i < 3; i = i + 1) { print i; }

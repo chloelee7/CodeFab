@@ -62,6 +62,7 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitUnary(Unary expr) {
+        expr.right.accept(this);
         return null;
     }
 
@@ -74,11 +75,14 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitLogical(Logical expr) {
+        expr.left.accept(this);
+        expr.right.accept(this);
         return null;
     }
 
     @Override
     public Void visitGrouping(Grouping expr) {
+        expr.expression.accept(this);
         return null;
     }
 
