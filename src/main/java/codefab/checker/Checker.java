@@ -18,7 +18,9 @@ import codefab.core.Stmt.PrintStmt;
 import codefab.core.Stmt.VarStmt;
 import codefab.core.Token;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -26,12 +28,12 @@ import java.util.Set;
 public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private List<Diagnostic> errors;
-    private List<Set<String>> scopes;
+    private Deque<Set<String>> scopes;
 
     public List<Diagnostic> check(List<Stmt> statements) {
         errors = new ArrayList<>();
-        scopes = new ArrayList<>();
-        scopes.add(new HashSet<>());
+        scopes = new ArrayDeque<>();
+        scopes.push(new HashSet<>());
         for (Stmt stmt : statements) {
             stmt.accept(this);
         }
@@ -99,17 +101,17 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         if (stmt.initializer != null) {
             stmt.initializer.accept(this);
         }
-        scopes.get(scopes.size() - 1).add(stmt.name.lexeme);
+        scopes.peek().add(stmt.name.lexeme);
         return null;
     }
 
     @Override
     public Void visitBlockStmt(BlockStmt stmt) {
-        scopes.add(new HashSet<>());
+        scopes.push(new HashSet<>());
         for (Stmt s : stmt.statements) {
             s.accept(this);
         }
-        scopes.remove(scopes.size() - 1);
+        scopes.pop();
         return null;
     }
 
@@ -126,8 +128,8 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     // ── private helpers ────────────────────────────────────────────────────────
 
     private void checkDeclared(Token name) {
-        for (int i = 0; i < scopes.size(); i++) {
-            if (scopes.get(i).contains(name.lexeme)) return;
+        for (Set<String> scope : scopes) {
+            if (scope.contains(name.lexeme)) return;
         }
         error(name.line, "undefined variable '" + name.lexeme + "'");
     }
