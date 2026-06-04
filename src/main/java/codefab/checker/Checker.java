@@ -102,9 +102,13 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitVarStmt(VarStmt stmt) {
+        String previous = initializingVar;
         initializingVar = stmt.name.lexeme;
-        visitIfPresent(stmt.initializer);
-        initializingVar = null;
+        try {
+            visitIfPresent(stmt.initializer);
+        } finally {
+            initializingVar = previous;
+        }
         declare(stmt.name);
         return null;
     }
