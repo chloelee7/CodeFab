@@ -117,6 +117,11 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitIfStmt(IfStmt stmt) {
+        stmt.condition.accept(this);
+        stmt.thenBranch.accept(this);
+        if (stmt.elseBranch != null) {
+            stmt.elseBranch.accept(this);
+        }
         return null;
     }
 

@@ -66,6 +66,49 @@ class CheckerTest {
     }
 
     @Test
+    @DisplayName("if 조건식과 then 블록에서 선언된 변수를 참조할 때 에러가 없다")
+    void if_조건식과_then_블록에서_선언된_변수를_참조할_때_에러가_없다() {
+        // given: var x = 5; if (x > 0) { print x; }
+        Token xDecl  = new Token(TokenType.IDENTIFIER, "x", null, 1);
+        Token xCond  = new Token(TokenType.IDENTIFIER, "x", null, 2);
+        Token xPrint = new Token(TokenType.IDENTIFIER, "x", null, 3);
+        Token gt     = new Token(TokenType.GREATER, ">", null, 2);
+
+        Stmt.VarStmt varStmt     = new Stmt.VarStmt(xDecl, new Expr.Literal(5.0));
+        Expr.Binary  condition   = new Expr.Binary(new Expr.Variable(xCond), gt, new Expr.Literal(0.0));
+        Stmt.BlockStmt thenBlock = new Stmt.BlockStmt(List.of(
+                new Stmt.PrintStmt(new Expr.Variable(xPrint))));
+        Stmt.IfStmt ifStmt = new Stmt.IfStmt(condition, thenBlock, null);
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(varStmt, ifStmt));
+
+        // then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("if 조건식과 then 블록에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
+    void if_조건식과_then_블록에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
+        // given: if (z > 0) { print z; }
+        Token zCond  = new Token(TokenType.IDENTIFIER, "z", null, 1);
+        Token zPrint = new Token(TokenType.IDENTIFIER, "z", null, 2);
+        Token gt     = new Token(TokenType.GREATER, ">", null, 1);
+
+        Expr.Binary  condition   = new Expr.Binary(new Expr.Variable(zCond), gt, new Expr.Literal(0.0));
+        Stmt.BlockStmt thenBlock = new Stmt.BlockStmt(List.of(
+                new Stmt.PrintStmt(new Expr.Variable(zPrint))));
+        Stmt.IfStmt ifStmt = new Stmt.IfStmt(condition, thenBlock, null);
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(ifStmt));
+
+        // then
+        assertThat(result).hasSize(2);
+        assertThat(result).allMatch(d -> d.stage == Diagnostic.Stage.CHECKER);
+    }
+
+    @Test
     @DisplayName("블록 안에서 선언된 변수를 블록 안에서 참조할 때 에러가 없다")
     void 블록_안에서_선언된_변수를_블록_안에서_참조할_때_에러가_없다() {
         // given: { var a = 1; print a; }
