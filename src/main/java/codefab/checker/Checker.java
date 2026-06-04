@@ -26,11 +26,12 @@ import java.util.Set;
 public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private List<Diagnostic> errors;
-    private Set<String> declaredVars;
+    private List<Set<String>> scopes;
 
     public List<Diagnostic> check(List<Stmt> statements) {
         errors = new ArrayList<>();
-        declaredVars = new HashSet<>();
+        scopes = new ArrayList<>();
+        scopes.add(new HashSet<>());
         for (Stmt stmt : statements) {
             stmt.accept(this);
         }
@@ -98,12 +99,17 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         if (stmt.initializer != null) {
             stmt.initializer.accept(this);
         }
-        declaredVars.add(stmt.name.lexeme);
+        scopes.get(scopes.size() - 1).add(stmt.name.lexeme);
         return null;
     }
 
     @Override
     public Void visitBlockStmt(BlockStmt stmt) {
+        scopes.add(new HashSet<>());
+        for (Stmt s : stmt.statements) {
+            s.accept(this);
+        }
+        scopes.remove(scopes.size() - 1);
         return null;
     }
 
@@ -120,9 +126,10 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     // ── private helpers ────────────────────────────────────────────────────────
 
     private void checkDeclared(Token name) {
-        if (!declaredVars.contains(name.lexeme)) {
-            error(name.line, "undefined variable '" + name.lexeme + "'");
+        for (int i = 0; i < scopes.size(); i++) {
+            if (scopes.get(i).contains(name.lexeme)) return;
         }
+        error(name.line, "undefined variable '" + name.lexeme + "'");
     }
 
     private void error(int line, String message) {

@@ -66,6 +66,45 @@ class CheckerTest {
     }
 
     @Test
+    @DisplayName("블록 안에서 선언된 변수를 블록 안에서 참조할 때 에러가 없다")
+    void 블록_안에서_선언된_변수를_블록_안에서_참조할_때_에러가_없다() {
+        // given: { var a = 1; print a; }
+        Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aRef  = new Token(TokenType.IDENTIFIER, "a", null, 2);
+
+        Stmt.BlockStmt block = new Stmt.BlockStmt(List.of(
+                new Stmt.VarStmt(aDecl, new Expr.Literal(1.0)),
+                new Stmt.PrintStmt(new Expr.Variable(aRef))
+        ));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(block));
+
+        // then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("블록 안에서 선언된 변수를 블록 밖에서 참조하면 CHECKER 에러가 1개 발생한다")
+    void 블록_안에서_선언된_변수를_블록_밖에서_참조하면_CHECKER_에러가_1개_발생한다() {
+        // given: { var a = 1; } print a;
+        Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aRef  = new Token(TokenType.IDENTIFIER, "a", null, 3);
+
+        Stmt.BlockStmt block    = new Stmt.BlockStmt(List.of(
+                new Stmt.VarStmt(aDecl, new Expr.Literal(1.0))
+        ));
+        Stmt.PrintStmt printStmt = new Stmt.PrintStmt(new Expr.Variable(aRef));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(block, printStmt));
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).stage).isEqualTo(Diagnostic.Stage.CHECKER);
+    }
+
+    @Test
     @DisplayName("선언된 변수에 재할당할 때 에러가 없다")
     void 선언된_변수에_재할당할_때_에러가_없다() {
         // given: var a = 3; a = a + 1;
