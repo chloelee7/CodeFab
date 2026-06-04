@@ -3,22 +3,33 @@ package codefab.core;
 import java.util.List;
 
 /**
- * Statement AST nodes. A Stmt may hold Exprs, other Stmts and Tokens as fields.
- * Traversal uses the visitor pattern.
+ * Statement AST nodes. A Stmt may hold Exprs, other Stmts and Tokens as fields. Traversal uses the
+ * visitor pattern.
  */
 public abstract class Stmt {
+
     public interface Visitor<R> {
+
         R visitExpressionStmt(ExpressionStmt stmt);
+
         R visitPrintStmt(PrintStmt stmt);
+
         R visitVarStmt(VarStmt stmt);
+
         R visitBlockStmt(BlockStmt stmt);
+
         R visitIfStmt(IfStmt stmt);
+
         R visitForStmt(ForStmt stmt);
+
+        R visitWhileStmt(WhileStmt stmt);
+
     }
 
     public abstract <R> R accept(Visitor<R> visitor);
 
     public static final class ExpressionStmt extends Stmt {
+
         public final Expr expression;
 
         public ExpressionStmt(Expr expression) {
@@ -32,6 +43,7 @@ public abstract class Stmt {
     }
 
     public static final class PrintStmt extends Stmt {
+
         public final Expr expression;
 
         public PrintStmt(Expr expression) {
@@ -45,6 +57,7 @@ public abstract class Stmt {
     }
 
     public static final class VarStmt extends Stmt {
+
         public final Token name;
         public final Expr initializer; // nullable
 
@@ -60,6 +73,7 @@ public abstract class Stmt {
     }
 
     public static final class BlockStmt extends Stmt {
+
         public final List<Stmt> statements;
 
         public BlockStmt(List<Stmt> statements) {
@@ -73,6 +87,7 @@ public abstract class Stmt {
     }
 
     public static final class IfStmt extends Stmt {
+
         public final Expr condition;
         public final Stmt thenBranch;
         public final Stmt elseBranch; // nullable
@@ -90,6 +105,7 @@ public abstract class Stmt {
     }
 
     public static final class ForStmt extends Stmt {
+
         public final Stmt initializer;  // nullable
         public final Expr condition;    // nullable
         public final Expr increment;    // nullable
@@ -105,6 +121,22 @@ public abstract class Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitForStmt(this);
+        }
+    }
+
+    public static final class WhileStmt extends Stmt {
+
+        public final Expr condition;
+        public final Stmt body;
+
+        public WhileStmt(Expr condition, Stmt body) {
+            this.condition = condition;
+            this.body = body;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitWhileStmt(this);
         }
     }
 }

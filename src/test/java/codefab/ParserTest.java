@@ -1,71 +1,232 @@
 package codefab;
 
+import static codefab.core.DiagnosticMessage.ERR_EXPECT_EXPRESSION;
+import static codefab.core.DiagnosticMessage.ERR_INVALID_ASSIGN_TARGET;
+import static codefab.core.DiagnosticMessage.ERR_LEFT_PAREN_AFTER_FOR;
+import static codefab.core.DiagnosticMessage.ERR_LEFT_PAREN_AFTER_IF;
+import static codefab.core.DiagnosticMessage.ERR_LEFT_PAREN_AFTER_WHILE;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_BRACE_AFTER_BLOCK;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_CONDITION;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_EXPR;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES;
+import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_IF_COND;
+import static codefab.core.DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE;
+import static codefab.core.DiagnosticMessage.ERR_SEMICOLON_AFTER_VAR_DECL;
+import static codefab.core.DiagnosticMessage.ERR_VARIABLE_NAME;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import codefab.assembler.Parser;
-import codefab.assembler.Scanner;
 import codefab.core.Diagnostic;
 import codefab.core.Stmt;
 import codefab.core.Token;
-import org.junit.jupiter.api.Test;
-
+import codefab.core.TokenType;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class ParserTest {
 
-    private List<Diagnostic> parseDiagnostics(String src) {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = new Scanner(src, diags).scanTokens();
-        new Parser(tokens, diags).parse();
-        return diags;
-    }
+    List<Diagnostic> diags;
 
-    private List<Stmt> parseOk(String src) {
-        List<Diagnostic> diags = new ArrayList<>();
-        List<Token> tokens = new Scanner(src, diags).scanTokens();
-        List<Stmt> stmts = new Parser(tokens, diags).parse();
-        assertTrue(diags.isEmpty(), () -> "unexpected diagnostics: " + diags);
-        return stmts;
-    }
-
-    private boolean hasMessage(List<Diagnostic> diags, String substring) {
-        return diags.stream().anyMatch(d -> d.message.contains(substring));
+    @BeforeEach
+    void setUp() {
+        diags = new ArrayList<>();
     }
 
     @Test
-    void parsesPrintAndVarDeclarations() {
-        List<Stmt> stmts = parseOk("var a = 1; print a;");
+    void var선언문은_VarStmt로_print문은_PrintStmt로_파싱한다() {
+        List<Token> tokens = tokensOf("var a = 1 ; print a ;");
+        List<Stmt> stmts = new Parser(tokens, diags).parse();
+
+        assertTrue(diags.isEmpty(), () -> "unexpected diagnostics: " + diags);
         assertEquals(2, stmts.size());
         assertInstanceOf(Stmt.VarStmt.class, stmts.get(0));
         assertInstanceOf(Stmt.PrintStmt.class, stmts.get(1));
     }
 
     @Test
-    void parsesBlocksAndControlFlow() {
-        List<Stmt> stmts = parseOk("if (true) { print 1; } else print 2; for (;;) print 3;");
+    void if_else문은_IfStmt로_for문은_ForStmt로_파싱한다() {
+        List<Token> tokens = tokensOf(
+            "if ( true ) { print 1 ; } else print 2 ; for ( ; ; ) print 3 ;");
+        List<Stmt> stmts = new Parser(tokens, diags).parse();
+
+        assertTrue(diags.isEmpty(), () -> "unexpected diagnostics: " + diags);
         assertInstanceOf(Stmt.IfStmt.class, stmts.get(0));
         assertInstanceOf(Stmt.ForStmt.class, stmts.get(1));
     }
 
     @Test
-    void reportsMissingSemicolon() {
-        assertTrue(hasMessage(parseDiagnostics("print 1 + 2"), "Expect ';' after value."));
+    void print문_값뒤에_세미콜론이_없으면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("print 1 + 2");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_SEMICOLON_AFTER_VALUE)));
     }
 
     @Test
-    void reportsMissingClosingParen() {
-        assertTrue(hasMessage(parseDiagnostics("print (1 + 2;"), "Expect ')' after expression."));
+    void 그룹화_표현식에_닫는괄호가_없으면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("print ( 1 + 2 ;");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(
+            diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_EXPR)));
     }
 
     @Test
-    void reportsInvalidAssignmentTarget() {
-        String src = "var a = 1;\nvar b = 2;\na + b = 3;";
-        assertTrue(hasMessage(parseDiagnostics(src), "Invalid assignment target."));
+    void 대입_좌변이_변수가_아니면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("var a = 1 ; var b = 2 ; a + b = 3 ;");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_INVALID_ASSIGN_TARGET)));
     }
 
     @Test
-    void reportsInvalidExpressionStart() {
-        assertTrue(hasMessage(parseDiagnostics("print * 5;"), "Expect expression."));
+    void 표현식이_이항연산자로_시작하면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("print * 5 ;");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_EXPECT_EXPRESSION)));
+    }
+
+    @Test
+    void var뒤에_변수명이_없으면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("var = 1 ;");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_VARIABLE_NAME)));
+    }
+
+    @Test
+    void var선언_끝에_세미콜론이_없으면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("var a = 1");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream()
+            .anyMatch(d -> d.message.contains(ERR_SEMICOLON_AFTER_VAR_DECL)));
+    }
+
+    @Test
+    void if_조건앞에_여는괄호가_없으면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("if true ) print 1 ;");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_LEFT_PAREN_AFTER_IF)));
+    }
+
+    @Test
+    void if_조건뒤에_닫는괄호가_없으면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("if ( true print 1 ;");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(
+            diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_IF_COND)));
+    }
+
+    @Test
+    void for_절앞에_여는괄호가_없으면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("for ; ; ) print 1 ;");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_LEFT_PAREN_AFTER_FOR)));
+    }
+
+    @Test
+    void for_절뒤에_닫는괄호가_없으면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("for ( ; ; 1");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(
+            diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES)));
+    }
+
+    @Test
+    void while문은_WhileStmt로_파싱한다() {
+        List<Token> tokens = tokensOf("while ( true ) print 1 ;");
+        List<Stmt> stmts = new Parser(tokens, diags).parse();
+
+        assertTrue(diags.isEmpty(), () -> "unexpected diagnostics: " + diags);
+        assertEquals(1, stmts.size());
+        assertInstanceOf(Stmt.WhileStmt.class, stmts.get(0));
+    }
+
+    @Test
+    void while_조건앞에_여는괄호가_없으면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("while true ) print 1 ;");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_LEFT_PAREN_AFTER_WHILE)));
+    }
+
+    @Test
+    void while_조건뒤에_닫는괄호가_없으면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("while ( true print 1 ;");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(
+            diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_CONDITION)));
+    }
+
+    @Test
+    void 블록_끝에_닫는중괄호가_없으면_에러를_보고한다() {
+        List<Token> tokens = tokensOf("{ print 1 ;");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_BRACE_AFTER_BLOCK)));
+    }
+
+    private static List<Token> tokensOf(String source) {
+        List<Token> tokens = new ArrayList<>();
+        for (String lexeme : source.split(" ")) {
+            if (!lexeme.isEmpty()) {
+                tokens.add(tokenOf(lexeme));
+            }
+        }
+        tokens.add(new Token(TokenType.EOF, "", null, 1));
+        return tokens;
+    }
+
+    private static Token tokenOf(String lexeme) {
+        switch (lexeme) {
+            case "var":
+                return new Token(TokenType.VAR, lexeme, null, 1);
+            case "print":
+                return new Token(TokenType.PRINT, lexeme, null, 1);
+            case "if":
+                return new Token(TokenType.IF, lexeme, null, 1);
+            case "else":
+                return new Token(TokenType.ELSE, lexeme, null, 1);
+            case "for":
+                return new Token(TokenType.FOR, lexeme, null, 1);
+            case "while":
+                return new Token(TokenType.WHILE, lexeme, null, 1);
+            case "true":
+                return new Token(TokenType.TRUE, lexeme, null, 1);
+            case "false":
+                return new Token(TokenType.FALSE, lexeme, null, 1);
+            case "=":
+                return new Token(TokenType.EQUAL, lexeme, null, 1);
+            case ";":
+                return new Token(TokenType.SEMICOLON, lexeme, null, 1);
+            case "+":
+                return new Token(TokenType.PLUS, lexeme, null, 1);
+            case "*":
+                return new Token(TokenType.STAR, lexeme, null, 1);
+            case "(":
+                return new Token(TokenType.LEFT_PAREN, lexeme, null, 1);
+            case ")":
+                return new Token(TokenType.RIGHT_PAREN, lexeme, null, 1);
+            case "{":
+                return new Token(TokenType.LEFT_BRACE, lexeme, null, 1);
+            case "}":
+                return new Token(TokenType.RIGHT_BRACE, lexeme, null, 1);
+            default:
+                if (lexeme.matches("\\d+")) {
+                    return new Token(TokenType.NUMBER, lexeme, Double.parseDouble(lexeme), 1);
+                }
+                return new Token(TokenType.IDENTIFIER, lexeme, null, 1);
+        }
     }
 }
