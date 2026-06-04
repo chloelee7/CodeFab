@@ -101,10 +101,7 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     @Override
     public Void visitVarStmt(VarStmt stmt) {
         visitIfPresent(stmt.initializer);
-        if (scopes.peek().contains(stmt.name.lexeme)) {
-            error(stmt.name.line, "variable '" + stmt.name.lexeme + "' is already declared in this scope");
-        }
-        scopes.peek().add(stmt.name.lexeme);
+        declare(stmt.name);
         return null;
     }
 
@@ -156,6 +153,14 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private void visitIfPresent(Stmt stmt) {
         if (stmt != null) stmt.accept(this);
+    }
+
+    private void declare(Token name) {
+        Set<String> current = scopes.peek();
+        if (current.contains(name.lexeme)) {
+            error(name.line, "variable '" + name.lexeme + "' is already declared in this scope");
+        }
+        current.add(name.lexeme);
     }
 
     private void checkDeclared(Token name) {
