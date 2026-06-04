@@ -8,6 +8,7 @@ import codefab.core.Expr;
 import codefab.core.Stmt;
 import codefab.core.Token;
 import codefab.core.TokenType;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class CheckerTest {
 
     private final Checker checker = new Checker();
+
 
     @Test
     @DisplayName("변수 선언만 있을 때 에러가 없다")
