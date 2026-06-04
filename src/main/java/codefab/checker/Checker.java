@@ -105,11 +105,11 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitBlockStmt(BlockStmt stmt) {
-        scopes.push(new HashSet<>());
-        for (Stmt s : stmt.statements) {
-            s.accept(this);
-        }
-        scopes.pop();
+        withNewScope(() -> {
+            for (Stmt s : stmt.statements) {
+                s.accept(this);
+            }
+        });
         return null;
     }
 
@@ -123,16 +123,22 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitForStmt(ForStmt stmt) {
-        scopes.push(new HashSet<>());
-        visitIfPresent(stmt.initializer);
-        visitIfPresent(stmt.condition);
-        stmt.body.accept(this);
-        visitIfPresent(stmt.increment);
-        scopes.pop();
+        withNewScope(() -> {
+            visitIfPresent(stmt.initializer);
+            visitIfPresent(stmt.condition);
+            stmt.body.accept(this);
+            visitIfPresent(stmt.increment);
+        });
         return null;
     }
 
     // ── private helpers ────────────────────────────────────────────────────────
+
+    private void withNewScope(Runnable body) {
+        scopes.push(new HashSet<>());
+        body.run();
+        scopes.pop();
+    }
 
     private void visitIfPresent(Expr expr) {
         if (expr != null) expr.accept(this);
