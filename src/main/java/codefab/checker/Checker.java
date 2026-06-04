@@ -84,6 +84,7 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitPrintStmt(PrintStmt stmt) {
+        stmt.expression.accept(this);
         return null;
     }
 
