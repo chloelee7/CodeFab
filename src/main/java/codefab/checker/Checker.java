@@ -55,6 +55,10 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitAssign(Assign expr) {
+        expr.value.accept(this);
+        if (!declaredVars.contains(expr.name.lexeme)) {
+            error(expr.name.line, "undefined variable '" + expr.name.lexeme + "'");
+        }
         return null;
     }
 
@@ -82,6 +86,7 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitExpressionStmt(ExpressionStmt stmt) {
+        stmt.expression.accept(this);
         return null;
     }
 
