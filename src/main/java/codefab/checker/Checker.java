@@ -101,6 +101,9 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     @Override
     public Void visitVarStmt(VarStmt stmt) {
         visitIfPresent(stmt.initializer);
+        if (scopes.peek().contains(stmt.name.lexeme)) {
+            error(stmt.name.line, "variable '" + stmt.name.lexeme + "' is already declared in this scope");
+        }
         scopes.peek().add(stmt.name.lexeme);
         return null;
     }

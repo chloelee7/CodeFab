@@ -109,6 +109,43 @@ class CheckerTest {
     }
 
     @Test
+    @DisplayName("같은 스코프에서 변수를 재선언하면 CHECKER 에러가 1개 발생한다")
+    void 같은_스코프에서_변수를_재선언하면_CHECKER_에러가_1개_발생한다() {
+        // given: var a = 1; var a = 2;
+        Token aFirst  = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aSecond = new Token(TokenType.IDENTIFIER, "a", null, 2);
+
+        Stmt.VarStmt first  = new Stmt.VarStmt(aFirst,  new Expr.Literal(1.0));
+        Stmt.VarStmt second = new Stmt.VarStmt(aSecond, new Expr.Literal(2.0));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(first, second));
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).stage).isEqualTo(Diagnostic.Stage.CHECKER);
+        assertThat(result.get(0).line).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("다른 스코프에서 같은 이름으로 선언(shadowing)하면 에러가 없다")
+    void 다른_스코프에서_같은_이름으로_선언하면_에러가_없다() {
+        // given: var a = 1; { var a = 2; }
+        Token aOuter = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aInner = new Token(TokenType.IDENTIFIER, "a", null, 2);
+
+        Stmt.VarStmt outer = new Stmt.VarStmt(aOuter, new Expr.Literal(1.0));
+        Stmt.BlockStmt block = new Stmt.BlockStmt(List.of(
+                new Stmt.VarStmt(aInner, new Expr.Literal(2.0))));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(outer, block));
+
+        // then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
     @DisplayName("단항 연산식에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
     void 단항_연산식에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
         // given: !x  (x 미선언)
