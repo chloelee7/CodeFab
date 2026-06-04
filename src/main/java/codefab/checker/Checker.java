@@ -16,6 +16,7 @@ import codefab.core.Stmt.ForStmt;
 import codefab.core.Stmt.IfStmt;
 import codefab.core.Stmt.PrintStmt;
 import codefab.core.Stmt.VarStmt;
+import codefab.core.Stmt.WhileStmt;
 import codefab.core.Token;
 
 import java.util.ArrayDeque;
@@ -139,6 +140,11 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
             stmt.body.accept(this);
             visitIfPresent(stmt.increment);
         });
+        return null;
+    }
+
+    @Override
+    public Void visitWhileStmt(WhileStmt stmt) {
         return null;
     }
 
