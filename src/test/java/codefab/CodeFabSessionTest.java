@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class CodeFabSessionTest {
@@ -18,7 +19,8 @@ class CodeFabSessionTest {
     }
 
     @Test
-    void 변수는_여러_입력에_걸쳐_유지된다() {
+    @DisplayName("변수는 여러 입력에 걸쳐 유지된다")
+    void variablesPersistAcrossMultipleInputs() {
         assertTrue(session.run("var a = 5;").success());
         assertTrue(session.run("var b = 10;").success());
         RunResult r = session.run("print a + b;");
@@ -27,14 +29,16 @@ class CodeFabSessionTest {
     }
 
     @Test
-    void 각_실행은_자신의_출력만_보고한다() {
+    @DisplayName("각 실행은 자신의 출력만 보고한다")
+    void eachRunReportsOwnOutputOnly() {
         session.run("var x = 1;");
         RunResult r = session.run("print x;");
         assertEquals(List.of("1"), r.output());
     }
 
     @Test
-    void REPL에서_입력_간_기존_전역변수_재선언이_허용된다() {
+    @DisplayName("REPL에서 입력 간 기존 전역 변수 재선언이 허용된다")
+    void redeclaringGlobalVariableAcrossRunsIsAllowed() {
         assertTrue(session.run("var a = 1;").success());
         RunResult r = session.run("var a = 2; print a;");
         assertTrue(r.success(), () -> "diagnostics: " + r.diagnostics());
@@ -42,7 +46,8 @@ class CodeFabSessionTest {
     }
 
     @Test
-    void 한_입력의_런타임_오류가_세션을_죽이지_않는다() {
+    @DisplayName("한 입력의 런타임 오류가 세션을 죽이지 않는다")
+    void runtimeErrorInOneRunDoesNotKillSession() {
         session.run("var a = 1;");
         assertFalse(session.run("print missing;").success());
         RunResult r = session.run("print a;");

@@ -4,6 +4,7 @@ import codefab.assembler.Scanner;
 import codefab.core.Diagnostic;
 import codefab.core.Token;
 import codefab.core.TokenType;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ class ScannerTest {
     }
 
     @Test
+    @DisplayName("단일 문자 및 연산자 토큰을 스캔한다")
     void scansSingleCharacterAndOperatorTokens() {
         assertEquals(
                 List.of(TokenType.LEFT_PAREN, TokenType.RIGHT_PAREN, TokenType.LEFT_BRACE,
@@ -37,6 +39,7 @@ class ScannerTest {
     }
 
     @Test
+    @DisplayName("1자·2자 토큰을 구분한다")
     void distinguishesOneAndTwoCharacterTokens() {
         assertEquals(
                 List.of(TokenType.BANG, TokenType.BANG_EQUAL, TokenType.EQUAL, TokenType.EQUAL_EQUAL,
@@ -46,6 +49,7 @@ class ScannerTest {
     }
 
     @Test
+    @DisplayName("숫자를 double 타입으로 스캔한다")
     void scansNumbersAsDoubles() {
         List<Token> tokens = scan("3.14 5");
         assertEquals(TokenType.NUMBER, tokens.get(0).type);
@@ -54,6 +58,7 @@ class ScannerTest {
     }
 
     @Test
+    @DisplayName("문자열을 스캔한다")
     void scansStrings() {
         List<Token> tokens = scan("\"Hello, CodeFab!\"");
         assertEquals(TokenType.STRING, tokens.get(0).type);
@@ -61,6 +66,7 @@ class ScannerTest {
     }
 
     @Test
+    @DisplayName("키워드와 식별자를 구분한다")
     void distinguishesKeywordsFromIdentifiers() {
         assertEquals(
                 List.of(TokenType.VAR, TokenType.IDENTIFIER, TokenType.PRINT, TokenType.IF,
@@ -70,6 +76,7 @@ class ScannerTest {
     }
 
     @Test
+    @DisplayName("줄 주석과 공백을 무시한다")
     void ignoresLineCommentsAndWhitespace() {
         List<Token> tokens = scan("var a = 1; // a comment\nprint a;");
         // first token after comment handling should still parse cleanly
@@ -81,6 +88,7 @@ class ScannerTest {
     }
 
     @Test
+    @DisplayName("줄 번호를 추적한다")
     void tracksLineNumbers() {
         List<Token> tokens = scan("1\n2\n3");
         assertEquals(1, tokens.get(0).line);
@@ -89,6 +97,7 @@ class ScannerTest {
     }
 
     @Test
+    @DisplayName("알 수 없는 문자를 에러로 보고한다")
     void reportsUnknownCharacter() {
         List<Diagnostic> diags = new ArrayList<>();
         new Scanner("@", diags).scanTokens();
@@ -97,6 +106,7 @@ class ScannerTest {
     }
 
     @Test
+    @DisplayName("종료되지 않은 문자열을 에러로 보고한다")
     void reportsUnterminatedString() {
         List<Diagnostic> diags = new ArrayList<>();
         new Scanner("\"oops", diags).scanTokens();

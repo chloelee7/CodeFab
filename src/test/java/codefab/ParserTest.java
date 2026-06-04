@@ -25,6 +25,7 @@ import codefab.core.TokenType;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class ParserTest {
@@ -36,8 +37,9 @@ class ParserTest {
         diags = new ArrayList<>();
     }
 
+    @DisplayName("var 선언문과 print 문을 올바르게 파싱한다")
     @Test
-    void var선언문은_VarStmt로_print문은_PrintStmt로_파싱한다() {
+    void varAndPrintStatementsAreParsedCorrectly() {
         List<Token> tokens = tokensOf("var a = 1 ; print a ;");
         List<Stmt> stmts = new Parser(tokens, diags).parse();
 
@@ -47,8 +49,9 @@ class ParserTest {
         assertInstanceOf(Stmt.PrintStmt.class, stmts.get(1));
     }
 
+    @DisplayName("if/else 문과 for 문을 올바르게 파싱한다")
     @Test
-    void if_else문은_IfStmt로_for문은_ForStmt로_파싱한다() {
+    void ifElseAndForStatementsAreParsedCorrectly() {
         List<Token> tokens = tokensOf(
             "if ( true ) { print 1 ; } else print 2 ; for ( ; ; ) print 3 ;");
         List<Stmt> stmts = new Parser(tokens, diags).parse();
@@ -58,16 +61,18 @@ class ParserTest {
         assertInstanceOf(Stmt.ForStmt.class, stmts.get(1));
     }
 
+    @DisplayName("print 문 값 뒤에 세미콜론이 없으면 에러를 보고한다")
     @Test
-    void print문_값뒤에_세미콜론이_없으면_에러를_보고한다() {
+    void missingTerminatingSemicolonInPrintReportsError() {
         List<Token> tokens = tokensOf("print 1 + 2");
         new Parser(tokens, diags).parse();
 
         assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_SEMICOLON_AFTER_VALUE)));
     }
 
+    @DisplayName("그룹화 표현식에 닫는 괄호가 없으면 에러를 보고한다")
     @Test
-    void 그룹화_표현식에_닫는괄호가_없으면_에러를_보고한다() {
+    void missingClosingParenInGroupingReportsError() {
         List<Token> tokens = tokensOf("print ( 1 + 2 ;");
         new Parser(tokens, diags).parse();
 
@@ -75,32 +80,36 @@ class ParserTest {
             diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_EXPR)));
     }
 
+    @DisplayName("대입 좌변이 변수가 아니면 에러를 보고한다")
     @Test
-    void 대입_좌변이_변수가_아니면_에러를_보고한다() {
+    void nonVariableAssignmentTargetReportsError() {
         List<Token> tokens = tokensOf("var a = 1 ; var b = 2 ; a + b = 3 ;");
         new Parser(tokens, diags).parse();
 
         assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_INVALID_ASSIGN_TARGET)));
     }
 
+    @DisplayName("표현식이 이항 연산자로 시작하면 에러를 보고한다")
     @Test
-    void 표현식이_이항연산자로_시작하면_에러를_보고한다() {
+    void expressionStartingWithBinaryOperatorReportsError() {
         List<Token> tokens = tokensOf("print * 5 ;");
         new Parser(tokens, diags).parse();
 
         assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_EXPECT_EXPRESSION)));
     }
 
+    @DisplayName("var 뒤에 변수명이 없으면 에러를 보고한다")
     @Test
-    void var뒤에_변수명이_없으면_에러를_보고한다() {
+    void missingVariableNameAfterVarReportsError() {
         List<Token> tokens = tokensOf("var = 1 ;");
         new Parser(tokens, diags).parse();
 
         assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_VARIABLE_NAME)));
     }
 
+    @DisplayName("var 선언 끝에 세미콜론이 없으면 에러를 보고한다")
     @Test
-    void var선언_끝에_세미콜론이_없으면_에러를_보고한다() {
+    void missingSemicolonAfterVarDeclReportsError() {
         List<Token> tokens = tokensOf("var a = 1");
         new Parser(tokens, diags).parse();
 
@@ -108,16 +117,18 @@ class ParserTest {
             .anyMatch(d -> d.message.contains(ERR_SEMICOLON_AFTER_VAR_DECL)));
     }
 
+    @DisplayName("if 조건 앞에 여는 괄호가 없으면 에러를 보고한다")
     @Test
-    void if_조건앞에_여는괄호가_없으면_에러를_보고한다() {
+    void missingOpenParenBeforeIfCondReportsError() {
         List<Token> tokens = tokensOf("if true ) print 1 ;");
         new Parser(tokens, diags).parse();
 
         assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_LEFT_PAREN_AFTER_IF)));
     }
 
+    @DisplayName("if 조건 뒤에 닫는 괄호가 없으면 에러를 보고한다")
     @Test
-    void if_조건뒤에_닫는괄호가_없으면_에러를_보고한다() {
+    void missingCloseParenAfterIfCondReportsError() {
         List<Token> tokens = tokensOf("if ( true print 1 ;");
         new Parser(tokens, diags).parse();
 
@@ -125,16 +136,18 @@ class ParserTest {
             diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_IF_COND)));
     }
 
+    @DisplayName("for 절 앞에 여는 괄호가 없으면 에러를 보고한다")
     @Test
-    void for_절앞에_여는괄호가_없으면_에러를_보고한다() {
+    void missingOpenParenBeforeForClausesReportsError() {
         List<Token> tokens = tokensOf("for ; ; ) print 1 ;");
         new Parser(tokens, diags).parse();
 
         assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_LEFT_PAREN_AFTER_FOR)));
     }
 
+    @DisplayName("for 절 뒤에 닫는 괄호가 없으면 에러를 보고한다")
     @Test
-    void for_절뒤에_닫는괄호가_없으면_에러를_보고한다() {
+    void missingCloseParenAfterForClausesReportsError() {
         List<Token> tokens = tokensOf("for ( ; ; 1");
         new Parser(tokens, diags).parse();
 
@@ -142,8 +155,9 @@ class ParserTest {
             diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_FOR_CLAUSES)));
     }
 
+    @DisplayName("while 문을 WhileStmt로 파싱한다")
     @Test
-    void while문은_WhileStmt로_파싱한다() {
+    void whileStatementIsParsedCorrectly() {
         List<Token> tokens = tokensOf("while ( true ) print 1 ;");
         List<Stmt> stmts = new Parser(tokens, diags).parse();
 
@@ -152,16 +166,18 @@ class ParserTest {
         assertInstanceOf(Stmt.WhileStmt.class, stmts.get(0));
     }
 
+    @DisplayName("while 조건 앞에 여는 괄호가 없으면 에러를 보고한다")
     @Test
-    void while_조건앞에_여는괄호가_없으면_에러를_보고한다() {
+    void missingOpenParenBeforeWhileCondReportsError() {
         List<Token> tokens = tokensOf("while true ) print 1 ;");
         new Parser(tokens, diags).parse();
 
         assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_LEFT_PAREN_AFTER_WHILE)));
     }
 
+    @DisplayName("while 조건 뒤에 닫는 괄호가 없으면 에러를 보고한다")
     @Test
-    void while_조건뒤에_닫는괄호가_없으면_에러를_보고한다() {
+    void missingCloseParenAfterWhileCondReportsError() {
         List<Token> tokens = tokensOf("while ( true print 1 ;");
         new Parser(tokens, diags).parse();
 
@@ -169,8 +185,9 @@ class ParserTest {
             diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_CONDITION)));
     }
 
+    @DisplayName("블록 끝에 닫는 중괄호가 없으면 에러를 보고한다")
     @Test
-    void 블록_끝에_닫는중괄호가_없으면_에러를_보고한다() {
+    void missingClosingBraceAfterBlockReportsError() {
         List<Token> tokens = tokensOf("{ print 1 ;");
         new Parser(tokens, diags).parse();
 

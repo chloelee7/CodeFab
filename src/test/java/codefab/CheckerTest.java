@@ -23,7 +23,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("변수 선언만 있을 때 에러가 없다")
-    void 변수_선언만_있을_때_에러가_없다() {
+    void varDeclarationOnly_returnsNoErrors() {
         // given: var a = 3;
         Token nameToken = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Stmt.VarStmt varStmt = new Stmt.VarStmt(nameToken, new Expr.Literal(3.0));
@@ -37,7 +37,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("선언된 변수를 print로 참조할 때 에러가 없다")
-    void 선언된_변수를_print로_참조할_때_에러가_없다() {
+    void printDeclaredVar_returnsNoErrors() {
         // given: var a = 3; print a;
         Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token aRef = new Token(TokenType.IDENTIFIER, "a", null, 2);
@@ -54,7 +54,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("선언되지 않은 변수를 print로 참조하면 CHECKER 에러가 1개 발생한다")
-    void 선언되지_않은_변수를_print로_참조하면_CHECKER_에러가_1개_발생한다() {
+    void printUndeclaredVar_returnsCheckerError() {
         // given: print x;
         Token xRef = new Token(TokenType.IDENTIFIER, "x", null, 1);
         Stmt.PrintStmt printStmt = new Stmt.PrintStmt(new Expr.Variable(xRef));
@@ -69,7 +69,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("if 조건식과 then 블록에서 선언된 변수를 참조할 때 에러가 없다")
-    void if_조건식과_then_블록에서_선언된_변수를_참조할_때_에러가_없다() {
+    void ifConditionAndThenWithDeclaredVar_returnsNoErrors() {
         // given: var x = 5; if (x > 0) { print x; }
         Token xDecl = new Token(TokenType.IDENTIFIER, "x", null, 1);
         Token xCond = new Token(TokenType.IDENTIFIER, "x", null, 2);
@@ -92,7 +92,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("if 조건식과 then 블록에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
-    void if_조건식과_then_블록에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
+    void ifConditionAndThenWithUndeclaredVar_returnsCheckerErrors() {
         // given: if (z > 0) { print z; }
         Token zCond = new Token(TokenType.IDENTIFIER, "z", null, 1);
         Token zPrint = new Token(TokenType.IDENTIFIER, "z", null, 2);
@@ -114,7 +114,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("[스크립트] 블록 내 자기 초기화 참조 - 에러 메시지에 initializer가 포함된다")
-    void 블록_내_자기_초기화_참조_에러_메시지에_initializer가_포함된다() {
+    void selfReferenceInInitializer_errorMessageContainsInitializer() {
         // given: { var a = a; }
         Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token aRef = new Token(TokenType.IDENTIFIER, "a", null, 1);
@@ -133,7 +133,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("[스크립트] 블록 내 로컬 스코프 중복 선언 - 에러 메시지에 Already가 포함된다")
-    void 블록_내_로컬_스코프_중복_선언_에러_메시지에_Already가_포함된다() {
+    void duplicateVarInLocalScope_errorMessageContainsAlready() {
         // given: { var a = "hi"; var a = 3; }
         Token aFirst = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token aSecond = new Token(TokenType.IDENTIFIER, "a", null, 2);
@@ -153,7 +153,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("같은 스코프에서 변수를 재선언하면 CHECKER 에러가 1개 발생한다")
-    void 같은_스코프에서_변수를_재선언하면_CHECKER_에러가_1개_발생한다() {
+    void redeclareVarInSameScope_returnsCheckerError() {
         // given: var a = 1; var a = 2;
         Token aFirst = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token aSecond = new Token(TokenType.IDENTIFIER, "a", null, 2);
@@ -172,7 +172,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("다른 스코프에서 같은 이름으로 선언(shadowing)하면 에러가 없다")
-    void 다른_스코프에서_같은_이름으로_선언하면_에러가_없다() {
+    void shadowingInDifferentScope_returnsNoErrors() {
         // given: var a = 1; { var a = 2; }
         Token aOuter = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token aInner = new Token(TokenType.IDENTIFIER, "a", null, 2);
@@ -190,7 +190,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("중첩 블록 스코프에서 외부 변수 참조와 shadowing이 올바르게 동작한다")
-    void 중첩_블록_스코프에서_외부_변수_참조와_shadowing이_올바르게_동작한다() {
+    void nestedScopesWithShadowingAndOuterRef_returnsNoErrors() {
         // given:
         // var ga = 3;
         // { var a = 2; { var a = 7; print a; } print ga; print a; }
@@ -222,7 +222,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("여러 에러가 동시에 발생할 때 모두 수집한다")
-    void 여러_에러가_동시에_발생할_때_모두_수집한다() {
+    void multipleErrors_allCollected() {
         // given:
         // var a = a + 1;  → 에러1: 미선언 참조
         // var a = 2;      → 에러2: 재선언
@@ -248,7 +248,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("for 루프 스코프 밖에서 루프 변수를 참조하면 CHECKER 에러가 발생한다")
-    void for_루프_스코프_밖에서_루프_변수를_참조하면_CHECKER_에러가_발생한다() {
+    void referenceLoopVarOutsideForScope_returnsCheckerError() {
         // given: for (var i = 0; i < 3; i = i + 1) { print i; } print i;
         Token iDecl = new Token(TokenType.IDENTIFIER, "i", null, 1);
         Token iCond = new Token(TokenType.IDENTIFIER, "i", null, 1);
@@ -278,7 +278,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("단항 연산식에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
-    void 단항_연산식에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
+    void undeclaredVarInUnaryExpr_returnsCheckerError() {
         // given: !x  (x 미선언)
         Token bang = new Token(TokenType.BANG, "!", null, 1);
         Token xRef = new Token(TokenType.IDENTIFIER, "x", null, 1);
@@ -295,7 +295,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("논리 연산식에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
-    void 논리_연산식에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
+    void undeclaredVarInLogicalExpr_returnsCheckerErrors() {
         // given: a and b  (a, b 미선언)
         Token and = new Token(TokenType.AND, "and", null, 1);
         Token aRef = new Token(TokenType.IDENTIFIER, "a", null, 1);
@@ -313,7 +313,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("그룹핑 식에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
-    void 그룹핑_식에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
+    void undeclaredVarInGroupingExpr_returnsCheckerError() {
         // given: (x + 1)  (x 미선언)
         Token plus = new Token(TokenType.PLUS, "+", null, 1);
         Token xRef = new Token(TokenType.IDENTIFIER, "x", null, 1);
@@ -331,7 +331,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("for 루프에서 선언된 변수를 조건식·증감식·body에서 참조할 때 에러가 없다")
-    void for_루프에서_선언된_변수를_조건식_증감식_body에서_참조할_때_에러가_없다() {
+    void forLoopWithDeclaredVar_returnsNoErrors() {
         // given: for (var i = 0; i < 3; i = i + 1) { print i; }
         Token iDecl = new Token(TokenType.IDENTIFIER, "i", null, 1);
         Token iCond = new Token(TokenType.IDENTIFIER, "i", null, 1);
@@ -359,7 +359,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("for 루프 body에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
-    void for_루프_body에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
+    void undeclaredVarInForBody_returnsCheckerError() {
         // given: for (var i = 0; i < 3; i = i + 1) { print z; }
         Token iDecl = new Token(TokenType.IDENTIFIER, "i", null, 1);
         Token iCond = new Token(TokenType.IDENTIFIER, "i", null, 1);
@@ -388,7 +388,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("블록 안에서 선언된 변수를 블록 안에서 참조할 때 에러가 없다")
-    void 블록_안에서_선언된_변수를_블록_안에서_참조할_때_에러가_없다() {
+    void varDeclaredInBlock_referencedInsideBlock_returnsNoErrors() {
         // given: { var a = 1; print a; }
         Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token aRef = new Token(TokenType.IDENTIFIER, "a", null, 2);
@@ -407,7 +407,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("블록 안에서 선언된 변수를 블록 밖에서 참조하면 CHECKER 에러가 1개 발생한다")
-    void 블록_안에서_선언된_변수를_블록_밖에서_참조하면_CHECKER_에러가_1개_발생한다() {
+    void varDeclaredInBlock_referencedOutsideBlock_returnsCheckerError() {
         // given: { var a = 1; } print a;
         Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token aRef = new Token(TokenType.IDENTIFIER, "a", null, 3);
@@ -427,7 +427,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("선언된 변수에 재할당할 때 에러가 없다")
-    void 선언된_변수에_재할당할_때_에러가_없다() {
+    void reassignDeclaredVar_returnsNoErrors() {
         // given: var a = 3; a = a + 1;
         Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token aLhs = new Token(TokenType.IDENTIFIER, "a", null, 2);
@@ -448,7 +448,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("선언되지 않은 변수에 할당하면 CHECKER 에러가 1개 발생한다")
-    void 선언되지_않은_변수에_할당하면_CHECKER_에러가_1개_발생한다() {
+    void assignToUndeclaredVar_returnsCheckerError() {
         // given: b = 5;
         Token bToken = new Token(TokenType.IDENTIFIER, "b", null, 1);
         Expr.Assign assign = new Expr.Assign(bToken, new Expr.Literal(5.0));
@@ -464,7 +464,7 @@ class CheckerTest {
 
     @Test
     @DisplayName("초기화 식에서 선언 중인 변수를 자기 참조하면 CHECKER 에러가 1개 발생한다")
-    void 초기화_식에서_선언_중인_변수를_자기_참조하면_CHECKER_에러가_1개_발생한다() {
+    void selfReferenceInVarInitializer_returnsCheckerError() {
         // given: var a = a + 1;
         Token nameToken = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token aRefToken = new Token(TokenType.IDENTIFIER, "a", null, 1);
