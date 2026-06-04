@@ -24,8 +24,7 @@ public final class CodeFabSession {
         List<Diagnostic> diagnostics = new ArrayList<>();
 
         // 1. Assembler: scan and parse. Any problem here is a syntax error.
-        List<Token> tokens = new Scanner(source, diagnostics).scanTokens();
-        List<Stmt> statements = new Parser(tokens, diagnostics).parse();
+        List<Stmt> statements = assemble(source, diagnostics);
         if (!diagnostics.isEmpty()) {
             return failure(diagnostics);
         }
@@ -37,6 +36,15 @@ public final class CodeFabSession {
         }
 
         // 3. Executor: run the program, capturing runtime faults as diagnostics.
+        return execute(statements, diagnostics);
+    }
+
+    private List<Stmt> assemble(String source, List<Diagnostic> diagnostics) {
+        List<Token> tokens = new Scanner(source, diagnostics).scanTokens();
+        return new Parser(tokens, diagnostics).parse();
+    }
+
+    private RunResult execute(List<Stmt> statements, List<Diagnostic> diagnostics) {
         try {
             executor.execute(statements);
         } catch (InterpreterRuntimeError error) {
@@ -44,7 +52,6 @@ public final class CodeFabSession {
                 new Diagnostic(Diagnostic.Stage.RUNTIME, error.line(), error.getMessage()));
             return failure(diagnostics);
         }
-
         return new RunResult(true, output.lines(), diagnostics);
     }
 
