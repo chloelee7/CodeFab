@@ -68,15 +68,13 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitBinary(Binary expr) {
-        expr.left.accept(this);
-        expr.right.accept(this);
+        visitChildren(expr.left, expr.right);
         return null;
     }
 
     @Override
     public Void visitLogical(Logical expr) {
-        expr.left.accept(this);
-        expr.right.accept(this);
+        visitChildren(expr.left, expr.right);
         return null;
     }
 
@@ -137,6 +135,11 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     // ── private helpers ────────────────────────────────────────────────────────
+
+    private void visitChildren(Expr left, Expr right) {
+        left.accept(this);
+        right.accept(this);
+    }
 
     private void withNewScope(Runnable body) {
         scopes.push(new HashSet<>());
