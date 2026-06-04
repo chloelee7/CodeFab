@@ -16,6 +16,7 @@ import codefab.core.Stmt.ForStmt;
 import codefab.core.Stmt.IfStmt;
 import codefab.core.Stmt.PrintStmt;
 import codefab.core.Stmt.VarStmt;
+import codefab.core.Token;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -36,6 +37,8 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         return errors;
     }
 
+    // ── Expr visitors ──────────────────────────────────────────────────────────
+
     @Override
     public Void visitLiteral(Literal expr) {
         return null;
@@ -43,22 +46,14 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitVariable(Variable expr) {
-        if (!declaredVars.contains(expr.name.lexeme)) {
-            error(expr.name.line, "undefined variable '" + expr.name.lexeme + "'");
-        }
+        checkDeclared(expr.name);
         return null;
-    }
-
-    private void error(int line, String message) {
-        errors.add(new Diagnostic(Diagnostic.Stage.CHECKER, line, message));
     }
 
     @Override
     public Void visitAssign(Assign expr) {
         expr.value.accept(this);
-        if (!declaredVars.contains(expr.name.lexeme)) {
-            error(expr.name.line, "undefined variable '" + expr.name.lexeme + "'");
-        }
+        checkDeclared(expr.name);
         return null;
     }
 
@@ -83,6 +78,8 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     public Void visitGrouping(Grouping expr) {
         return null;
     }
+
+    // ── Stmt visitors ──────────────────────────────────────────────────────────
 
     @Override
     public Void visitExpressionStmt(ExpressionStmt stmt) {
@@ -118,5 +115,17 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     @Override
     public Void visitForStmt(ForStmt stmt) {
         return null;
+    }
+
+    // ── private helpers ────────────────────────────────────────────────────────
+
+    private void checkDeclared(Token name) {
+        if (!declaredVars.contains(name.lexeme)) {
+            error(name.line, "undefined variable '" + name.lexeme + "'");
+        }
+    }
+
+    private void error(int line, String message) {
+        errors.add(new Diagnostic(Diagnostic.Stage.CHECKER, line, message));
     }
 }
