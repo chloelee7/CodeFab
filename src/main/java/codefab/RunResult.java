@@ -2,32 +2,35 @@ package codefab;
 
 import codefab.core.Diagnostic;
 
+import java.util.Collections;
 import java.util.List;
 
-public final class RunResult {
-    private final boolean success;
-    private final List<String> output;
-    private final List<Diagnostic> diagnostics;
+public record RunResult(boolean success, List<String> output, List<Diagnostic> diagnostics) {
 
     public RunResult(boolean success, List<String> output, List<Diagnostic> diagnostics) {
         this.success = success;
-        this.output = output;
-        this.diagnostics = diagnostics;
+        this.output = List.copyOf(output);
+        this.diagnostics = List.copyOf(diagnostics);
     }
 
-    public boolean success() {
-        throw new UnsupportedOperationException("success not implemented");
-    }
-
+    @Override
     public List<String> output() {
-        throw new UnsupportedOperationException("output not implemented");
+        return Collections.unmodifiableList(output);
     }
 
+    @Override
     public List<Diagnostic> diagnostics() {
-        throw new UnsupportedOperationException("diagnostics not implemented");
+        return Collections.unmodifiableList(diagnostics);
     }
 
     public String diagnosticText() {
-        throw new UnsupportedOperationException("diagnosticText not implemented");
+        StringBuilder sb = new StringBuilder();
+        for (Diagnostic d : diagnostics) {
+            if (sb.length() > 0) {
+                sb.append('\n');
+            }
+            sb.append(d.render());
+        }
+        return sb.toString();
     }
 }
