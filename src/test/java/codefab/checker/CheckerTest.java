@@ -146,6 +146,94 @@ class CheckerTest {
     }
 
     @Test
+    @DisplayName("중첩 블록 스코프에서 외부 변수 참조와 shadowing이 올바르게 동작한다")
+    void 중첩_블록_스코프에서_외부_변수_참조와_shadowing이_올바르게_동작한다() {
+        // given:
+        // var ga = 3;
+        // { var a = 2; { var a = 7; print a; } print ga; print a; }
+        Token gaDecl  = new Token(TokenType.IDENTIFIER, "ga", null, 1);
+        Token aMiddle = new Token(TokenType.IDENTIFIER, "a",  null, 2);
+        Token aInner  = new Token(TokenType.IDENTIFIER, "a",  null, 3);
+        Token aPrint1 = new Token(TokenType.IDENTIFIER, "a",  null, 4);
+        Token gaRef   = new Token(TokenType.IDENTIFIER, "ga", null, 5);
+        Token aPrint2 = new Token(TokenType.IDENTIFIER, "a",  null, 6);
+
+        Stmt.BlockStmt inner = new Stmt.BlockStmt(List.of(
+                new Stmt.VarStmt(aInner, new Expr.Literal(7.0)),
+                new Stmt.PrintStmt(new Expr.Variable(aPrint1))));
+
+        Stmt.BlockStmt outer = new Stmt.BlockStmt(List.of(
+                new Stmt.VarStmt(aMiddle, new Expr.Literal(2.0)),
+                inner,
+                new Stmt.PrintStmt(new Expr.Variable(gaRef)),
+                new Stmt.PrintStmt(new Expr.Variable(aPrint2))));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(
+                new Stmt.VarStmt(gaDecl, new Expr.Literal(3.0)),
+                outer));
+
+        // then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("여러 에러가 동시에 발생할 때 모두 수집한다")
+    void 여러_에러가_동시에_발생할_때_모두_수집한다() {
+        // given:
+        // var a = a + 1;  → 에러1: 미선언 참조
+        // var a = 2;      → 에러2: 재선언
+        // print b;        → 에러3: 미선언 참조
+        Token aDecl1 = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aRef   = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aDecl2 = new Token(TokenType.IDENTIFIER, "a", null, 2);
+        Token bRef   = new Token(TokenType.IDENTIFIER, "b", null, 3);
+        Token plus   = new Token(TokenType.PLUS, "+", null, 1);
+
+        Stmt.VarStmt selfRef = new Stmt.VarStmt(aDecl1,
+                new Expr.Binary(new Expr.Variable(aRef), plus, new Expr.Literal(1.0)));
+        Stmt.VarStmt redecl  = new Stmt.VarStmt(aDecl2, new Expr.Literal(2.0));
+        Stmt.PrintStmt printB = new Stmt.PrintStmt(new Expr.Variable(bRef));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(selfRef, redecl, printB));
+
+        // then
+        assertThat(result).hasSize(3);
+        assertThat(result).allMatch(d -> d.stage == Diagnostic.Stage.CHECKER);
+    }
+
+    @Test
+    @DisplayName("for 루프 스코프 밖에서 루프 변수를 참조하면 CHECKER 에러가 발생한다")
+    void for_루프_스코프_밖에서_루프_변수를_참조하면_CHECKER_에러가_발생한다() {
+        // given: for (var i = 0; i < 3; i = i + 1) { print i; } print i;
+        Token iDecl   = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iCond   = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iIncLhs = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iIncRhs = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iPrint  = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iAfter  = new Token(TokenType.IDENTIFIER, "i", null, 2);
+        Token less    = new Token(TokenType.LESS, "<", null, 1);
+        Token plus    = new Token(TokenType.PLUS, "+", null, 1);
+
+        Stmt.ForStmt forStmt = new Stmt.ForStmt(
+                new Stmt.VarStmt(iDecl, new Expr.Literal(0.0)),
+                new Expr.Binary(new Expr.Variable(iCond), less, new Expr.Literal(3.0)),
+                new Expr.Assign(iIncLhs,
+                        new Expr.Binary(new Expr.Variable(iIncRhs), plus, new Expr.Literal(1.0))),
+                new Stmt.BlockStmt(List.of(new Stmt.PrintStmt(new Expr.Variable(iPrint)))));
+
+        Stmt.PrintStmt afterFor = new Stmt.PrintStmt(new Expr.Variable(iAfter));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(forStmt, afterFor));
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).stage).isEqualTo(Diagnostic.Stage.CHECKER);
+    }
+
+    @Test
     @DisplayName("단항 연산식에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
     void 단항_연산식에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
         // given: !x  (x 미선언)
