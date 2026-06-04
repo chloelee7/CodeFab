@@ -1,17 +1,24 @@
 package codefab;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+class CodeFabSessionTest {
 
-/** REPL semantics: a session keeps variables alive across run() calls. */
-class SessionTest {
+    private CodeFabSession session;
+
+    @BeforeEach
+    void setUp() {
+        session = new CodeFabSession();
+    }
 
     @Test
-    void variablesPersistAcrossInputs() {
-        CodeFabSession session = new CodeFabSession();
+    void 변수는_여러_입력에_걸쳐_유지된다() {
         assertTrue(session.run("var a = 5;").success());
         assertTrue(session.run("var b = 10;").success());
         RunResult r = session.run("print a + b;");
@@ -20,18 +27,14 @@ class SessionTest {
     }
 
     @Test
-    void eachRunReportsOnlyItsOwnOutput() {
-        CodeFabSession session = new CodeFabSession();
+    void 각_실행은_자신의_출력만_보고한다() {
         session.run("var x = 1;");
         RunResult r = session.run("print x;");
         assertEquals(List.of("1"), r.output());
     }
 
     @Test
-    void redeclaringExistingGlobalAcrossInputsIsAllowedInRepl() {
-        // A fresh top-level scope per input means re-declaring `a` in a later
-        // input is not a duplicate within a single scope.
-        CodeFabSession session = new CodeFabSession();
+    void REPL에서_입력_간_기존_전역변수_재선언이_허용된다() {
         assertTrue(session.run("var a = 1;").success());
         RunResult r = session.run("var a = 2; print a;");
         assertTrue(r.success(), () -> "diagnostics: " + r.diagnostics());
@@ -39,8 +42,7 @@ class SessionTest {
     }
 
     @Test
-    void runtimeErrorInOneInputDoesNotKillSession() {
-        CodeFabSession session = new CodeFabSession();
+    void 한_입력의_런타임_오류가_세션을_죽이지_않는다() {
         session.run("var a = 1;");
         assertFalse(session.run("print missing;").success());
         RunResult r = session.run("print a;");

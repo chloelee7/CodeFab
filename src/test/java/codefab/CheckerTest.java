@@ -1,18 +1,18 @@
-package codefab.checker;
+package codefab;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import codefab.checker.Checker;
 import codefab.core.Diagnostic;
 import codefab.core.Expr;
 import codefab.core.Stmt;
 import codefab.core.Token;
 import codefab.core.TokenType;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(MockitoExtension.class)
 class CheckerTest {
@@ -38,9 +38,9 @@ class CheckerTest {
     void 선언된_변수를_print로_참조할_때_에러가_없다() {
         // given: var a = 3; print a;
         Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
-        Token aRef  = new Token(TokenType.IDENTIFIER, "a", null, 2);
+        Token aRef = new Token(TokenType.IDENTIFIER, "a", null, 2);
 
-        Stmt.VarStmt varStmt   = new Stmt.VarStmt(aDecl, new Expr.Literal(3.0));
+        Stmt.VarStmt varStmt = new Stmt.VarStmt(aDecl, new Expr.Literal(3.0));
         Stmt.PrintStmt printStmt = new Stmt.PrintStmt(new Expr.Variable(aRef));
 
         // when
@@ -69,15 +69,16 @@ class CheckerTest {
     @DisplayName("if 조건식과 then 블록에서 선언된 변수를 참조할 때 에러가 없다")
     void if_조건식과_then_블록에서_선언된_변수를_참조할_때_에러가_없다() {
         // given: var x = 5; if (x > 0) { print x; }
-        Token xDecl  = new Token(TokenType.IDENTIFIER, "x", null, 1);
-        Token xCond  = new Token(TokenType.IDENTIFIER, "x", null, 2);
+        Token xDecl = new Token(TokenType.IDENTIFIER, "x", null, 1);
+        Token xCond = new Token(TokenType.IDENTIFIER, "x", null, 2);
         Token xPrint = new Token(TokenType.IDENTIFIER, "x", null, 3);
-        Token gt     = new Token(TokenType.GREATER, ">", null, 2);
+        Token gt = new Token(TokenType.GREATER, ">", null, 2);
 
-        Stmt.VarStmt varStmt     = new Stmt.VarStmt(xDecl, new Expr.Literal(5.0));
-        Expr.Binary  condition   = new Expr.Binary(new Expr.Variable(xCond), gt, new Expr.Literal(0.0));
+        Stmt.VarStmt varStmt = new Stmt.VarStmt(xDecl, new Expr.Literal(5.0));
+        Expr.Binary condition = new Expr.Binary(new Expr.Variable(xCond), gt,
+            new Expr.Literal(0.0));
         Stmt.BlockStmt thenBlock = new Stmt.BlockStmt(List.of(
-                new Stmt.PrintStmt(new Expr.Variable(xPrint))));
+            new Stmt.PrintStmt(new Expr.Variable(xPrint))));
         Stmt.IfStmt ifStmt = new Stmt.IfStmt(condition, thenBlock, null);
 
         // when
@@ -91,13 +92,14 @@ class CheckerTest {
     @DisplayName("if 조건식과 then 블록에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
     void if_조건식과_then_블록에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
         // given: if (z > 0) { print z; }
-        Token zCond  = new Token(TokenType.IDENTIFIER, "z", null, 1);
+        Token zCond = new Token(TokenType.IDENTIFIER, "z", null, 1);
         Token zPrint = new Token(TokenType.IDENTIFIER, "z", null, 2);
-        Token gt     = new Token(TokenType.GREATER, ">", null, 1);
+        Token gt = new Token(TokenType.GREATER, ">", null, 1);
 
-        Expr.Binary  condition   = new Expr.Binary(new Expr.Variable(zCond), gt, new Expr.Literal(0.0));
+        Expr.Binary condition = new Expr.Binary(new Expr.Variable(zCond), gt,
+            new Expr.Literal(0.0));
         Stmt.BlockStmt thenBlock = new Stmt.BlockStmt(List.of(
-                new Stmt.PrintStmt(new Expr.Variable(zPrint))));
+            new Stmt.PrintStmt(new Expr.Variable(zPrint))));
         Stmt.IfStmt ifStmt = new Stmt.IfStmt(condition, thenBlock, null);
 
         // when
@@ -113,10 +115,10 @@ class CheckerTest {
     void 블록_내_자기_초기화_참조_에러_메시지에_initializer가_포함된다() {
         // given: { var a = a; }
         Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
-        Token aRef  = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aRef = new Token(TokenType.IDENTIFIER, "a", null, 1);
 
         Stmt.BlockStmt block = new Stmt.BlockStmt(List.of(
-                new Stmt.VarStmt(aDecl, new Expr.Variable(aRef))));
+            new Stmt.VarStmt(aDecl, new Expr.Variable(aRef))));
 
         // when
         List<Diagnostic> result = checker.check(List.of(block));
@@ -131,12 +133,12 @@ class CheckerTest {
     @DisplayName("[스크립트] 블록 내 로컬 스코프 중복 선언 - 에러 메시지에 Already가 포함된다")
     void 블록_내_로컬_스코프_중복_선언_에러_메시지에_Already가_포함된다() {
         // given: { var a = "hi"; var a = 3; }
-        Token aFirst  = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aFirst = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token aSecond = new Token(TokenType.IDENTIFIER, "a", null, 2);
 
         Stmt.BlockStmt block = new Stmt.BlockStmt(List.of(
-                new Stmt.VarStmt(aFirst,  new Expr.Literal("hi")),
-                new Stmt.VarStmt(aSecond, new Expr.Literal(3.0))));
+            new Stmt.VarStmt(aFirst, new Expr.Literal("hi")),
+            new Stmt.VarStmt(aSecond, new Expr.Literal(3.0))));
 
         // when
         List<Diagnostic> result = checker.check(List.of(block));
@@ -151,10 +153,10 @@ class CheckerTest {
     @DisplayName("같은 스코프에서 변수를 재선언하면 CHECKER 에러가 1개 발생한다")
     void 같은_스코프에서_변수를_재선언하면_CHECKER_에러가_1개_발생한다() {
         // given: var a = 1; var a = 2;
-        Token aFirst  = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aFirst = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token aSecond = new Token(TokenType.IDENTIFIER, "a", null, 2);
 
-        Stmt.VarStmt first  = new Stmt.VarStmt(aFirst,  new Expr.Literal(1.0));
+        Stmt.VarStmt first = new Stmt.VarStmt(aFirst, new Expr.Literal(1.0));
         Stmt.VarStmt second = new Stmt.VarStmt(aSecond, new Expr.Literal(2.0));
 
         // when
@@ -175,7 +177,7 @@ class CheckerTest {
 
         Stmt.VarStmt outer = new Stmt.VarStmt(aOuter, new Expr.Literal(1.0));
         Stmt.BlockStmt block = new Stmt.BlockStmt(List.of(
-                new Stmt.VarStmt(aInner, new Expr.Literal(2.0))));
+            new Stmt.VarStmt(aInner, new Expr.Literal(2.0))));
 
         // when
         List<Diagnostic> result = checker.check(List.of(outer, block));
@@ -190,27 +192,27 @@ class CheckerTest {
         // given:
         // var ga = 3;
         // { var a = 2; { var a = 7; print a; } print ga; print a; }
-        Token gaDecl  = new Token(TokenType.IDENTIFIER, "ga", null, 1);
-        Token aMiddle = new Token(TokenType.IDENTIFIER, "a",  null, 2);
-        Token aInner  = new Token(TokenType.IDENTIFIER, "a",  null, 3);
-        Token aPrint1 = new Token(TokenType.IDENTIFIER, "a",  null, 4);
-        Token gaRef   = new Token(TokenType.IDENTIFIER, "ga", null, 5);
-        Token aPrint2 = new Token(TokenType.IDENTIFIER, "a",  null, 6);
+        Token gaDecl = new Token(TokenType.IDENTIFIER, "ga", null, 1);
+        Token aMiddle = new Token(TokenType.IDENTIFIER, "a", null, 2);
+        Token aInner = new Token(TokenType.IDENTIFIER, "a", null, 3);
+        Token aPrint1 = new Token(TokenType.IDENTIFIER, "a", null, 4);
+        Token gaRef = new Token(TokenType.IDENTIFIER, "ga", null, 5);
+        Token aPrint2 = new Token(TokenType.IDENTIFIER, "a", null, 6);
 
         Stmt.BlockStmt inner = new Stmt.BlockStmt(List.of(
-                new Stmt.VarStmt(aInner, new Expr.Literal(7.0)),
-                new Stmt.PrintStmt(new Expr.Variable(aPrint1))));
+            new Stmt.VarStmt(aInner, new Expr.Literal(7.0)),
+            new Stmt.PrintStmt(new Expr.Variable(aPrint1))));
 
         Stmt.BlockStmt outer = new Stmt.BlockStmt(List.of(
-                new Stmt.VarStmt(aMiddle, new Expr.Literal(2.0)),
-                inner,
-                new Stmt.PrintStmt(new Expr.Variable(gaRef)),
-                new Stmt.PrintStmt(new Expr.Variable(aPrint2))));
+            new Stmt.VarStmt(aMiddle, new Expr.Literal(2.0)),
+            inner,
+            new Stmt.PrintStmt(new Expr.Variable(gaRef)),
+            new Stmt.PrintStmt(new Expr.Variable(aPrint2))));
 
         // when
         List<Diagnostic> result = checker.check(List.of(
-                new Stmt.VarStmt(gaDecl, new Expr.Literal(3.0)),
-                outer));
+            new Stmt.VarStmt(gaDecl, new Expr.Literal(3.0)),
+            outer));
 
         // then
         assertThat(result).isEmpty();
@@ -224,14 +226,14 @@ class CheckerTest {
         // var a = 2;      → 에러2: 재선언
         // print b;        → 에러3: 미선언 참조
         Token aDecl1 = new Token(TokenType.IDENTIFIER, "a", null, 1);
-        Token aRef   = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token aRef = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token aDecl2 = new Token(TokenType.IDENTIFIER, "a", null, 2);
-        Token bRef   = new Token(TokenType.IDENTIFIER, "b", null, 3);
-        Token plus   = new Token(TokenType.PLUS, "+", null, 1);
+        Token bRef = new Token(TokenType.IDENTIFIER, "b", null, 3);
+        Token plus = new Token(TokenType.PLUS, "+", null, 1);
 
         Stmt.VarStmt selfRef = new Stmt.VarStmt(aDecl1,
-                new Expr.Binary(new Expr.Variable(aRef), plus, new Expr.Literal(1.0)));
-        Stmt.VarStmt redecl  = new Stmt.VarStmt(aDecl2, new Expr.Literal(2.0));
+            new Expr.Binary(new Expr.Variable(aRef), plus, new Expr.Literal(1.0)));
+        Stmt.VarStmt redecl = new Stmt.VarStmt(aDecl2, new Expr.Literal(2.0));
         Stmt.PrintStmt printB = new Stmt.PrintStmt(new Expr.Variable(bRef));
 
         // when
@@ -246,21 +248,21 @@ class CheckerTest {
     @DisplayName("for 루프 스코프 밖에서 루프 변수를 참조하면 CHECKER 에러가 발생한다")
     void for_루프_스코프_밖에서_루프_변수를_참조하면_CHECKER_에러가_발생한다() {
         // given: for (var i = 0; i < 3; i = i + 1) { print i; } print i;
-        Token iDecl   = new Token(TokenType.IDENTIFIER, "i", null, 1);
-        Token iCond   = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iDecl = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iCond = new Token(TokenType.IDENTIFIER, "i", null, 1);
         Token iIncLhs = new Token(TokenType.IDENTIFIER, "i", null, 1);
         Token iIncRhs = new Token(TokenType.IDENTIFIER, "i", null, 1);
-        Token iPrint  = new Token(TokenType.IDENTIFIER, "i", null, 1);
-        Token iAfter  = new Token(TokenType.IDENTIFIER, "i", null, 2);
-        Token less    = new Token(TokenType.LESS, "<", null, 1);
-        Token plus    = new Token(TokenType.PLUS, "+", null, 1);
+        Token iPrint = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iAfter = new Token(TokenType.IDENTIFIER, "i", null, 2);
+        Token less = new Token(TokenType.LESS, "<", null, 1);
+        Token plus = new Token(TokenType.PLUS, "+", null, 1);
 
         Stmt.ForStmt forStmt = new Stmt.ForStmt(
-                new Stmt.VarStmt(iDecl, new Expr.Literal(0.0)),
-                new Expr.Binary(new Expr.Variable(iCond), less, new Expr.Literal(3.0)),
-                new Expr.Assign(iIncLhs,
-                        new Expr.Binary(new Expr.Variable(iIncRhs), plus, new Expr.Literal(1.0))),
-                new Stmt.BlockStmt(List.of(new Stmt.PrintStmt(new Expr.Variable(iPrint)))));
+            new Stmt.VarStmt(iDecl, new Expr.Literal(0.0)),
+            new Expr.Binary(new Expr.Variable(iCond), less, new Expr.Literal(3.0)),
+            new Expr.Assign(iIncLhs,
+                new Expr.Binary(new Expr.Variable(iIncRhs), plus, new Expr.Literal(1.0))),
+            new Stmt.BlockStmt(List.of(new Stmt.PrintStmt(new Expr.Variable(iPrint)))));
 
         Stmt.PrintStmt afterFor = new Stmt.PrintStmt(new Expr.Variable(iAfter));
 
@@ -279,7 +281,7 @@ class CheckerTest {
         Token bang = new Token(TokenType.BANG, "!", null, 1);
         Token xRef = new Token(TokenType.IDENTIFIER, "x", null, 1);
         Stmt.ExpressionStmt stmt = new Stmt.ExpressionStmt(
-                new Expr.Unary(bang, new Expr.Variable(xRef)));
+            new Expr.Unary(bang, new Expr.Variable(xRef)));
 
         // when
         List<Diagnostic> result = checker.check(List.of(stmt));
@@ -293,11 +295,11 @@ class CheckerTest {
     @DisplayName("논리 연산식에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
     void 논리_연산식에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
         // given: a and b  (a, b 미선언)
-        Token and  = new Token(TokenType.AND, "and", null, 1);
+        Token and = new Token(TokenType.AND, "and", null, 1);
         Token aRef = new Token(TokenType.IDENTIFIER, "a", null, 1);
         Token bRef = new Token(TokenType.IDENTIFIER, "b", null, 1);
         Stmt.ExpressionStmt stmt = new Stmt.ExpressionStmt(
-                new Expr.Logical(new Expr.Variable(aRef), and, new Expr.Variable(bRef)));
+            new Expr.Logical(new Expr.Variable(aRef), and, new Expr.Variable(bRef)));
 
         // when
         List<Diagnostic> result = checker.check(List.of(stmt));
@@ -314,8 +316,8 @@ class CheckerTest {
         Token plus = new Token(TokenType.PLUS, "+", null, 1);
         Token xRef = new Token(TokenType.IDENTIFIER, "x", null, 1);
         Stmt.ExpressionStmt stmt = new Stmt.ExpressionStmt(
-                new Expr.Grouping(
-                        new Expr.Binary(new Expr.Variable(xRef), plus, new Expr.Literal(1.0))));
+            new Expr.Grouping(
+                new Expr.Binary(new Expr.Variable(xRef), plus, new Expr.Literal(1.0))));
 
         // when
         List<Diagnostic> result = checker.check(List.of(stmt));
@@ -329,20 +331,21 @@ class CheckerTest {
     @DisplayName("for 루프에서 선언된 변수를 조건식·증감식·body에서 참조할 때 에러가 없다")
     void for_루프에서_선언된_변수를_조건식_증감식_body에서_참조할_때_에러가_없다() {
         // given: for (var i = 0; i < 3; i = i + 1) { print i; }
-        Token iDecl   = new Token(TokenType.IDENTIFIER, "i", null, 1);
-        Token iCond   = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iDecl = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iCond = new Token(TokenType.IDENTIFIER, "i", null, 1);
         Token iIncLhs = new Token(TokenType.IDENTIFIER, "i", null, 1);
         Token iIncRhs = new Token(TokenType.IDENTIFIER, "i", null, 1);
-        Token iPrint  = new Token(TokenType.IDENTIFIER, "i", null, 2);
-        Token less    = new Token(TokenType.LESS, "<", null, 1);
-        Token plus    = new Token(TokenType.PLUS, "+", null, 1);
+        Token iPrint = new Token(TokenType.IDENTIFIER, "i", null, 2);
+        Token less = new Token(TokenType.LESS, "<", null, 1);
+        Token plus = new Token(TokenType.PLUS, "+", null, 1);
 
-        Stmt.VarStmt   init      = new Stmt.VarStmt(iDecl, new Expr.Literal(0.0));
-        Expr.Binary    condition = new Expr.Binary(new Expr.Variable(iCond), less, new Expr.Literal(3.0));
-        Expr.Assign    increment = new Expr.Assign(iIncLhs,
-                new Expr.Binary(new Expr.Variable(iIncRhs), plus, new Expr.Literal(1.0)));
-        Stmt.BlockStmt body      = new Stmt.BlockStmt(List.of(
-                new Stmt.PrintStmt(new Expr.Variable(iPrint))));
+        Stmt.VarStmt init = new Stmt.VarStmt(iDecl, new Expr.Literal(0.0));
+        Expr.Binary condition = new Expr.Binary(new Expr.Variable(iCond), less,
+            new Expr.Literal(3.0));
+        Expr.Assign increment = new Expr.Assign(iIncLhs,
+            new Expr.Binary(new Expr.Variable(iIncRhs), plus, new Expr.Literal(1.0)));
+        Stmt.BlockStmt body = new Stmt.BlockStmt(List.of(
+            new Stmt.PrintStmt(new Expr.Variable(iPrint))));
         Stmt.ForStmt forStmt = new Stmt.ForStmt(init, condition, increment, body);
 
         // when
@@ -356,20 +359,21 @@ class CheckerTest {
     @DisplayName("for 루프 body에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
     void for_루프_body에서_미선언_변수를_참조하면_CHECKER_에러가_발생한다() {
         // given: for (var i = 0; i < 3; i = i + 1) { print z; }
-        Token iDecl   = new Token(TokenType.IDENTIFIER, "i", null, 1);
-        Token iCond   = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iDecl = new Token(TokenType.IDENTIFIER, "i", null, 1);
+        Token iCond = new Token(TokenType.IDENTIFIER, "i", null, 1);
         Token iIncLhs = new Token(TokenType.IDENTIFIER, "i", null, 1);
         Token iIncRhs = new Token(TokenType.IDENTIFIER, "i", null, 1);
-        Token zPrint  = new Token(TokenType.IDENTIFIER, "z", null, 2);
-        Token less    = new Token(TokenType.LESS, "<", null, 1);
-        Token plus    = new Token(TokenType.PLUS, "+", null, 1);
+        Token zPrint = new Token(TokenType.IDENTIFIER, "z", null, 2);
+        Token less = new Token(TokenType.LESS, "<", null, 1);
+        Token plus = new Token(TokenType.PLUS, "+", null, 1);
 
-        Stmt.VarStmt   init      = new Stmt.VarStmt(iDecl, new Expr.Literal(0.0));
-        Expr.Binary    condition = new Expr.Binary(new Expr.Variable(iCond), less, new Expr.Literal(3.0));
-        Expr.Assign    increment = new Expr.Assign(iIncLhs,
-                new Expr.Binary(new Expr.Variable(iIncRhs), plus, new Expr.Literal(1.0)));
-        Stmt.BlockStmt body      = new Stmt.BlockStmt(List.of(
-                new Stmt.PrintStmt(new Expr.Variable(zPrint))));
+        Stmt.VarStmt init = new Stmt.VarStmt(iDecl, new Expr.Literal(0.0));
+        Expr.Binary condition = new Expr.Binary(new Expr.Variable(iCond), less,
+            new Expr.Literal(3.0));
+        Expr.Assign increment = new Expr.Assign(iIncLhs,
+            new Expr.Binary(new Expr.Variable(iIncRhs), plus, new Expr.Literal(1.0)));
+        Stmt.BlockStmt body = new Stmt.BlockStmt(List.of(
+            new Stmt.PrintStmt(new Expr.Variable(zPrint))));
         Stmt.ForStmt forStmt = new Stmt.ForStmt(init, condition, increment, body);
 
         // when
@@ -385,11 +389,11 @@ class CheckerTest {
     void 블록_안에서_선언된_변수를_블록_안에서_참조할_때_에러가_없다() {
         // given: { var a = 1; print a; }
         Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
-        Token aRef  = new Token(TokenType.IDENTIFIER, "a", null, 2);
+        Token aRef = new Token(TokenType.IDENTIFIER, "a", null, 2);
 
         Stmt.BlockStmt block = new Stmt.BlockStmt(List.of(
-                new Stmt.VarStmt(aDecl, new Expr.Literal(1.0)),
-                new Stmt.PrintStmt(new Expr.Variable(aRef))
+            new Stmt.VarStmt(aDecl, new Expr.Literal(1.0)),
+            new Stmt.PrintStmt(new Expr.Variable(aRef))
         ));
 
         // when
@@ -404,10 +408,10 @@ class CheckerTest {
     void 블록_안에서_선언된_변수를_블록_밖에서_참조하면_CHECKER_에러가_1개_발생한다() {
         // given: { var a = 1; } print a;
         Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
-        Token aRef  = new Token(TokenType.IDENTIFIER, "a", null, 3);
+        Token aRef = new Token(TokenType.IDENTIFIER, "a", null, 3);
 
-        Stmt.BlockStmt block    = new Stmt.BlockStmt(List.of(
-                new Stmt.VarStmt(aDecl, new Expr.Literal(1.0))
+        Stmt.BlockStmt block = new Stmt.BlockStmt(List.of(
+            new Stmt.VarStmt(aDecl, new Expr.Literal(1.0))
         ));
         Stmt.PrintStmt printStmt = new Stmt.PrintStmt(new Expr.Variable(aRef));
 
@@ -424,13 +428,13 @@ class CheckerTest {
     void 선언된_변수에_재할당할_때_에러가_없다() {
         // given: var a = 3; a = a + 1;
         Token aDecl = new Token(TokenType.IDENTIFIER, "a", null, 1);
-        Token aLhs  = new Token(TokenType.IDENTIFIER, "a", null, 2);
-        Token aRhs  = new Token(TokenType.IDENTIFIER, "a", null, 2);
-        Token plus  = new Token(TokenType.PLUS, "+", null, 2);
+        Token aLhs = new Token(TokenType.IDENTIFIER, "a", null, 2);
+        Token aRhs = new Token(TokenType.IDENTIFIER, "a", null, 2);
+        Token plus = new Token(TokenType.PLUS, "+", null, 2);
 
         Stmt.VarStmt varStmt = new Stmt.VarStmt(aDecl, new Expr.Literal(3.0));
-        Expr.Binary rhs      = new Expr.Binary(new Expr.Variable(aRhs), plus, new Expr.Literal(1.0));
-        Expr.Assign assign   = new Expr.Assign(aLhs, rhs);
+        Expr.Binary rhs = new Expr.Binary(new Expr.Variable(aRhs), plus, new Expr.Literal(1.0));
+        Expr.Assign assign = new Expr.Assign(aLhs, rhs);
         Stmt.ExpressionStmt exprStmt = new Stmt.ExpressionStmt(assign);
 
         // when
@@ -445,7 +449,7 @@ class CheckerTest {
     void 선언되지_않은_변수에_할당하면_CHECKER_에러가_1개_발생한다() {
         // given: b = 5;
         Token bToken = new Token(TokenType.IDENTIFIER, "b", null, 1);
-        Expr.Assign assign   = new Expr.Assign(bToken, new Expr.Literal(5.0));
+        Expr.Assign assign = new Expr.Assign(bToken, new Expr.Literal(5.0));
         Stmt.ExpressionStmt exprStmt = new Stmt.ExpressionStmt(assign);
 
         // when
