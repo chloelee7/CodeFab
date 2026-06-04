@@ -26,6 +26,7 @@ CodeFab는 Java로 구현된 커스텀 스크립팅 언어 인터프리터입니
 6. [에러 처리](#에러-처리)
 7. [아키텍처](#아키텍처)
 8. [테스트](#테스트)
+9. [코드리뷰](#코드리뷰)
 
 ---
 
@@ -577,6 +578,111 @@ open build/reports/tests/test/index.html
 | `ExecutorTest` | 실행 단위 테스트 |
 | `EndToEndTest` | 전체 파이프라인 통합 테스트 |
 | `PromptShellTest` | REPL 동작 테스트 |
+
+---
+
+## 코드리뷰
+
+CodeFab은 C, C++, C#, Java, JavaScript 같은 주류 언어에서는 허용되지만 **의도적으로 막아 둔** 코드 패턴이 있다.
+단순한 기능 부재가 아니라, 각 제약에는 명확한 설계 의도가 있다.
+
+### 1. 초기화자 내 자기 참조
+
+```
+{ var a = 3; { var a = a + 3; } }
+```
+
+`Checker` 에러: `Can't read local variable in initializer.`
+
+| 언어 | 동작 결과 | 에러 여부 |
+|------|-----------|-----------|
+| JavaScript (`var`) | 블록 스코프 없음 — 내부 `var a`가 같은 변수 재선언, `a = NaN` (`undefined + 3`) | 에러 없음 (의도와 다른 결과) |
+| JavaScript (`let`) | 내부 `a`는 TDZ(Temporal Dead Zone) — 우변에서 읽는 순간 `ReferenceError` | 런타임 에러 |
+| C / C++ | 내부 `a`가 새로 선언됨. 우변의 `a`는 초기화되지 않은 자신을 읽음 → 미정의 동작(UB) | 컴파일 됨 (경고 발생 가능) |
+| Java / C# | 메서드 내부에서 같은 이름으로 섀도잉 자체를 금지 | 컴파일 에러 |
+| **CodeFab** | **정적 분석 단계에서 즉시 거부** | **CHECKER 에러** |
+
+`var a = a + 3`의 우변 `a`가 **"새로 선언되는 자기 자신"** 인지 **"바깥 스코프의 `a`"** 인지 프로그래머 입장에서 모호하다.
+CodeFab은 `initializingVar` 필드로 현재 초기화 중인 변수 이름을 추적하고, 초기화자 안에서 그 이름이 등장하면 즉시 에러로 처리한다.
+바깥 `a`가 존재하더라도 예외 없이 차단함으로써, "의미 있어 보이지만 실제로는 위험한 코드"를 컴파일 타임에 제거한다.
+
+### 2. 같은 스코프 내 변수 재선언 금지
+
+```
+var x = 1;
+var x = 2;
+```
+
+`Checker` 에러: `Already a variable with this name in this scope.`
+
+| 언어 | 동작 결과 | 에러 여부 |
+|------|-----------|-----------|
+| JavaScript (`var`) | 재선언 허용 — 조용히 덮어씀, `x = 2` | 에러 없음 (의도치 않은 덮어쓰기 위험) |
+| JavaScript (`let` / `const`) | `SyntaxError: Identifier 'x' has already been declared` | 구문 에러 |
+| C / C++ | `error: redeclaration of 'x'` | 컴파일 에러 |
+| Java | `error: variable x is already defined` | 컴파일 에러 |
+| C# | `error CS0136: A local variable named 'x' is already defined` | 컴파일 에러 |
+| **CodeFab** | **정적 분석 단계에서 즉시 거부** | **CHECKER 에러** |
+
+재선언은 오타나 복사-붙여넣기 실수에서 비롯되는 경우가 대부분이며, 의도적으로 재선언하는 경우는 극히 드물다.
+JavaScript `var`처럼 재선언을 조용히 허용하면 기존 값이 덮어써져 디버깅이 어려운 버그로 이어진다.
+CodeFab은 스코프당 선언된 이름을 `Set<String>`으로 관리하고, 같은 스코프에서 이름이 충돌하면 즉시 거부함으로써 이 클래스의 버그를 원천 차단한다.
+
+### 3. 미선언 변수 대입 금지
+
+```
+y = 5;
+```
+
+앞에 `var y` 선언이 없을 때.
+
+`Checker` 에러: `undefined variable 'y'`
+
+| 언어 | 동작 결과 | 에러 여부 |
+|------|-----------|-----------|
+| JavaScript (비엄격 모드) | 전역 객체(`window`)에 암묵적으로 `y` 속성 생성 → 암묵적 전역 | 에러 없음 (심각한 오염 위험) |
+| JavaScript (`"use strict"`) | `ReferenceError: y is not defined` | 런타임 에러 |
+| C / C++ | `error: 'y' was not declared in this scope` | 컴파일 에러 |
+| Java | `error: cannot find symbol` | 컴파일 에러 |
+| C# | `error CS0103: The name 'y' does not exist in the current context` | 컴파일 에러 |
+| **CodeFab** | **정적 분석 단계에서 즉시 거부** | **CHECKER 에러** |
+
+JavaScript 비엄격 모드의 암묵적 전역은 오타 하나가 전역 상태를 오염시키는 악명 높은 함정이다.
+CodeFab은 `var`을 통한 명시적 선언만을 허용하고, 선언 없이 변수를 읽거나 대입하려 하면 `checkDeclared`가 모든 스코프를 탐색한 뒤 없으면 에러를 발생시킨다.
+이는 대입(`=`) 연산에도 예외 없이 적용된다 — 읽기뿐 아니라 쓰기도 반드시 사전 선언이 필요하다.
+
+### 4. 숫자와 문자열의 암묵적 형변환 금지
+
+```
+print "나이: " + 5;
+```
+
+`Runtime` 에러: `Operands must be two numbers or two strings.`
+
+| 언어 | 동작 결과 | 에러 여부 |
+|------|-----------|-----------|
+| JavaScript | `"나이: 5"` — 숫자를 문자열로 자동 변환 (`1 + "1" === "11"` 혼란 유발) | 에러 없음 |
+| Java | `"나이: 5"` — `String + int` 자동 변환 (컴파일러가 `StringBuilder`로 처리) | 에러 없음 |
+| C# | `"나이: 5"` — `String.Concat`으로 처리 | 에러 없음 |
+| C | 불가 — 문자열과 정수의 `+` 자체가 포인터 연산 | 의도치 않은 포인터 연산 |
+| C++ | `std::string + int` 불가 — `std::to_string(5)` 필요 | 컴파일 에러 |
+| **CodeFab** | **런타임 단계에서 즉시 거부** | **RUNTIME 에러** |
+
+JavaScript의 `+` 연산자는 좌우 피연산자에 따라 덧셈과 문자열 이어붙이기를 오가며 혼란을 일으킨다 (`1 + "1" === "11"`, `"1" + 1 === "11"`, `1 - "1" === 0`).
+CodeFab의 `+`는 **숫자 + 숫자** 또는 **문자열 + 문자열** 중 하나만 허용한다.
+혼합 연산이 필요하다면 명시적 변환을 통해 의도를 드러내야 한다는 원칙을 따른다.
+
+### 제약사항 요약
+
+| # | 예시 코드 | 차단 단계 | 에러 메시지 |
+|---|-----------|-----------|-------------|
+| 1 | `{ var a = 3; { var a = a + 3; } }` | CHECKER | `Can't read local variable in initializer.` |
+| 2 | `var x = 1; var x = 2;` | CHECKER | `Already a variable with this name in this scope.` |
+| 3 | `y = 5;` (미선언) | CHECKER | `undefined variable 'y'` |
+| 4 | `"나이: " + 5` | RUNTIME | `Operands must be two numbers or two strings.` |
+
+**CHECKER** 에러는 실행 전 정적 분석 단계에서 잡히므로, 에러가 있으면 Executor는 전혀 실행되지 않는다.
+**RUNTIME** 에러는 실제 실행 중에 해당 표현식이 평가될 때 발생한다.
 
 ---
 
