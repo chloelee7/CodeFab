@@ -22,6 +22,7 @@ public final class Scanner {
             "true", TokenType.TRUE,
             "false", TokenType.FALSE,
             "for", TokenType.FOR,
+            "while", TokenType.WHILE,
             "var", TokenType.VAR,
             "print", TokenType.PRINT);
 

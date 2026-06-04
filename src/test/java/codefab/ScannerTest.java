@@ -65,8 +65,8 @@ class ScannerTest {
         assertEquals(
                 List.of(TokenType.VAR, TokenType.IDENTIFIER, TokenType.PRINT, TokenType.IF,
                         TokenType.ELSE, TokenType.TRUE, TokenType.FALSE, TokenType.FOR,
-                        TokenType.AND, TokenType.OR, TokenType.EOF),
-                types("var foo print if else true false for and or"));
+                        TokenType.WHILE, TokenType.AND, TokenType.OR, TokenType.EOF),
+                types("var foo print if else true false for while and or"));
     }
 
     @Test
