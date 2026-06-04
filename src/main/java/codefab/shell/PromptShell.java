@@ -31,12 +31,12 @@ public final class PromptShell {
                 prompt(buffer);
 
                 String line = in.readLine();
-                if (line == null) {
-                    break; // EOF (e.g. piped input or Ctrl-D)
+                if (isEOF(line)) {
+                    break;
                 }
 
                 String trimmed = line.trim();
-                if (buffer.length() == 0 && isCommand(trimmed)) {
+                if (buffer.isEmpty() && isCommand(trimmed)) {
                     if (handleCommand(trimmed)) {
                         break;
                     }
@@ -56,8 +56,12 @@ public final class PromptShell {
         }
     }
 
+    private static boolean isEOF(String line) {
+        return line == null;
+    }
+
     private void prompt(StringBuilder buffer) {
-        out.print(buffer.length() == 0 ? PRIMARY_PROMPT : CONTINUATION_PROMPT);
+        out.print(buffer.isEmpty() ? PRIMARY_PROMPT : CONTINUATION_PROMPT);
         out.flush();
     }
 
