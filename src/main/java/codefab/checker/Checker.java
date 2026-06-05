@@ -185,6 +185,22 @@ public final class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitIndex(Expr.Index expr) {
+        // Array bounds/type faults are runtime concerns; only resolve sub-expressions.
+        resolve(expr.target);
+        resolve(expr.index);
+        return null;
+    }
+
+    @Override
+    public Void visitIndexSet(Expr.IndexSet expr) {
+        resolve(expr.target);
+        resolve(expr.index);
+        resolve(expr.value);
+        return null;
+    }
+
+    @Override
     public Void visitGrouping(Expr.Grouping expr) {
         resolve(expr.expression);
         return null;

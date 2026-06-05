@@ -25,6 +25,24 @@ public abstract class Expr {
         default R visitCall(Call expr) {
             throw new UnsupportedOperationException("visitCall not implemented");
         }
+
+        /**
+         * Array read {@code arr[i]}. Added in the array (Stage 2) work; a default
+         * is provided so existing visitors keep compiling until the Checker and
+         * Executor override their visit passes.
+         */
+        default R visitIndex(Index expr) {
+            throw new UnsupportedOperationException("visitIndex not implemented");
+        }
+
+        /**
+         * Array write {@code arr[i] = v}. Added in the array (Stage 2) work; a
+         * default is provided so existing visitors keep compiling until the
+         * Checker and Executor override their visit passes.
+         */
+        default R visitIndexSet(IndexSet expr) {
+            throw new UnsupportedOperationException("visitIndexSet not implemented");
+        }
     }
 
     public abstract <R> R accept(Visitor<R> visitor);
@@ -146,6 +164,42 @@ public abstract class Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitCall(this);
+        }
+    }
+
+    public static final class Index extends Expr {
+        public final Expr target;
+        public final Token bracket; // the '[' token, for error line numbers
+        public final Expr index;
+
+        public Index(Expr target, Token bracket, Expr index) {
+            this.target = target;
+            this.bracket = bracket;
+            this.index = index;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitIndex(this);
+        }
+    }
+
+    public static final class IndexSet extends Expr {
+        public final Expr target;
+        public final Token bracket; // the '[' token, for error line numbers
+        public final Expr index;
+        public final Expr value;
+
+        public IndexSet(Expr target, Token bracket, Expr index, Expr value) {
+            this.target = target;
+            this.bracket = bracket;
+            this.index = index;
+            this.value = value;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitIndexSet(this);
         }
     }
 }

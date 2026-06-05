@@ -18,10 +18,46 @@ import java.util.List;
 public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     private final OutputSink output;
     private Environment environment;
+    // The closing paren of the call currently in flight, so native callables can
+    // attach a meaningful line number to runtime faults (e.g. Array(...)).
+    private Token currentCallToken;
 
     public Executor(OutputSink output, Environment globals) {
         this.output = output;
         this.environment = globals;
+        defineNatives(globals);
+    }
+
+    /** Bind native callables (e.g. {@code Array}) into the global scope so a
+     * source-level call resolves them as ordinary variables. */
+    private void defineNatives(Environment globals) {
+        globals.define("Array", new CodeFabCallable() {
+            @Override
+            public int arity() {
+                return 1;
+            }
+
+            @Override
+            public Object call(Executor executor, List<Object> arguments) {
+                Object sizeArg = arguments.get(0);
+                if (!(sizeArg instanceof Double)) {
+                    throw new InterpreterRuntimeError(currentCallToken,
+                            "Array size must be a number.");
+                }
+                double d = (double) sizeArg;
+                if (d != Math.floor(d) || Double.isInfinite(d) || d < 0) {
+                    // non-integral or negative sizes are not valid array sizes
+                    throw new InterpreterRuntimeError(currentCallToken,
+                            "Array size must be a number.");
+                }
+                return new CodeFabArray((int) d);
+            }
+
+            @Override
+            public String toString() {
+                return "<native fn Array>";
+            }
+        });
     }
 
     public void execute(List<Stmt> statements) {
@@ -256,7 +292,46 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
                     "Expected " + callable.arity() + " arguments but got "
                             + arguments.size() + ".");
         }
-        return callable.call(this, arguments);
+        // Expose this call's paren so native callables can report a line number.
+        Token previousCallToken = currentCallToken;
+        currentCallToken = expr.paren;
+        try {
+            return callable.call(this, arguments);
+        } finally {
+            currentCallToken = previousCallToken;
+        }
+    }
+
+    @Override
+    public Object visitIndex(Expr.Index expr) {
+        CodeFabArray array = asArray(evaluate(expr.target), expr.bracket);
+        int index = asIndex(array, evaluate(expr.index), expr.bracket);
+        return array.get(index);
+    }
+
+    @Override
+    public Object visitIndexSet(Expr.IndexSet expr) {
+        CodeFabArray array = asArray(evaluate(expr.target), expr.bracket);
+        int index = asIndex(array, evaluate(expr.index), expr.bracket);
+        Object value = evaluate(expr.value);
+        array.set(index, value);
+        return value; // the value of an assignment is the assigned value
+    }
+
+    private CodeFabArray asArray(Object target, Token bracket) {
+        if (target instanceof CodeFabArray) return (CodeFabArray) target;
+        throw new InterpreterRuntimeError(bracket, "Can only index arrays.");
+    }
+
+    private int asIndex(CodeFabArray array, Object index, Token bracket) {
+        if (!(index instanceof Double)) {
+            throw new InterpreterRuntimeError(bracket, "Array index must be a number.");
+        }
+        double d = (double) index;
+        if (d != Math.floor(d) || Double.isInfinite(d) || d < 0 || d >= array.size()) {
+            throw new InterpreterRuntimeError(bracket, "Array index out of bounds.");
+        }
+        return (int) d;
     }
 
     // --- semantics helpers -------------------------------------------------

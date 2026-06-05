@@ -190,6 +190,10 @@ public final class Parser {
                 Token name = ((Expr.Variable) expr).name;
                 return new Expr.Assign(name, value);
             }
+            if (expr instanceof Expr.Index) {
+                Expr.Index index = (Expr.Index) expr;
+                return new Expr.IndexSet(index.target, index.bracket, index.index, value);
+            }
             // Report but do not throw: the LHS already parsed, so we can recover.
             error(equals, "Invalid assignment target.");
         }
@@ -265,11 +269,20 @@ public final class Parser {
         return call();
     }
 
-    // call → primary ( "(" arguments? ")" )*
+    // call → primary ( "(" arguments? ")" | "[" expression "]" )*
     private Expr call() {
         Expr expr = primary();
-        while (match(LEFT_PAREN)) {
-            expr = finishCall(expr);
+        while (true) {
+            if (match(LEFT_PAREN)) {
+                expr = finishCall(expr);
+            } else if (match(LEFT_BRACKET)) {
+                Token bracket = previous();
+                Expr index = expression();
+                consume(RIGHT_BRACKET, "Expect ']' after index.");
+                expr = new Expr.Index(expr, bracket, index);
+            } else {
+                break;
+            }
         }
         return expr;
     }
