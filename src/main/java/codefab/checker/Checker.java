@@ -272,12 +272,11 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
             error(name.line, "Can't read local variable in initializer.");
             return;
         }
-        if (this.replMode && this.scopes.size() <= 1) {
-            return;
-        }
         for (Set<String> scope : this.scopes) {
             if (scope.contains(name.lexeme)) return;
         }
+        // REPL 모드: Checker가 모르는 변수는 Executor 전역 환경에 있을 수 있음
+        if (this.replMode) return;
         error(name.line, "undefined variable '" + name.lexeme + "'");
     }
 
