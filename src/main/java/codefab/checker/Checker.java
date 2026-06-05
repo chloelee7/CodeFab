@@ -3,7 +3,10 @@ package codefab.checker;
 import codefab.core.Diagnostic;
 import codefab.core.Expr;
 import codefab.core.Expr.Assign;
+import codefab.core.Expr.ArrayGet;
+import codefab.core.Expr.ArraySet;
 import codefab.core.Expr.Binary;
+import codefab.core.Expr.Call;
 import codefab.core.Expr.Grouping;
 import codefab.core.Expr.Literal;
 import codefab.core.Expr.Logical;
@@ -13,8 +16,10 @@ import codefab.core.Stmt;
 import codefab.core.Stmt.BlockStmt;
 import codefab.core.Stmt.ExpressionStmt;
 import codefab.core.Stmt.ForStmt;
+import codefab.core.Stmt.FunctionStmt;
 import codefab.core.Stmt.IfStmt;
 import codefab.core.Stmt.PrintStmt;
+import codefab.core.Stmt.ReturnStmt;
 import codefab.core.Stmt.VarStmt;
 import codefab.core.Stmt.WhileStmt;
 import codefab.core.Token;
@@ -34,6 +39,7 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     private List<Diagnostic> diagnostics;
     private Deque<Set<String>> scopes;
     private String initializingVar;
+    private boolean inFunction = false;
 
     public Checker() {
         this.replMode = false;
@@ -102,6 +108,30 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         return null;
     }
 
+    @Override
+    public Void visitCall(Call expr) {
+        expr.callee.accept(this);
+        for (Expr arg : expr.arguments) {
+            arg.accept(this);
+        }
+        return null;
+    }
+
+    @Override
+    public Void visitArrayGet(ArrayGet expr) {
+        expr.array.accept(this);
+        expr.index.accept(this);
+        return null;
+    }
+
+    @Override
+    public Void visitArraySet(ArraySet expr) {
+        expr.array.accept(this);
+        expr.index.accept(this);
+        expr.value.accept(this);
+        return null;
+    }
+
     // ── Stmt visitors ──────────────────────────────────────────────────────────
 
     @Override
@@ -162,6 +192,41 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     public Void visitWhileStmt(WhileStmt stmt) {
         stmt.condition.accept(this);
         stmt.body.accept(this);
+        return null;
+    }
+
+    @Override
+    public Void visitFunctionStmt(FunctionStmt stmt) {
+        declare(stmt.name);
+
+        // 파라미터 이름 중복 검사
+        Set<String> paramNames = new HashSet<>();
+        for (Token param : stmt.params) {
+            if (!paramNames.add(param.lexeme)) {
+                error(param.line, "Already a parameter with this name.");
+            }
+        }
+
+        boolean previousInFunction = this.inFunction;
+        this.inFunction = true;
+        withNewScope(() -> {
+            for (Token param : stmt.params) {
+                declare(param);
+            }
+            for (Stmt s : stmt.body) {
+                s.accept(this);
+            }
+        });
+        this.inFunction = previousInFunction;
+        return null;
+    }
+
+    @Override
+    public Void visitReturnStmt(ReturnStmt stmt) {
+        if (!this.inFunction) {
+            error(stmt.keyword.line, "Can't return from top-level code.");
+        }
+        visitIfPresent(stmt.value);
         return null;
     }
 
