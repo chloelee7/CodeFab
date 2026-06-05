@@ -3,6 +3,7 @@ package codefab.shell;
 import codefab.CodeFabSession;
 import codefab.core.Diagnostic;
 import codefab.core.Stmt;
+import java.util.ArrayList;
 import codefab.core.Token;
 import codefab.executor.Environment;
 import codefab.executor.Executor;
@@ -53,9 +54,16 @@ public final class DebugShell {
             return;
         }
 
-        // 파싱 + Checker
+        // 파싱 + Checker + ConstantFolder (진단 있으면 중단)
         CodeFabSession session = new CodeFabSession();
-        this.statements = session.getStatements(source);
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        this.statements = session.getStatements(source, diagnostics);
+        if (!diagnostics.isEmpty()) {
+            for (Diagnostic d : diagnostics) {
+                out.println(d.render());
+            }
+            return;
+        }
         if (statements.isEmpty()) {
             out.println("[DEBUG] 실행할 구문이 없습니다.");
             return;
@@ -144,7 +152,7 @@ public final class DebugShell {
     private boolean doContinue() {
         while (cursor < statements.size()) {
             int line = getLine(statements.get(cursor));
-            if (cursor > 0 && breakpoints.contains(line)) {
+            if (breakpoints.contains(line)) {
                 out.println("[DEBUG] " + line + "번째 줄에서 정지 (breakpoint) → " + stmtText(statements.get(cursor)));
                 printWatches();
                 return true;
@@ -153,7 +161,6 @@ public final class DebugShell {
             cursor++;
             printWatches();
         }
-        out.println("[DEBUG] 실행 완료.");
         return false;
     }
 
@@ -163,6 +170,10 @@ public final class DebugShell {
             executor.execute(List.of(stmt));
         } catch (codefab.core.InterpreterRuntimeError e) {
             out.println("[RUNTIME ERROR] " + e.getMessage());
+        } catch (RuntimeException e) {
+            // ReturnException(package-private) 포함 — top-level return 등 비정상 흐름 처리
+            String msg = e.getMessage();
+            out.println("[RUNTIME ERROR] " + (msg != null ? msg : e.getClass().getSimpleName()));
         }
         for (String o : outputSink.lines()) {
             out.println(o);

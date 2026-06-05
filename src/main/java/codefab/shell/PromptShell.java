@@ -33,12 +33,23 @@ public final class PromptShell {
                 out.flush();
 
                 String line = in.readLine();
-                if (line == null) break;
+                if (line == null) {
+                    // EOF: pendingElse 상태라면 완성된 if 블록 실행 후 종료
+                    if (pendingElse && buffer.length() > 0) {
+                        execute(buffer.toString());
+                    }
+                    break;
+                }
 
                 String trimmed = line.trim();
 
-                // 명령어 처리 (버퍼가 비어있고 pendingElse 아닐 때만)
-                if (buffer.isEmpty() && !pendingElse && isCommand(trimmed)) {
+                // 명령어 처리 — pendingElse 상태에서도 단독 셸 명령은 우선 처리
+                if (isCommand(trimmed) && (buffer.isEmpty() || pendingElse)) {
+                    if (pendingElse && buffer.length() > 0) {
+                        execute(buffer.toString());
+                        buffer.setLength(0);
+                        pendingElse = false;
+                    }
                     if (handleCommand(trimmed)) break;
                     continue;
                 }

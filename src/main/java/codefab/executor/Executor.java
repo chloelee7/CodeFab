@@ -18,6 +18,9 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     // Array() 내장 함수 식별용 sentinel
     private static final Object ARRAY_BUILTIN = new Object();
 
+    private static final int MAX_CALL_DEPTH = 500;
+    private int callDepth = 0;
+
     public Executor(OutputSink output, Environment globals) {
         this.output = output;
         this.environment = globals;
@@ -241,12 +244,22 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
                 throw new InterpreterRuntimeError(expr.paren,
                         "Array size must be a number.");
             }
-            int size = (int) (double) (Double) sizeObj;
+            double sizeDouble = (Double) sizeObj;
+            if (sizeDouble != Math.floor(sizeDouble) || Double.isInfinite(sizeDouble)) {
+                throw new InterpreterRuntimeError(expr.paren,
+                        "Array size must be an integer.");
+            }
+            int size = (int) sizeDouble;
             if (size < 0) {
                 throw new InterpreterRuntimeError(expr.paren,
                         "Array size must be non-negative.");
             }
             return new ArrayList<>(Collections.nCopies(size, null));
+        }
+
+        if (callee == ARRAY_BUILTIN) {
+            throw new InterpreterRuntimeError(expr.paren,
+                    "Cannot use 'Array' as a value; use Array(...) to create an array.");
         }
 
         if (!(callee instanceof CodeFabFunction)) {
@@ -265,17 +278,25 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
                     "Expected " + function.arity() + " arguments but got " + args.size() + ".");
         }
 
+        if (callDepth >= MAX_CALL_DEPTH) {
+            throw new InterpreterRuntimeError(expr.paren,
+                    "Maximum call depth (" + MAX_CALL_DEPTH + ") exceeded.");
+        }
+
         Environment callEnv = new Environment(function.closure);
         for (int i = 0; i < function.declaration.params.size(); i++) {
             callEnv.define(function.declaration.params.get(i).lexeme, args.get(i));
         }
 
+        callDepth++;
         try {
             executeBlock(function.declaration.body, callEnv);
+            return null;
         } catch (ReturnException ret) {
             return ret.value;
+        } finally {
+            callDepth--;
         }
-        return null;
     }
 
     @Override
@@ -294,7 +315,12 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         }
 
         List<Object> list = (List<Object>) arr;
-        int i = (int) (double) (Double) idx;
+        double idxDouble = (Double) idx;
+        if (idxDouble != Math.floor(idxDouble) || Double.isInfinite(idxDouble)) {
+            throw new InterpreterRuntimeError(expr.bracket,
+                    "Array index must be an integer.");
+        }
+        int i = (int) idxDouble;
         if (i < 0 || i >= list.size()) {
             throw new InterpreterRuntimeError(expr.bracket,
                     "Array index " + i + " out of bounds (size " + list.size() + ").");
@@ -319,7 +345,12 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         }
 
         List<Object> list = (List<Object>) arr;
-        int i = (int) (double) (Double) idx;
+        double idxDouble = (Double) idx;
+        if (idxDouble != Math.floor(idxDouble) || Double.isInfinite(idxDouble)) {
+            throw new InterpreterRuntimeError(expr.bracket,
+                    "Array index must be an integer.");
+        }
+        int i = (int) idxDouble;
         if (i < 0 || i >= list.size()) {
             throw new InterpreterRuntimeError(expr.bracket,
                     "Array index " + i + " out of bounds (size " + list.size() + ").");
@@ -353,6 +384,8 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     private boolean isEqual(Object a, Object b) {
         if (a == null && b == null) return true;
         if (a == null) return false;
+        // 배열은 참조(identity) 기준 비교 — Java 구조적 동등성 누출 방지
+        if (a instanceof List || b instanceof List) return a == b;
         return a.equals(b);
     }
 
@@ -366,14 +399,27 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         throw new InterpreterRuntimeError(operator, "Operands must be numbers.");
     }
 
+    @SuppressWarnings("unchecked")
     public static String stringify(Object value) {
         if (value == null) return "nil";
+        if (value == ARRAY_BUILTIN) return "<Array builtin>";
         if (value instanceof Double) {
             double d = (Double) value;
             if (d == Math.floor(d) && !Double.isInfinite(d) && !Double.isNaN(d)) {
                 return Long.toString((long) d);
             }
             return Double.toString(d);
+        }
+        if (value instanceof List) {
+            // 배열 요소를 CodeFab 값 포맷으로 출력 (null → nil)
+            List<Object> list = (List<Object>) value;
+            StringBuilder sb = new StringBuilder("[");
+            for (int i = 0; i < list.size(); i++) {
+                if (i > 0) sb.append(", ");
+                sb.append(stringify(list.get(i)));
+            }
+            sb.append("]");
+            return sb.toString();
         }
         return value.toString();
     }

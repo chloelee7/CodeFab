@@ -257,8 +257,8 @@ class EndToEndTest {
             @DisplayName("0으로 나누기")
             @Test
             void divisionByZero() {
-                // 상수 폴딩이 컴파일 타임에 탐지하므로 CHECKER 단계에서 실패
-                assertFailsAtStage("print 3 / 0;", Diagnostic.Stage.CHECKER, "Division by zero.");
+                // 상수 폴딩은 0 나눗셈 시 폴딩만 생략하고 런타임에 위임
+                assertFailsAtStage("print 3 / 0;", Diagnostic.Stage.RUNTIME, "Division by zero.");
             }
 
             @DisplayName("비교 연산은 숫자를 요구한다")

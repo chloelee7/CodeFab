@@ -1,6 +1,5 @@
 package codefab.checker;
 
-import codefab.core.Diagnostic;
 import codefab.core.Expr;
 import codefab.core.Expr.ArrayGet;
 import codefab.core.Expr.ArraySet;
@@ -25,10 +24,7 @@ import java.util.List;
  */
 public class ConstantFolder implements Expr.Visitor<Expr> {
 
-    private List<Diagnostic> diagnostics;
-
-    public List<Stmt> fold(List<Stmt> statements, List<Diagnostic> diagnostics) {
-        this.diagnostics = diagnostics;
+    public List<Stmt> fold(List<Stmt> statements) {
         List<Stmt> result = new ArrayList<>();
         for (Stmt stmt : statements) {
             result.add(foldStmt(stmt));
@@ -148,18 +144,11 @@ public class ConstantFolder implements Expr.Visitor<Expr> {
             case MINUS: return lv - rv;
             case STAR:  return lv * rv;
             case SLASH:
-                if (rv == 0.0) {
-                    diagnostics.add(new Diagnostic(
-                            Diagnostic.Stage.CHECKER, op.line, "Division by zero."));
-                    return null;
-                }
+                // 0 나눗셈은 폴딩만 생략 — 런타임이 오류를 처리하게 둠
+                if (rv == 0.0) return null;
                 return lv / rv;
             case PERCENT:
-                if (rv == 0.0) {
-                    diagnostics.add(new Diagnostic(
-                            Diagnostic.Stage.CHECKER, op.line, "Division by zero."));
-                    return null;
-                }
+                if (rv == 0.0) return null;
                 return lv % rv;
             case GREATER:       return lv > rv;
             case GREATER_EQUAL: return lv >= rv;
