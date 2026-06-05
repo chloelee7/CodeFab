@@ -2,6 +2,7 @@ package codefab.assembler;
 
 import static codefab.core.TokenType.AND;
 import static codefab.core.TokenType.ARRAY;
+import static codefab.core.TokenType.COMMA;
 import static codefab.core.TokenType.BANG;
 import static codefab.core.TokenType.BANG_EQUAL;
 import static codefab.core.TokenType.ELSE;
@@ -88,17 +89,17 @@ public final class Parser {
     }
 
     private Stmt functionDeclaration() {
-        Token name = expectAndConsume(IDENTIFIER, "Expected function name after 'Func'");
-        expectAndConsume(LEFT_PAREN, "Expected '(' after function name");
+        Token name = expectAndConsume(IDENTIFIER, DiagnosticMessage.ERR_FUNCTION_NAME);
+        expectAndConsume(LEFT_PAREN, DiagnosticMessage.ERR_LEFT_PAREN_AFTER_FUNC_NAME);
 
         List<Token> params = new ArrayList<>();
         if (!currentTokenIs(RIGHT_PAREN)) {
             do {
-                params.add(expectAndConsume(IDENTIFIER, "Expected parameter name"));
-            } while (matchAndAdvance(codefab.core.TokenType.COMMA));
+                params.add(expectAndConsume(IDENTIFIER, DiagnosticMessage.ERR_PARAMETER_NAME));
+            } while (matchAndAdvance(COMMA));
         }
-        expectAndConsume(RIGHT_PAREN, "Expected ')' after parameters");
-        expectAndConsume(LEFT_BRACE, "Expected '{' before function body");
+        expectAndConsume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_PARAMS);
+        expectAndConsume(LEFT_BRACE, DiagnosticMessage.ERR_LEFT_BRACE_BEFORE_FUNC_BODY);
         List<Stmt> body = block();
         return new Stmt.FunctionStmt(name, params, body);
     }
@@ -141,7 +142,7 @@ public final class Parser {
         if (!currentTokenIs(SEMICOLON)) {
             value = expression();
         }
-        expectAndConsume(SEMICOLON, "Expected ';' after return value");
+        expectAndConsume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_RETURN);
         return new Stmt.ReturnStmt(keyword, value);
     }
 
@@ -274,7 +275,7 @@ public final class Parser {
             } else if (matchAndAdvance(LEFT_BRACKET)) {
                 Token bracket = previousToken();
                 Expr index = expression();
-                expectAndConsume(RIGHT_BRACKET, "Expected ']' after index");
+                expectAndConsume(RIGHT_BRACKET, DiagnosticMessage.ERR_RIGHT_BRACKET_AFTER_INDEX);
                 expr = new Expr.ArrayGet(expr, index, bracket);
             } else {
                 break;
@@ -288,9 +289,9 @@ public final class Parser {
         if (!currentTokenIs(RIGHT_PAREN)) {
             do {
                 arguments.add(expression());
-            } while (matchAndAdvance(codefab.core.TokenType.COMMA));
+            } while (matchAndAdvance(COMMA));
         }
-        Token paren = expectAndConsume(RIGHT_PAREN, "Expected ')' after arguments");
+        Token paren = expectAndConsume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_ARGS);
         return new Expr.Call(callee, paren, arguments);
     }
 

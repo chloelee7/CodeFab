@@ -257,11 +257,6 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             return new ArrayList<>(Collections.nCopies(size, null));
         }
 
-        if (callee == ARRAY_BUILTIN) {
-            throw new InterpreterRuntimeError(expr.paren,
-                    "Cannot use 'Array' as a value; use Array(...) to create an array.");
-        }
-
         if (!(callee instanceof CodeFabFunction)) {
             throw new InterpreterRuntimeError(expr.paren,
                     "Can only call functions.");
