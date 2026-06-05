@@ -27,7 +27,8 @@ description: "트리워킹 인터프리터의 Assembler 유닛(Scanner + Parser 
 - 1자/2자 토큰은 `match('=')` 선읽기로 구분(`!`/`!=`, `=`/`==`, `<`/`<=`, `>`/`>=`).
 - 문자열은 `"` 기반. 닫히지 않으면 `Unterminated string.` 진단. literal은 따옴표를 벗긴 내용.
 - 숫자는 `double`로 저장. 소수부는 `.` 뒤에 숫자가 올 때만 소비(`peekNext`로 확인).
-- 식별자는 `[A-Za-z_][A-Za-z0-9_]*`. 키워드 맵으로 IDENTIFIER와 구분(`and or if else true false for var print`).
+- 식별자는 `[A-Za-z_][A-Za-z0-9_]*`. 키워드 맵으로 IDENTIFIER와 구분(`and or if else true false for while var print Func return`). `Func`는 대문자 F, `return`은 소문자 — 대소문자 그대로 매칭. `Array`는 키워드가 아님(IDENTIFIER, 네이티브 함수).
+- `[`→`LEFT_BRACKET`, `]`→`RIGHT_BRACKET`(배열 인덱스). `%`→`PERCENT`(없으면 추가).
 - 그 외 문자는 `Unexpected character '<c>'.` 진단.
 
 ## Parser — 재귀 하강
@@ -54,6 +55,24 @@ private Expr term() {
 **대입은 우결합이며 LHS를 먼저 파싱한 뒤 검증한다.** `or()`로 좌변을 파싱하고, `=`가 오면 `assignment()`를 재귀 호출해 값을 얻은 뒤 좌변이 `Variable`인지 본다. 아니면 `Invalid assignment target.`을 보고하되 **던지지 않고** 복구한다(좌변은 이미 유효하게 파싱됨).
 
 **제어문**: `ifStmt`는 then/else를 `statement()`로 받는다. else는 항상 가장 가까운 if에 결합되므로 별도 처리 없이 재귀 구조가 dangling-else를 올바르게 해결한다. `forStmt`는 초기화/조건/증가가 모두 생략 가능(`( varDecl | exprStmt | ";" ) expr? ";" expr? )`)하며, 비어 있으면 null을 채운다.
+
+## 함수 · 배열 문법 (신규)
+
+**함수 선언** (`declaration()`에서 `FUNC` 매칭): `Func` IDENTIFIER `(` 파라미터목록 `)` `{` 블록 `}`.
+- 함수 이름이 없으면 `Expect function name.`, 파라미터 이름이 없으면 `Expect parameter name.`. 파라미터는 `,`로 구분, 0개 이상. `FunctionStmt(name, params, body)` 생성(body는 block의 문 리스트).
+
+**return 문** (`statement()`에서 `RETURN` 매칭): `return` expr? `;`. 값 없으면 `ReturnStmt(keyword, null)`. (함수 외부 return은 파서가 아닌 Checker가 잡는다.)
+
+**호출과 인덱스 — primary 뒤의 후위 연쇄** (`call()` 레벨, unary와 primary 사이): primary를 파싱한 뒤 루프로 `(` 또는 `[`를 처리한다.
+```
+call → primary ( "(" arguments? ")" | "[" expression "]" )*
+```
+- `(`: 인자들을 `,`로 파싱 → `)` 없으면 `Expect ')' after arguments.` → `Call(callee, paren, args)`.
+- `[`: 인덱스식 파싱 → `]` 없으면 `Expect ']' after index.` → `Index(target, bracket, index)`.
+
+**인덱스 대입**: 대입 처리(`assignment()`)에서 좌변이 `Index`이고 `=`가 오면 `IndexSet(target, bracket, index, value)`를 만든다. 좌변이 `Variable`이면 기존 `Assign`. 그 외 좌변에 `=`면 `Invalid assignment target.`.
+
+**Stmt 줄번호**: 각 Stmt 생성 시 시작 토큰의 `line`을 보존한다(디버그·파일모드 런타임 오류가 Stmt 줄번호를 요구 — 계약 §3).
 
 ## 진단과 에러 복구
 

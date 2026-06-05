@@ -106,8 +106,11 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         return null;
     }
 
-    /** Run statements in a fresh environment, always restoring the previous one. */
-    private void executeBlock(List<Stmt> statements, Environment blockEnv) {
+    /**
+     * Run statements in a fresh environment, always restoring the previous one.
+     * Package-visible so {@link CodeFabFunction} can run a body in its call frame.
+     */
+    void executeBlock(List<Stmt> statements, Environment blockEnv) {
         Environment previous = this.environment;
         try {
             this.environment = blockEnv;
@@ -117,6 +120,24 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         } finally {
             this.environment = previous;
         }
+    }
+
+    @Override
+    public Void visitFunctionStmt(Stmt.FunctionStmt stmt) {
+        // The current environment is the closure: a recursive call sees its own
+        // name because the binding is added to that same environment.
+        CodeFabFunction function = new CodeFabFunction(stmt, environment);
+        environment.define(stmt.name.lexeme, function);
+        return null;
+    }
+
+    @Override
+    public Void visitReturnStmt(Stmt.ReturnStmt stmt) {
+        Object value = null; // `return;` yields nil
+        if (stmt.value != null) {
+            value = evaluate(stmt.value);
+        }
+        throw new Return(value);
     }
 
     // --- expressions -------------------------------------------------------
@@ -217,6 +238,25 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             default:
                 throw new InterpreterRuntimeError(op, "Unknown binary operator.");
         }
+    }
+
+    @Override
+    public Object visitCall(Expr.Call expr) {
+        Object callee = evaluate(expr.callee);
+        if (!(callee instanceof CodeFabCallable)) {
+            throw new InterpreterRuntimeError(expr.paren, "Can only call functions.");
+        }
+        CodeFabCallable callable = (CodeFabCallable) callee;
+        java.util.List<Object> arguments = new java.util.ArrayList<>();
+        for (Expr argument : expr.arguments) {
+            arguments.add(evaluate(argument)); // left-to-right
+        }
+        if (arguments.size() != callable.arity()) {
+            throw new InterpreterRuntimeError(expr.paren,
+                    "Expected " + callable.arity() + " arguments but got "
+                            + arguments.size() + ".");
+        }
+        return callable.call(this, arguments);
     }
 
     // --- semantics helpers -------------------------------------------------

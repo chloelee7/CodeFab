@@ -39,6 +39,7 @@ public final class Parser {
 
     private Stmt declaration() {
         try {
+            if (match(FUNC)) return functionDeclaration();
             if (match(VAR)) return varDeclaration();
             return statement();
         } catch (ParseError error) {
@@ -47,34 +48,67 @@ public final class Parser {
         }
     }
 
+    private Stmt functionDeclaration() {
+        int line = previous().line; // the 'Func' keyword
+        Token name = consume(IDENTIFIER, "Expect function name.");
+        consume(LEFT_PAREN, "Expect '(' after function name.");
+        List<Token> params = new ArrayList<>();
+        if (!check(RIGHT_PAREN)) {
+            do {
+                params.add(consume(IDENTIFIER, "Expect parameter name."));
+            } while (match(COMMA));
+        }
+        consume(RIGHT_PAREN, "Expect ')' after parameters.");
+        consume(LEFT_BRACE, "Expect '{' before function body.");
+        List<Stmt> body = block();
+        return new Stmt.FunctionStmt(line, name, params, body);
+    }
+
     private Stmt varDeclaration() {
+        int line = previous().line; // the 'var' keyword
         Token name = consume(IDENTIFIER, "Expect variable name.");
         Expr initializer = null;
         if (match(EQUAL)) {
             initializer = expression();
         }
         consume(SEMICOLON, "Expect ';' after variable declaration.");
-        return new Stmt.VarStmt(name, initializer);
+        return new Stmt.VarStmt(line, name, initializer);
     }
 
     // --- statements --------------------------------------------------------
 
     private Stmt statement() {
         if (match(PRINT)) return printStatement();
+        if (match(RETURN)) return returnStatement();
         if (match(IF)) return ifStatement();
         if (match(FOR)) return forStatement();
         if (match(WHILE)) return whileStatement();
-        if (match(LEFT_BRACE)) return new Stmt.BlockStmt(block());
+        if (match(LEFT_BRACE)) {
+            int line = previous().line;
+            return new Stmt.BlockStmt(line, block());
+        }
         return expressionStatement();
     }
 
     private Stmt printStatement() {
+        int line = previous().line; // the 'print' keyword
         Expr value = expression();
         consume(SEMICOLON, "Expect ';' after value.");
-        return new Stmt.PrintStmt(value);
+        return new Stmt.PrintStmt(line, value);
+    }
+
+    private Stmt returnStatement() {
+        Token keyword = previous(); // the 'return' keyword
+        Expr value = null;
+        if (!check(SEMICOLON)) {
+            value = expression();
+        }
+        consume(SEMICOLON, "Expect ';' after return value.");
+        return new Stmt.ReturnStmt(keyword.line, keyword, value);
     }
 
     private Stmt ifStatement() {
+        int line = previous().line; // the 'if' keyword
         consume(LEFT_PAREN, "Expect '(' after 'if'.");
         Expr condition = expression();
         consume(RIGHT_PAREN, "Expect ')' after if condition.");
@@ -83,10 +117,11 @@ public final class Parser {
         if (match(ELSE)) {
             elseBranch = statement();
         }
-        return new Stmt.IfStmt(condition, thenBranch, elseBranch);
+        return new Stmt.IfStmt(line, condition, thenBranch, elseBranch);
     }
 
     private Stmt forStatement() {
+        int line = previous().line; // the 'for' keyword
         consume(LEFT_PAREN, "Expect '(' after 'for'.");
 
         Stmt initializer;
@@ -111,15 +146,16 @@ public final class Parser {
         consume(RIGHT_PAREN, "Expect ')' after for clauses.");
 
         Stmt body = statement();
-        return new Stmt.ForStmt(initializer, condition, increment, body);
+        return new Stmt.ForStmt(line, initializer, condition, increment, body);
     }
 
     private Stmt whileStatement() {
+        int line = previous().line; // the 'while' keyword
         consume(LEFT_PAREN, "Expect '(' after 'while'.");
         Expr condition = expression();
         consume(RIGHT_PAREN, "Expect ')' after condition.");
         Stmt body = statement();
-        return new Stmt.WhileStmt(condition, body);
+        return new Stmt.WhileStmt(line, condition, body);
     }
 
     private List<Stmt> block() {
@@ -133,9 +169,10 @@ public final class Parser {
     }
 
     private Stmt expressionStatement() {
+        int line = peek().line; // first token of the expression
         Expr expr = expression();
         consume(SEMICOLON, "Expect ';' after value.");
-        return new Stmt.ExpressionStmt(expr);
+        return new Stmt.ExpressionStmt(line, expr);
     }
 
     // --- expressions -------------------------------------------------------
@@ -225,7 +262,27 @@ public final class Parser {
             Expr right = unary();
             return new Expr.Unary(operator, right);
         }
-        return primary();
+        return call();
+    }
+
+    // call → primary ( "(" arguments? ")" )*
+    private Expr call() {
+        Expr expr = primary();
+        while (match(LEFT_PAREN)) {
+            expr = finishCall(expr);
+        }
+        return expr;
+    }
+
+    private Expr finishCall(Expr callee) {
+        List<Expr> arguments = new ArrayList<>();
+        if (!check(RIGHT_PAREN)) {
+            do {
+                arguments.add(expression());
+            } while (match(COMMA));
+        }
+        Token paren = consume(RIGHT_PAREN, "Expect ')' after arguments.");
+        return new Expr.Call(callee, paren, arguments);
     }
 
     private Expr primary() {
@@ -294,10 +351,13 @@ public final class Parser {
         while (!isAtEnd()) {
             if (previous().type == SEMICOLON) return;
             switch (peek().type) {
+                case FUNC:
                 case VAR:
                 case FOR:
                 case IF:
+                case WHILE:
                 case PRINT:
+                case RETURN:
                     return;
                 default:
                     advance();

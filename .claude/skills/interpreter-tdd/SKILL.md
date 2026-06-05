@@ -17,7 +17,7 @@ description: "인터프리터/컴파일러 스테이지에 대한 JUnit 5 실패
 
 | 계층 | 대상 | 진입점 |
 |------|------|--------|
-| 단위 | Scanner, Parser, Checker | `new Scanner(src, diags)`, `new Parser(tokens, diags)`, `new Checker(diags).check(stmts)` |
+| 단위 | Scanner, Parser, Checker | `new Scanner(src, diags)`, `new Parser(tokens, diags)`, `new Checker(diags).check(stmts)` → `CheckResult`(program/locals) |
 | 통합 | 전체 파이프라인 | `new CodeFab().run(src)` → `RunResult` |
 | REPL | 세션·셸 | `new CodeFabSession()`, `PromptShell` |
 
@@ -48,8 +48,22 @@ assertTrue(r.diagnostics().stream()
 - **런타임 오류**: 미정의 변수(읽기·대입), 타입 혼합 +, 단항 - 비숫자, 0 나눗셈, 비교 비숫자.
 - **스캐너 진단**: 알 수 없는 문자, 미종료 문자열, 주석 무시, 줄 번호 추적.
 - **REPL**: 입력 간 변수 유지, 멀티라인 블록 누적, 진단 후에도 세션 생존.
+- **함수**: 선언+호출(`add(3,7)`→10), `return ;`→nil, 반환값 대입(`ret=add(1,2)`), 재귀(`fact(5)`→120). 오류: 함수 외부 return(CHECKER `Can't return from top-level code.`), 파라미터 중복(CHECKER `Already a variable...`), 함수 아닌 대상 호출(RUNTIME `Can only call functions.`), 인자 개수 불일치(RUNTIME `Expected <n> arguments but got <m>.`).
+- **정적 배열**: `Array(3)` 생성·초기 null, 인덱스 읽기/쓰기, 식 인덱스(`arr[i-1]`). 오류: 범위 초과(`Array index out of bounds.`), 비숫자 인덱스(`Array index must be a number.`), 배열 아닌 대상(`Can only index arrays.`), 비숫자 크기(`Array size must be a number.`).
+- **공장 제어 쉘**: 파일 모드(파일 부재 메시지, 런타임 오류 줄번호 포함), 디버그 모드(step/next/break/continue/breakpoints/remove, watch/unwatch/watches/inspect) — 스크립트된 입력으로 통합 테스트.
+
+## 최적화 Test Double 검증 (계약 §9-3)
+
+스펙은 두 최적화를 **Test Double로 검증**하라 명시한다. 동작 결과만이 아니라 "최적화가 실제로 일어났는지"를 단언한다.
+
+- **정적 바인딩**: Environment의 `enclosing` 추적 횟수를 세는 스파이를 주입(또는 카운팅 서브클래스). 깊게 중첩된 스코프에서 변수 접근 시, 거리 기반 접근이 체인을 **거슬러 올라가지 않음**(스파이 카운트가 distance 이하)을 단언. distance 맵에 기대 거리가 들어 있는지도 직접 단언 가능(`CheckResult.locals()`).
+- **상수 폴딩**: 연산 횟수를 세는 스파이(예: Binary 평가 카운터) 또는 폴딩 전/후 AST의 Binary 노드 수를 비교. 루프 본문의 상수식이 단일 `Literal`로 접혀 **실행 중 연산 0회**임을 단언(`(1 - 2*3*4*5/6 + 7+8+9) % 1000 % 30` → 리터럴 5). 0 나누기 부분식은 폴딩되지 않아 런타임 오류 의미가 보존됨도 단언.
 
 > 규칙을 빠뜨리지 않으려면 스펙을 위→아래로 훑으며 각 항목에 대응 테스트가 있는지 대조한다. 일반화: "이 스펙 문장이 깨지면 어떤 단언이 실패하는가?"에 답이 없으면 테스트가 빠진 것이다.
+
+## 유의사항 (3일차~)
+
+PDF 유의사항: 3일차부터는 **TDD 필수가 아니다**(테스트를 구현과 함께/뒤에 써도 됨). 단 (1) **기존 UnitTest는 유지보수**되어야 하고(약화 금지), (2) **추가 기능마다 UnitTest를 반드시 생성**한다. test-author는 신규 기능별 테스트 파일(`FunctionTest`, `ArrayTest`, `OptimizationTest`, `DebugModeTest`, `FileModeTest`)을 추가한다.
 
 ## 회귀·신규 기능
 

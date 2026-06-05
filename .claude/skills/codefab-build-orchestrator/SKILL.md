@@ -1,6 +1,6 @@
 ---
 name: codefab-build-orchestrator
-description: "CodeFab Java 인터프리터(Assembler→Checker→Executor 파이프라인) 개발 에이전트 팀을 조율하는 오케스트레이터. 인터프리터/스캐너/파서/체커/실행기/REPL 구현·확장, 새 토큰·문법·연산자·문(statement) 추가, AST 노드 추가, 진단 메시지 변경, 인터프리터 버그 수정 요청 시 사용. 후속 작업: 인터프리터 결과 수정, 특정 유닛(스캐너/파서/체커/실행기/셸)만 다시 구현, 테스트 추가, 기능 보완·업데이트·재실행, 이전 구현 개선 요청 시에도 반드시 이 스킬을 사용. 단순 코드 질문은 직접 응답 가능."
+description: "CodeFab Java 인터프리터(Assembler→Checker→Executor 파이프라인) 개발 에이전트 팀을 조율하는 오케스트레이터. 인터프리터/스캐너/파서/체커/실행기/REPL 구현·확장, 새 토큰·문법·연산자·문(statement) 추가, AST 노드 추가, 진단 메시지 변경, 인터프리터 버그 수정 요청 시 사용. 함수(선언·호출·return·재귀), 정적 배열(Array·인덱스), 실행 전 최적화(정적 바인딩 distance·상수 폴딩), 공장 제어 쉘(파일 모드·디버그 모드: stepping·breakpoint·watch) 같은 기능 추가도 포함. 후속 작업: 인터프리터 결과 수정, 특정 유닛(스캐너/파서/체커/실행기/셸/디버거)만 다시 구현, 테스트 추가, 기능 보완·업데이트·재실행, 이전 구현 개선 요청 시에도 반드시 이 스킬을 사용. 단순 코드 질문은 직접 응답 가능."
 ---
 
 # CodeFab Build Orchestrator
@@ -19,11 +19,11 @@ CodeFab 트리워킹 인터프리터의 에이전트 팀을 조율하여 TDD 방
 
 | 팀원 | 타입 | 역할 | 스킬 | 출력 |
 |------|------|------|------|------|
-| test-author | general-purpose (opus) | 실패 테스트 선작성 | interpreter-tdd | `src/test/java/codefab/*Test.java` |
-| assembler-engineer | general-purpose (opus) | Scanner·Parser·AST | assembler-construction | `core/Token*,Expr,Stmt`, `assembler/*` |
-| checker-engineer | general-purpose (opus) | 정적 의미 분석 | checker-analysis | `checker/Checker.java` |
-| executor-engineer | general-purpose (opus) | Environment·평가 | executor-evaluation | `executor/*` |
-| shell-integrator | general-purpose (opus) | facade·REPL·CLI | shell-repl-construction | `codefab/*`, `shell/*` |
+| test-author | general-purpose (opus) | 기능별 UnitTest(+Test Double) | interpreter-tdd | `src/test/java/codefab/*Test.java` |
+| assembler-engineer | general-purpose (opus) | Scanner·Parser·AST(함수/배열/Call/Index) | assembler-construction | `core/Token*,Expr,Stmt`, `assembler/*` |
+| checker-engineer | general-purpose (opus) | 정적 분석 + 리졸버(distance) + 옵티마이저(폴딩) | checker-analysis | `checker/Checker.java`, `checker/CheckResult.java` |
+| executor-engineer | general-purpose (opus) | Environment·평가·함수·배열·distance·디버그 훅 | executor-evaluation | `executor/*` |
+| shell-integrator | general-purpose (opus) | facade·REPL·파일/디버그 모드 | shell-repl-construction | `codefab/*`, `shell/*` (Debugger) |
 | qa-verifier | general-purpose (opus) | 경계면 정합성·빌드 | interpreter-qa | `_workspace/qa_report.md` |
 
 > 모든 Agent/TeamCreate 호출에 `model: "opus"`를 명시한다.
@@ -40,6 +40,18 @@ CodeFab 트리워킹 인터프리터의 에이전트 팀을 조율하여 TDD 방
    - **구현 존재 + 부분 수정 요청** (예: "파서에 % 연산자만 추가") → 부분 재실행. 영향받는 유닛 엔지니어 + test-author + qa-verifier만 활성화하고, 변경되는 계약을 먼저 식별
    - **구현 존재 + 광범위한 새 요청** → 새 실행. 기존 `_workspace/`를 `_workspace_{YYYYMMDD_HHMMSS}/`로 이동 후 Phase 1
 3. 부분 재실행 시: 변경이 공유 계약(Token/AST/Diagnostic)에 닿는지 먼저 판정한다. 닿으면 `references/shared-contracts.md`를 먼저 갱신하고 영향받는 모든 유닛에 통지한다.
+
+### Phase 0.5: 대규모 다기능 요청은 기능별로 단계화
+
+여러 기능군을 한 번에 추가하라는 요청(예: 함수+배열+최적화+디버그)은 **기능별 순차 단계**로 쪼갠다. 각 단계는 그 자체로 Phase 1~5를 한 사이클 돌고, **단계 끝마다 `./gradlew test` 전체 통과를 확인**한 뒤 다음 단계로 넘어간다. 한 번에 모든 계약을 흔들면 경계면 회귀를 디버깅하기 어렵다.
+
+권장 순서(의존도·위험도 기준):
+1. **함수** — Func/return 토큰, FunctionStmt/ReturnStmt/Call, 클로저, 함수 정적/런타임 오류.
+2. **정적 배열** — `[`·`]` 토큰, Index/IndexSet, 네이티브 Array, 배열 런타임 오류.
+3. **실행 전 최적화** — Checker를 리졸버+옵티마이저로(distance 맵 + 상수 폴딩), Environment getAt/assignAt, Test Double 검증. (함수/배열이 자리 잡은 AST 위에서 해석/폴딩해야 안전.)
+4. **공장 제어 쉘** — run/debug 서브커맨드, 파일 모드, 디버거(ExecutionObserver 훅 + Command 명령).
+
+각 단계는 계약(`shared-contracts.md`)의 해당 절을 단일 진실로 삼는다. 단계 진입 시 그 절을 팀에 다시 짚어준다.
 
 ### Phase 1: 준비
 
@@ -88,7 +100,13 @@ TaskCreate(tasks: [
 1. 모든 작업 완료 확인 (`TaskGet`)
 2. qa-verifier가 `./gradlew test`로 전체 테스트 통과를 확인하고 `_workspace/qa_report.md`에 통과/실패/미검증을 기록
 3. 실패가 있으면 해당 유닛 엔지니어에게 1회 재작업 요청(최대 재시도 2회). 재실패 시 리포트에 명시하고 진행
-4. Definition of Done 확인: 정상 테스트 통과 / 오류 테스트 진단 발생 / REPL이 `var a=5; var b=10; print a+b;`에 15 출력 / 멀티라인 블록 동작 / README 존재
+4. Definition of Done 확인(기본): 정상 테스트 통과 / 오류 테스트 진단 발생 / REPL이 `var a=5; var b=10; print a+b;`에 15 출력 / 멀티라인 블록 동작 / README 존재
+5. 기능별 DoD(해당 단계에서만):
+   - **함수**: `Func add(a,b){return a+b;} print add(3,7);`→10, `fact(5)`→120, `return;`→nil, 함수 외부 return·파라미터 중복(CHECKER), 함수 아닌 대상 호출·인자 개수(RUNTIME).
+   - **배열**: `var a=Array(3); a[0]=10; print a[0];`→10, `a[i-1]` 식 인덱스, 범위/비숫자 인덱스/비배열/비숫자 크기 런타임 오류.
+   - **최적화**: distance 맵으로 O(1) 접근(Test Double로 체인 미상승 단언), 상수식 폴딩으로 실행 중 연산 0회(Test Double로 단언), 0 나누기 부분식은 폴딩 안 됨.
+   - **공장 제어 쉘**: `run <file>`(파일 부재 메시지·런타임 오류 줄번호), `debug <file>`(step/next/break/continue/breakpoints/remove + watch/unwatch/watches/inspect) 통합 테스트 통과.
+   - **공통**: 기존 UnitTest 전부 유지(약화 금지), 신규 기능마다 UnitTest 추가, README에 사용법·특이사항 문서화.
 
 ### Phase 5: 정리
 

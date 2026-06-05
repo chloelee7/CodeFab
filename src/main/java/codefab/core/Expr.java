@@ -1,5 +1,7 @@
 package codefab.core;
 
+import java.util.List;
+
 /**
  * Expression AST nodes. An Expr may hold other Exprs and Tokens as fields, but
  * never a Stmt. Traversal uses the visitor pattern so the Checker and Executor
@@ -14,6 +16,15 @@ public abstract class Expr {
         R visitBinary(Binary expr);
         R visitLogical(Logical expr);
         R visitGrouping(Grouping expr);
+
+        /**
+         * Function call. Added in the function (Stage 1) work; the Checker and
+         * Executor implement it as their visit passes are extended. A default is
+         * provided so existing visitors keep compiling until then.
+         */
+        default R visitCall(Call expr) {
+            throw new UnsupportedOperationException("visitCall not implemented");
+        }
     }
 
     public abstract <R> R accept(Visitor<R> visitor);
@@ -118,6 +129,23 @@ public abstract class Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitGrouping(this);
+        }
+    }
+
+    public static final class Call extends Expr {
+        public final Expr callee;
+        public final Token paren; // closing ')' token, for error line numbers
+        public final List<Expr> arguments;
+
+        public Call(Expr callee, Token paren, List<Expr> arguments) {
+            this.callee = callee;
+            this.paren = paren;
+            this.arguments = arguments;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitCall(this);
         }
     }
 }

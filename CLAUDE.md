@@ -15,3 +15,4 @@ Java 17 트리워킹 인터프리터. 소스를 Assembler(Scanner→Parser) → 
 |------|----------|------|------|
 | 2026-06-02 | 초기 구성 (에이전트 6 + 스킬 7) | 전체 | CodeFab 인터프리터 개발 하네스 구축 |
 | 2026-06-02 | while 문 추가 (부분 재실행) | TokenType·Scanner·Stmt·Parser·Checker·Executor + WhileTest | 하네스 라이브 구동: 새 문법 추가 데모 |
+| 2026-06-05 | 3일차 요구사항 반영 위한 하네스 진화 | shared-contracts(§3,4,6,7 확장 + §8~10 신설)·checker-analysis(리졸버+옵티마이저)·executor-evaluation(함수/배열/distance/디버그훅)·shell-repl-construction(파일/디버그 모드)·assembler-construction(함수/배열 문법)·interpreter-tdd(Test Double)·interpreter-qa(신규 경계면)·checker/executor/shell 에이전트·orchestrator(단계화·DoD) | 함수·정적 배열·실행 전 최적화·공장 제어 쉘 4개 기능군 추가 준비 |

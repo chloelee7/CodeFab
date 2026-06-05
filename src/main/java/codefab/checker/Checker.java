@@ -14,18 +14,24 @@ import java.util.Map;
 /**
  * Static semantic analysis over the AST, performed by DFS before execution.
  *
- * <p>It detects two classes of error and nothing else (syntax is the Parser's
- * job, type/runtime faults are the Executor's): declaring two variables with
- * the same name in one scope, and reading a variable inside its own
- * initializer. It never executes code.
+ * <p>It detects four classes of static error and nothing else (syntax is the
+ * Parser's job, type/runtime faults are the Executor's): declaring two
+ * variables with the same name in one scope, reading a variable inside its own
+ * initializer, returning from top-level code, and duplicate parameter names. It
+ * never executes code. Non-function call targets and argument-count mismatches
+ * are runtime concerns and are intentionally not checked here.
  */
 public final class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     /** A name is DECLARED once its statement is seen, DEFINED once its initializer is checked. */
     private enum VarState { DECLARED, DEFINED }
 
+    /** Tracks whether resolution is currently inside a function body, to flag stray returns. */
+    private enum FunctionType { NONE, FUNCTION }
+
     private final List<Diagnostic> diagnostics;
     private final Deque<Map<String, VarState>> scopes = new ArrayDeque<>();
+    private FunctionType currentFunction = FunctionType.NONE;
 
     public Checker(List<Diagnostic> diagnostics) {
         this.diagnostics = diagnostics;
@@ -88,6 +94,38 @@ public final class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitFunctionStmt(Stmt.FunctionStmt stmt) {
+        // Declare and define the name before resolving the body so recursion can
+        // reference the function from within itself.
+        declare(stmt.name);
+        define(stmt.name);
+
+        FunctionType enclosingFunction = currentFunction;
+        currentFunction = FunctionType.FUNCTION;
+        beginScope();
+        for (Token param : stmt.params) {
+            // Duplicate parameter names are caught by declare's existing check.
+            declare(param);
+            define(param);
+        }
+        resolve(stmt.body);
+        endScope();
+        currentFunction = enclosingFunction;
+        return null;
+    }
+
+    @Override
+    public Void visitReturnStmt(Stmt.ReturnStmt stmt) {
+        if (currentFunction == FunctionType.NONE) {
+            report(stmt.keyword, "Can't return from top-level code.");
+        }
+        if (stmt.value != null) {
+            resolve(stmt.value);
+        }
+        return null;
+    }
+
+    @Override
     public Void visitPrintStmt(Stmt.PrintStmt stmt) {
         resolve(stmt.expression);
         return null;
@@ -133,6 +171,16 @@ public final class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     @Override
     public Void visitUnary(Expr.Unary expr) {
         resolve(expr.right);
+        return null;
+    }
+
+    @Override
+    public Void visitCall(Expr.Call expr) {
+        // Argument count is a runtime concern; here we only resolve sub-expressions.
+        resolve(expr.callee);
+        for (Expr argument : expr.arguments) {
+            resolve(argument);
+        }
         return null;
     }
 

@@ -26,7 +26,9 @@ public final class Scanner {
             Map.entry("for", FOR),
             Map.entry("while", WHILE),
             Map.entry("var", VAR),
-            Map.entry("print", PRINT));
+            Map.entry("print", PRINT),
+            Map.entry("Func", FUNC),
+            Map.entry("return", RETURN));
 
     private final String source;
     private final List<Diagnostic> diagnostics;

@@ -1,6 +1,6 @@
 ---
 name: shell-repl-construction
-description: "인터프리터의 facade와 대화형 셸(REPL)·CLI 진입점 구현. 파이프라인(Assembler→Checker→Executor)을 엮는 facade(run→RunResult), 영속 상태 세션(REPL용), 멀티라인 입력 누적 셸, 파일 실행/REPL/--help를 지원하는 Main 작업에 사용. CodeFab 인터프리터의 shell-integrator가 사용. facade/REPL/CLI/세션/Main/PromptShell 작업이면 이 스킬을 사용할 것."
+description: "인터프리터의 facade와 공장 제어 쉘(REPL·파일·디버그 모드)·CLI 진입점 구현. 파이프라인(Assembler→Checker→Executor)을 엮는 facade(run→RunResult), 영속 상태 세션(REPL용), 멀티라인 입력 누적 셸, run/debug 서브커맨드 Main, 파일 모드(줄번호 런타임 오류), 디버그 모드(step/next/break/continue/watch/inspect, Stmt 단위 stepping과 breakpoint)를 지원. CodeFab 인터프리터의 shell-integrator가 사용. facade/REPL/CLI/세션/Main/PromptShell/파일모드/디버그모드/stepping/breakpoint/watch/공장제어쉘 작업이면 이 스킬을 사용할 것."
 ---
 
 # Shell & REPL Construction — Facade · REPL · CLI
@@ -45,14 +45,41 @@ Executor에 `CollectingOutputSink`(List에 라인 누적)를 주입한다. `Syst
 
 완성되면 단일 세션의 `run`에 넘기고, 출력과 진단을 출력한다. 변수는 세션이 유지하므로 입력 간 보존된다. 명령: `:exit`/`:quit`로 종료, `:env`는 선택.
 
-## Main — CLI
+## Main — 공장 제어 쉘 (모드 디스패치, Strategy 패턴)
 
-- 인자 없음 → `PromptShell` 시작(stdin 리더 주입).
-- 파일 경로 1개 → 파일을 읽어 `CodeFab().run`, 출력은 stdout, 진단은 stderr, 실패 시 비정상 종료 코드.
-- `--help`/`-h` → 사용법 출력.
+`Main`은 첫 인자(서브커맨드)로 실행 모드를 고른다(계약 §6):
 
-테스트 가능성을 위해 `PromptShell`은 `BufferedReader`와 `PrintStream`을 주입받게 설계한다(파이프로 구동되는 통합 테스트 가능). 완성 판정 메서드는 단위 테스트할 수 있도록 공개한다.
+- 인자 없음 → **프롬프트 모드(REPL)**: 기존 `PromptShell`. 전역 저장소 세션 유지, `exit`/`quit` 종료.
+- `run <파일경로>` → **파일 모드**.
+- `debug <파일경로>` → **디버그 모드**.
+- `--help`/`-h` → 사용법.
+- 하위호환: 단일 파일 인자(`codefab <file>`)는 `run <file>`과 동일 처리(기존 테스트 보존).
+
+모드 선택을 if-else 더미가 아니라 `Mode` 전략(예: `RunMode`, `DebugMode`, `ReplMode` 각각 `execute(args)`)으로 분리하면 GoF Strategy 추가 점수. 각 모드는 `BufferedReader`/`PrintStream`을 주입받아 테스트 가능하게 한다.
+
+### 파일 모드
+
+`.txt` 소스를 읽어 단발 실행한다.
+
+- 파일 부재 → 명확한 오류(`Could not read file '<path>'`)와 비정상 종료.
+- 런타임 오류 → **줄 번호를 포함**해 출력 후 즉시 종료(`RunResult.diagnostics()`의 RUNTIME 진단에 line이 들어 있으므로 `diagnostic.render()`가 줄번호를 포함하도록).
+- 정상 출력은 stdout, 진단은 stderr.
+
+### 디버그 모드 (Debugger — Stmt 단위 stepping + breakpoint + watch)
+
+소스를 Stmt 단위로 멈추며 점검한다(계약 §10). 핵심은 **Executor의 `ExecutionObserver` 훅**에 디버거를 꽂아, Stmt 실행 직전 통지를 받아 정지/명령 루프를 도는 것이다.
+
+**Executor 협업:** Executor는 각 Stmt 실행 직전 `observer.beforeStmt(stmt, line, env, depth)`를 호출한다(executor-engineer 담당). 디버거는 이 콜백에서 정지 여부를 판단하고, 정지 시 `>` 프롬프트로 명령을 받는다.
+
+**명령 (Command 패턴 권장 — 명령마다 객체/핸들러):**
+- Stepping: `step`(다음 Stmt 정지, 블록 진입 O), `next`(블록 내부 진입 X — 현재 depth 이하로 돌아올 때까지 통지 무시), `break <줄>`, `breakpoints`, `remove <줄>`, `continue`(다음 breakpoint까지).
+- Watch: `watch <변수>`/`unwatch <변수>`/`watches`(인접 스코프 값) / `inspect`(현재 스코프 전체 변수+타입).
+- 정지 시점마다 감시 변수 자동 출력(`[WATCH] <name> = <value>`).
+
+**출력 라벨:** `[DEBUG]`(로딩·정지), `[WATCH]`(감시값), `inspect`는 `[로컬]`/`[전역] <name> = <value> (<Type>)`. PDF 예시 포맷을 따른다. watch/inspect는 Environment의 `bindings()`/`enclosing()`으로 **변수 저장소를 직접 조회**한다.
+
+테스트 가능성을 위해 디버거도 입력 리더·출력 스트림을 주입받아, 스크립트된 디버그 세션(`step\nbreak 7\ncontinue\n`)으로 통합 테스트한다.
 
 ## 출력
 
-`codefab` 패키지에 CodeFab/CodeFabSession/RunResult/CollectingOutputSink, `codefab.shell`에 PromptShell/Main. README에 문법·예시·아키텍처·테스트 실행법을 문서화한다.
+`codefab` 패키지에 CodeFab/CodeFabSession/RunResult/CollectingOutputSink, `codefab.shell`에 PromptShell/Main/Debugger(+ 모드 전략, 디버그 명령). README에 문법·예시·아키텍처·세 가지 모드 사용법·테스트 실행법을 문서화한다.
