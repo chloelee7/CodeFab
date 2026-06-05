@@ -5,3 +5,13 @@ build/
 *.iml
 .DS_Store
 bin/
+
+# Local AI agent configuration and handoff artifacts.
+.claude/
+.codex/
+.agents/
+CLAUDE.md
+AGENTS.md
+_workspace/
+docs/harness/
+.superpowers/
