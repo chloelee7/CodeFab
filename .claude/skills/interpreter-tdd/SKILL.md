@@ -47,7 +47,7 @@ assertTrue(r.diagnostics().stream()
 - **정적 오류**: 같은 스코프 중복 선언, 자기 초기화식에서 읽기, 셰도잉은 허용.
 - **런타임 오류**: 미정의 변수(읽기·대입), 타입 혼합 +, 단항 - 비숫자, 0 나눗셈, 비교 비숫자.
 - **스캐너 진단**: 알 수 없는 문자, 미종료 문자열, 주석 무시, 줄 번호 추적.
-- **REPL**: 입력 간 변수 유지, 멀티라인 블록 누적, 진단 후에도 세션 생존.
+- **REPL**: 입력 간 변수 유지, 멀티라인 블록 누적, 진단 후에도 세션 생존. **교차-run 함수 호출**(한 입력에서 `Func` 정의 → 다른 입력에서 호출, 재귀 포함)을 반드시 포함한다 — 단발 실행은 한 run에 모든 노드가 들어가 정적 바인딩 distance 수명 버그를 못 잡으므로 세션 테스트가 따로 필요(실제 발생 버그).
 - **함수**: 선언+호출(`add(3,7)`→10), `return ;`→nil, 반환값 대입(`ret=add(1,2)`), 재귀(`fact(5)`→120). 오류: 함수 외부 return(CHECKER `Can't return from top-level code.`), 파라미터 중복(CHECKER `Already a variable...`), 함수 아닌 대상 호출(RUNTIME `Can only call functions.`), 인자 개수 불일치(RUNTIME `Expected <n> arguments but got <m>.`).
 - **정적 배열**: `Array(3)` 생성·초기 null, 인덱스 읽기/쓰기, 식 인덱스(`arr[i-1]`). 오류: 범위 초과(`Array index out of bounds.`), 비숫자 인덱스(`Array index must be a number.`), 배열 아닌 대상(`Can only index arrays.`), 비숫자 크기(`Array size must be a number.`).
 - **공장 제어 쉘**: 파일 모드(파일 부재 메시지, 런타임 오류 줄번호 포함), 디버그 모드(step/next/break/continue/breakpoints/remove, watch/unwatch/watches/inspect) — 스크립트된 입력으로 통합 테스트.
