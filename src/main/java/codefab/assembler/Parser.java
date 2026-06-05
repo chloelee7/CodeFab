@@ -9,6 +9,7 @@ import static codefab.core.TokenType.EOF;
 import static codefab.core.TokenType.EQUAL;
 import static codefab.core.TokenType.EQUAL_EQUAL;
 import static codefab.core.TokenType.FALSE;
+import static codefab.core.TokenType.NIL;
 import static codefab.core.TokenType.FOR;
 import static codefab.core.TokenType.FUNC;
 import static codefab.core.TokenType.GREATER;
@@ -294,6 +295,9 @@ public final class Parser {
     }
 
     private Expr primary() {
+        if (matchAndAdvance(NIL)) {
+            return new Expr.Literal(null);
+        }
         if (matchAndAdvance(FALSE)) {
             return new Expr.Literal(false);
         }

@@ -25,6 +25,7 @@ public final class Scanner {
             entry("else",   TokenType.ELSE),
             entry("true",   TokenType.TRUE),
             entry("false",  TokenType.FALSE),
+            entry("nil",    TokenType.NIL),
             entry("for",    TokenType.FOR),
             entry("while",  TokenType.WHILE),
             entry("var",    TokenType.VAR),
