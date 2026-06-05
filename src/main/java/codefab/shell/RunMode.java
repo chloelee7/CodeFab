@@ -1,0 +1,47 @@
+package codefab.shell;
+
+import codefab.CodeFab;
+import codefab.RunResult;
+import codefab.core.Diagnostic;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+/**
+ * 파일 모드: 스크립트를 한 번 실행한다. 파일 없음 → 66, 실행 진단 발생 → 65.
+ */
+public final class RunMode implements Mode {
+
+    private static final int EX_DATA_ERR = 65;
+    private static final int EX_NO_INPUT = 66;
+
+    private final String path;
+
+    public RunMode(String path) {
+        this.path = path;
+    }
+
+    @Override
+    public int execute(String[] args, BufferedReader in, PrintStream out, PrintStream err) {
+        String source;
+        try {
+            source = Files.readString(Path.of(path), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            err.println("Error: file not found: " + path);
+            return EX_NO_INPUT;
+        }
+
+        RunResult result = new CodeFab().run(source);
+        for (String line : result.output()) {
+            out.println(line);
+        }
+        for (Diagnostic diagnostic : result.diagnostics()) {
+            err.println(diagnostic.render());
+        }
+        return result.success() ? 0 : EX_DATA_ERR;
+    }
+}
