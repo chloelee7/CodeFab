@@ -1,70 +1,89 @@
 package codefab.shell;
 
-import codefab.CodeFab;
-import codefab.RunResult;
-import codefab.core.Diagnostic;
-
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 /**
- * Command-line entry point.
+ * Command-line entry point — a mode dispatcher (GoF Strategy). The first
+ * argument selects a {@link Mode}:
  * <ul>
- *   <li>no args    -> start the interactive {@link PromptShell}</li>
- *   <li>a file arg -> run that script and exit (non-zero on failure)</li>
- *   <li>--help     -> print usage</li>
+ *   <li>no args         -> {@link ReplMode} (interactive {@link PromptShell})</li>
+ *   <li>{@code run <f>}  -> {@link RunMode} (file mode, run once)</li>
+ *   <li>{@code debug <f>}-> {@link DebugMode} (interactive {@link Debugger})</li>
+ *   <li>{@code --help}/{@code -h} -> usage</li>
  * </ul>
+ *
+ * <p>Backward compatible: if the first argument is not a known subcommand it is
+ * treated as a file path, i.e. {@code codefab <file>} == {@code codefab run <file>}.
+ *
+ * <p>{@link #dispatch} selects the mode and returns its exit code without calling
+ * {@code System.exit}, so it is unit-testable; {@code main} maps that code onto
+ * the process exit.
  */
 public final class Main {
 
     public static void main(String[] args) {
+        BufferedReader reader = new BufferedReader(
+                new InputStreamReader(System.in, StandardCharsets.UTF_8));
+        int code = dispatch(args, reader, System.out, System.err);
+        if (code != 0) {
+            System.exit(code);
+        }
+    }
+
+    /**
+     * Pick a mode for {@code args} and run it, returning the exit code. Pure with
+     * respect to the process (no {@code System.exit}), so tests can drive any mode
+     * with scripted input and assert on output and exit code.
+     */
+    public static int dispatch(String[] args, BufferedReader in, PrintStream out, PrintStream err) {
+        Mode mode = select(args, out);
+        if (mode == null) {
+            return 0; // help was printed
+        }
+        return mode.execute(args, in, out, err);
+    }
+
+    private static Mode select(String[] args, PrintStream out) {
         if (args.length == 0) {
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(System.in, StandardCharsets.UTF_8));
-            new PromptShell(reader, System.out).run();
-            return;
+            return new ReplMode();
         }
 
-        if (args[0].equals("--help") || args[0].equals("-h")) {
-            printUsage();
-            return;
+        String first = args[0];
+        if (first.equals("--help") || first.equals("-h")) {
+            printUsage(out);
+            return null;
         }
-
-        runFile(args[0]);
+        if (first.equals("run")) {
+            return new RunMode(requireFileArg(args, out));
+        }
+        if (first.equals("debug")) {
+            return new DebugMode(requireFileArg(args, out));
+        }
+        // Backward compatibility: bare file path == `run <file>`.
+        return new RunMode(first);
     }
 
-    private static void runFile(String path) {
-        String source;
-        try {
-            source = Files.readString(Path.of(path), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            System.err.println("Could not read file '" + path + "': " + e.getMessage());
-            System.exit(66); // EX_NOINPUT
-            return;
+    private static String requireFileArg(String[] args, PrintStream out) {
+        if (args.length < 2) {
+            // No path given after the subcommand; let RunMode/DebugMode report
+            // the unreadable (null-ish) path uniformly. Use empty string so the
+            // "Could not read file ''" message is produced.
+            return "";
         }
-
-        RunResult result = new CodeFab().run(source);
-        for (String line : result.output()) {
-            System.out.println(line);
-        }
-        for (Diagnostic diagnostic : result.diagnostics()) {
-            System.err.println(diagnostic.render());
-        }
-        if (!result.success()) {
-            System.exit(65); // EX_DATAERR
-        }
+        return args[1];
     }
 
-    private static void printUsage() {
-        System.out.println("CodeFab Interpreter");
-        System.out.println();
-        System.out.println("Usage:");
-        System.out.println("  codefab            Start the interactive REPL");
-        System.out.println("  codefab <file>     Run a CodeFab script file");
-        System.out.println("  codefab --help     Show this help");
+    private static void printUsage(PrintStream out) {
+        out.println("CodeFab Interpreter");
+        out.println();
+        out.println("Usage:");
+        out.println("  codefab                  Start the interactive REPL");
+        out.println("  codefab run <file>       Run a CodeFab script file once");
+        out.println("  codefab debug <file>     Run a script under the interactive debugger");
+        out.println("  codefab <file>           Same as 'run <file>' (backward compatible)");
+        out.println("  codefab --help           Show this help");
     }
 }

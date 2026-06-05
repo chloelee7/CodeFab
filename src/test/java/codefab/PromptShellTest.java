@@ -41,6 +41,21 @@ class PromptShellTest {
     }
 
     @Test
+    void bareExitCommandTerminatesSession() {
+        // PDF prompt-mode spec: bare `exit`/`quit` end the session.
+        String output = drive("var a = 1;\nexit\nprint 999;\n");
+        assertFalse(output.contains("999"),
+                () -> "input after bare 'exit' must not run:\n" + output);
+    }
+
+    @Test
+    void bareQuitCommandTerminatesSession() {
+        String output = drive("quit\nprint 999;\n");
+        assertFalse(output.contains("999"),
+                () -> "input after bare 'quit' must not run:\n" + output);
+    }
+
+    @Test
     void completenessHeuristicHandlesBalancedInput() {
         assertFalse(PromptShell.isComplete("var a = (1 + 2"));   // open paren
         assertFalse(PromptShell.isComplete("{ var a = 1;"));     // open brace

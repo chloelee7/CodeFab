@@ -3,7 +3,9 @@ package codefab.executor;
 import codefab.core.InterpreterRuntimeError;
 import codefab.core.Token;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -94,5 +96,22 @@ public class Environment {
     /** Assign a resolved binding directly at {@code distance}, no chain search. */
     public void assignAt(int distance, Token name, Object value) {
         ancestor(distance).values.put(name.lexeme, value);
+    }
+
+    // --- debugger inspection API (contract §10-1) ---------------------------
+
+    /**
+     * A read-only snapshot of <em>this</em> scope's variable bindings
+     * (name -> value). The enclosing scope is not included. Used by the
+     * debugger's {@code watch}/{@code inspect} commands. The returned map is an
+     * unmodifiable copy, so callers cannot mutate the live scope.
+     */
+    public Map<String, Object> bindings() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(values));
+    }
+
+    /** The enclosing (outer) scope, or {@code null} at the global scope. */
+    public Environment enclosing() {
+        return enclosing;
     }
 }

@@ -39,6 +39,24 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     // The closing paren of the call currently in flight, so native callables can
     // attach a meaningful line number to runtime faults (e.g. Array(...)).
     private Token currentCallToken;
+    // Debug-time statement observer (contract §10-1). Null in normal execution:
+    // when null, no beforeStmt notification fires and depth bookkeeping is
+    // skipped entirely, so ordinary runs pay nothing for the hook.
+    private ExecutionObserver observer;
+    // Current block-nesting depth (top level = 0). Incremented on every scope
+    // push (block bodies and function call frames via executeBlock, plus the
+    // for-loop's own scope) and restored on the way out. Only meaningful while
+    // an observer is attached; left untouched otherwise.
+    private int depth;
+
+    /**
+     * Attach (or clear, with {@code null}) the debug statement observer. The
+     * constructor signatures are left untouched; a debugger sets the observer
+     * after construction. When no observer is set, execution is unaffected.
+     */
+    public void setObserver(ExecutionObserver observer) {
+        this.observer = observer;
+    }
 
     /** Backwards-compatible overload: no resolved locals. Variable/Assign use a
      * normal scope-chain walk, exactly as before static binding existed. */
@@ -112,6 +130,11 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     }
 
     private void execute(Stmt stmt) {
+        // One notification site for every statement kind. The null check is the
+        // only cost paid when no debugger is attached.
+        if (observer != null) {
+            observer.beforeStmt(stmt, stmt.line, environment, depth);
+        }
         stmt.accept(this);
     }
 
@@ -164,6 +187,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     public Void visitForStmt(Stmt.ForStmt stmt) {
         // Give the loop its own scope so the initializer variable does not leak.
         Environment previous = this.environment;
+        if (observer != null) depth++;
         try {
             this.environment = new Environment(previous);
             if (stmt.initializer != null) execute(stmt.initializer);
@@ -173,6 +197,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             }
         } finally {
             this.environment = previous;
+            if (observer != null) depth--;
         }
         return null;
     }
@@ -193,6 +218,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
      */
     void executeBlock(List<Stmt> statements, Environment blockEnv) {
         Environment previous = this.environment;
+        if (observer != null) depth++;
         try {
             this.environment = blockEnv;
             for (Stmt statement : statements) {
@@ -200,6 +226,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             }
         } finally {
             this.environment = previous;
+            if (observer != null) depth--;
         }
     }
 

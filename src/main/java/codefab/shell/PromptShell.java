@@ -25,7 +25,7 @@ public final class PromptShell {
     }
 
     public void run() {
-        out.println("CodeFab REPL. Type :exit to quit.");
+        out.println("CodeFab REPL. Type exit or quit to leave.");
         StringBuilder buffer = new StringBuilder();
         try {
             while (true) {
@@ -55,12 +55,15 @@ public final class PromptShell {
     }
 
     private boolean isCommand(String trimmed) {
-        return trimmed.startsWith(":");
+        // ':'-prefixed shell commands, plus bare exit/quit per the prompt-mode spec.
+        return trimmed.startsWith(":") || trimmed.equals("exit") || trimmed.equals("quit");
     }
 
     /** @return true if the shell should exit. */
     private boolean handleCommand(String command) {
         switch (command) {
+            case "exit":
+            case "quit":
             case ":exit":
             case ":quit":
                 return true;
