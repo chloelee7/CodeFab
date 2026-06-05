@@ -66,7 +66,6 @@ public final class DebugShell {
     }
 
     public void run() {
-        // 파일 로드
         String source;
         try {
             source = Files.readString(Path.of(filePath), StandardCharsets.UTF_8);
@@ -125,8 +124,6 @@ public final class DebugShell {
         return command.execute(this, arg);
     }
 
-    // ── stepping ───────────────────────────────────────────────────────────────
-
     private boolean doStep() {
         if (cursor >= statements.size()) {
             out.println("[DEBUG] 더 이상 실행할 구문이 없습니다.");
@@ -173,8 +170,6 @@ public final class DebugShell {
         }
     }
 
-    // ── breakpoints ────────────────────────────────────────────────────────────
-
     private void doBreak(String arg) {
         try {
             int line = Integer.parseInt(arg);
@@ -205,8 +200,6 @@ public final class DebugShell {
             out.println("Usage: remove <line>");
         }
     }
-
-    // ── watch ─────────────────────────────────────────────────────────────────
 
     private void doWatch(String varName) {
         watchList.add(varName);
@@ -253,8 +246,6 @@ public final class DebugShell {
                     + Executor.stringify(info.value) + " (" + info.typeName() + ")");
         }
     }
-
-    // ── helpers ────────────────────────────────────────────────────────────────
 
     private void printCurrentStmt() {
         if (cursor < statements.size()) {

@@ -35,7 +35,7 @@ public final class Main {
     public static int dispatch(String[] args, BufferedReader in, PrintStream out, PrintStream err) {
         Mode mode = select(args, out);
         if (mode == null) {
-            return 0; // 사용법 출력됨
+            return 0;
         }
         return mode.execute(args, in, out, err);
     }
