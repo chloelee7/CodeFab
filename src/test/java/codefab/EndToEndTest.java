@@ -149,17 +149,17 @@ class EndToEndTest {
         }
     }
 
+    private static void assertFailsAtStage(String src, Diagnostic.Stage stage, String substring) {
+        RunResult r = run(src);
+        assertFalse(r.success());
+        assertTrue(r.diagnostics().stream().anyMatch(d -> d.stage == stage && d.message.contains(substring)),
+                () -> "expected " + stage + " diagnostic containing '" + substring + "' but got: " + r.diagnostics());
+    }
+
     /** 오류 프로그램: 의미있는 diagnostic과 함께 실패해야 한다. */
     @Nested
     @DisplayName("오류 처리")
     class 오류처리 {
-
-        private void assertFailsAtStage(String src, Diagnostic.Stage stage, String substring) {
-            RunResult r = run(src);
-            assertFalse(r.success());
-            assertTrue(r.diagnostics().stream().anyMatch(d -> d.stage == stage && d.message.contains(substring)),
-                    () -> "expected " + stage + " diagnostic containing '" + substring + "' but got: " + r.diagnostics());
-        }
 
         /** 구문 오류: PARSER 단계에서 실패한다. */
         @Nested
@@ -266,6 +266,114 @@ class EndToEndTest {
             void comparisonRequiresNumbers() {
                 assertFailsAtStage("print \"a\" < 1;", Diagnostic.Stage.RUNTIME, "Operands must be numbers.");
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("함수 지원")
+    class 함수지원 {
+
+        private List<String> out(String src) {
+            RunResult r = run(src);
+            assertTrue(r.success(), () -> "expected success but got: " + r.diagnostics());
+            return r.output();
+        }
+
+        @Test
+        @DisplayName("함수를 선언하고 호출한다")
+        void declaresAndCallsFunction() {
+            List<String> result = out("Func greet() { print \"hello\"; } greet();");
+            assertEquals(List.of("hello"), result);
+        }
+
+        @Test
+        @DisplayName("매개변수를 전달하고 반환값을 출력한다")
+        void passesParametersAndReturnsValue() {
+            List<String> result = out("Func add(a, b) { return a + b; } print add(3, 4);");
+            assertEquals(List.of("7"), result);
+        }
+
+        @Test
+        @DisplayName("재귀 함수가 동작한다")
+        void recursiveFunctionWorks() {
+            String src = "Func fact(n) { if (n <= 1) { return 1; } return n * fact(n - 1); } print fact(5);";
+            assertEquals(List.of("120"), out(src));
+        }
+
+        @Test
+        @DisplayName("함수 외부에서 return은 체커 오류")
+        void returnOutsideFunctionIsCheckerError() {
+            assertFailsAtStage("return 1;", Diagnostic.Stage.CHECKER, "Can't return from top-level code.");
+        }
+
+        @Test
+        @DisplayName("파라미터 이름 중복은 체커 오류")
+        void duplicateParamIsCheckerError() {
+            assertFailsAtStage("Func f(a, a) { print a; }", Diagnostic.Stage.CHECKER,
+                    "Already a parameter with this name.");
+        }
+    }
+
+    @Nested
+    @DisplayName("배열 지원")
+    class 배열지원 {
+
+        private List<String> out(String src) {
+            RunResult r = run(src);
+            assertTrue(r.success(), () -> "expected success but got: " + r.diagnostics());
+            return r.output();
+        }
+
+        @Test
+        @DisplayName("배열을 생성하고 값을 쓰고 읽는다")
+        void createsArrayAndReadsWrites() {
+            List<String> result = out("var a = Array(3); a[0] = 10; a[1] = 20; print a[0] + a[1];");
+            assertEquals(List.of("30"), result);
+        }
+
+        @Test
+        @DisplayName("배열 범위 초과는 런타임 오류")
+        void outOfBoundsIsRuntimeError() {
+            assertFailsAtStage("var a = Array(2); print a[5];", Diagnostic.Stage.RUNTIME,
+                    "out of bounds");
+        }
+
+        @Test
+        @DisplayName("비배열에 [] 접근은 런타임 오류")
+        void indexingNonArrayIsRuntimeError() {
+            assertFailsAtStage("var a = 3; print a[0];", Diagnostic.Stage.RUNTIME,
+                    "Only arrays can be indexed.");
+        }
+    }
+
+    @Nested
+    @DisplayName("상수 폴딩 최적화")
+    class 상수폴딩최적화 {
+
+        private List<String> out(String src) {
+            RunResult r = run(src);
+            assertTrue(r.success(), () -> "expected success but got: " + r.diagnostics());
+            return r.output();
+        }
+
+        @Test
+        @DisplayName("리터럴 산술은 컴파일 타임에 계산된다")
+        void literalArithmeticFolded() {
+            assertEquals(List.of("10"), out("print 3 + 7;"));
+            assertEquals(List.of("6"), out("print 2 * 3;"));
+            assertEquals(List.of("5"), out("print 10 - 5;"));
+        }
+
+        @Test
+        @DisplayName("중첩 상수 표현식도 폴딩된다")
+        void nestedConstantsFolded() {
+            assertEquals(List.of("14"), out("print 2 + 3 * 4;"));
+        }
+
+        @Test
+        @DisplayName("변수가 포함된 표현식은 폴딩되지 않는다")
+        void expressionWithVariableNotFolded() {
+            assertEquals(List.of("8"), out("var x = 5; print x + 3;"));
         }
     }
 }
