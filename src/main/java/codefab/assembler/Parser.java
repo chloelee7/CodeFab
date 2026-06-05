@@ -30,6 +30,7 @@ import static codefab.core.TokenType.RIGHT_BRACE;
 import static codefab.core.TokenType.RIGHT_BRACKET;
 import static codefab.core.TokenType.RIGHT_PAREN;
 import static codefab.core.TokenType.SEMICOLON;
+import static codefab.core.TokenType.PERCENT;
 import static codefab.core.TokenType.SLASH;
 import static codefab.core.TokenType.STAR;
 import static codefab.core.TokenType.STRING;
@@ -250,7 +251,7 @@ public final class Parser {
     }
 
     private Expr factor() {
-        return leftAssocBinary(this::unary, SLASH, STAR);
+        return leftAssocBinary(this::unary, SLASH, STAR, PERCENT);
     }
 
     private Expr unary() {

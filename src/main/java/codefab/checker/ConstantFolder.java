@@ -154,6 +154,13 @@ public class ConstantFolder implements Expr.Visitor<Expr> {
                     return null;
                 }
                 return lv / rv;
+            case PERCENT:
+                if (rv == 0.0) {
+                    diagnostics.add(new Diagnostic(
+                            Diagnostic.Stage.CHECKER, op.line, "Division by zero."));
+                    return null;
+                }
+                return lv % rv;
             case GREATER:       return lv > rv;
             case GREATER_EQUAL: return lv >= rv;
             case LESS:          return lv < rv;

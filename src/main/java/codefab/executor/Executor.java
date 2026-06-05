@@ -183,6 +183,11 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
                 if ((double) right == 0.0)
                     throw new InterpreterRuntimeError(op, "Division by zero.");
                 return (double) left / (double) right;
+            case PERCENT:
+                checkNumberOperands(op, left, right);
+                if ((double) right == 0.0)
+                    throw new InterpreterRuntimeError(op, "Division by zero.");
+                return (double) left % (double) right;
             case GREATER:
                 checkNumberOperands(op, left, right);
                 return (double) left > (double) right;

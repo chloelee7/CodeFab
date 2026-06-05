@@ -10,7 +10,7 @@ public enum TokenType {
     LEFT_BRACE, RIGHT_BRACE,
     LEFT_BRACKET, RIGHT_BRACKET,
     COMMA, DOT, SEMICOLON,
-    PLUS, MINUS, STAR, SLASH,
+    PLUS, MINUS, STAR, SLASH, PERCENT,
 
     // One or two character tokens.
     BANG, BANG_EQUAL,
