@@ -1,5 +1,7 @@
 package codefab.core;
 
+import java.util.List;
+
 /**
  * Expression AST nodes. An Expr may hold other Exprs and Tokens as fields, but
  * never a Stmt. Traversal uses the visitor pattern so the Checker and Executor
@@ -14,6 +16,9 @@ public abstract class Expr {
         R visitBinary(Binary expr);
         R visitLogical(Logical expr);
         R visitGrouping(Grouping expr);
+        R visitCall(Call expr);
+        R visitArrayGet(ArrayGet expr);
+        R visitArraySet(ArraySet expr);
     }
 
     public abstract <R> R accept(Visitor<R> visitor);
@@ -33,6 +38,8 @@ public abstract class Expr {
 
     public static final class Variable extends Expr {
         public final Token name;
+        // Checker가 스코프 깊이를 기록 → Executor O(1) 조회 (Team C 정적 바인딩)
+        public int distance = -1;
 
         public Variable(Token name) {
             this.name = name;
@@ -47,6 +54,8 @@ public abstract class Expr {
     public static final class Assign extends Expr {
         public final Token name;
         public final Expr value;
+        // Checker가 스코프 깊이를 기록 → Executor O(1) 조회 (Team C 정적 바인딩)
+        public int distance = -1;
 
         public Assign(Token name, Expr value) {
             this.name = name;
@@ -118,6 +127,59 @@ public abstract class Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitGrouping(this);
+        }
+    }
+
+    public static final class Call extends Expr {
+        public final Expr callee;
+        public final Token paren;          // 닫는 ')' — 런타임 오류 위치 보고용
+        public final List<Expr> arguments;
+
+        public Call(Expr callee, Token paren, List<Expr> arguments) {
+            this.callee = callee;
+            this.paren = paren;
+            this.arguments = arguments;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitCall(this);
+        }
+    }
+
+    public static final class ArrayGet extends Expr {
+        public final Expr array;
+        public final Expr index;
+        public final Token bracket;        // '[' 토큰 — 런타임 오류 위치 보고용
+
+        public ArrayGet(Expr array, Expr index, Token bracket) {
+            this.array = array;
+            this.index = index;
+            this.bracket = bracket;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitArrayGet(this);
+        }
+    }
+
+    public static final class ArraySet extends Expr {
+        public final Expr array;
+        public final Expr index;
+        public final Expr value;
+        public final Token bracket;        // '[' 토큰 — 런타임 오류 위치 보고용
+
+        public ArraySet(Expr array, Expr index, Expr value, Token bracket) {
+            this.array = array;
+            this.index = index;
+            this.value = value;
+            this.bracket = bracket;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitArraySet(this);
         }
     }
 }

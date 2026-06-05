@@ -8,23 +8,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Map.entry;
+
 /**
  * Turns source text into a flat list of tokens. Errors are reported as
  * {@link Diagnostic}s rather than thrown, so scanning always reaches EOF and
  * gathers as many tokens as possible.
  */
 public final class Scanner {
-    private static final Map<String, TokenType> KEYWORDS = Map.of(
-            "and", TokenType.AND,
-            "or", TokenType.OR,
-            "if", TokenType.IF,
-            "else", TokenType.ELSE,
-            "true", TokenType.TRUE,
-            "false", TokenType.FALSE,
-            "for", TokenType.FOR,
-            "while", TokenType.WHILE,
-            "var", TokenType.VAR,
-            "print", TokenType.PRINT);
+
+    // Map.of는 10쌍 한도 → 키워드 확장을 위해 Map.ofEntries 사용
+    private static final Map<String, TokenType> KEYWORDS = Map.ofEntries(
+            entry("and",    TokenType.AND),
+            entry("or",     TokenType.OR),
+            entry("if",     TokenType.IF),
+            entry("else",   TokenType.ELSE),
+            entry("true",   TokenType.TRUE),
+            entry("false",  TokenType.FALSE),
+            entry("for",    TokenType.FOR),
+            entry("while",  TokenType.WHILE),
+            entry("var",    TokenType.VAR),
+            entry("print",  TokenType.PRINT),
+            entry("Func",   TokenType.FUNC),
+            entry("return", TokenType.RETURN),
+            entry("Array",  TokenType.ARRAY));
 
     private final String source;
     private final List<Diagnostic> diagnostics;
@@ -55,6 +62,8 @@ public final class Scanner {
             case ')': addToken(TokenType.RIGHT_PAREN); break;
             case '{': addToken(TokenType.LEFT_BRACE); break;
             case '}': addToken(TokenType.RIGHT_BRACE); break;
+            case '[': addToken(TokenType.LEFT_BRACKET); break;
+            case ']': addToken(TokenType.RIGHT_BRACKET); break;
             case '+': addToken(TokenType.PLUS); break;
             case '-': addToken(TokenType.MINUS); break;
             case '*': addToken(TokenType.STAR); break;
@@ -120,7 +129,7 @@ public final class Scanner {
                     Diagnostic.Stage.SCANNER, line, "unterminated string"));
             return;
         }
-        advance(); // consume the closing '"'
+        advance(); // closing '"' 소비
         String value = source.substring(start + 1, current - 1);
         addToken(TokenType.STRING, value);
     }
@@ -128,7 +137,7 @@ public final class Scanner {
     private void number() {
         while (isDigit(peek())) advance();
         if (peek() == '.' && isDigit(peekNext())) {
-            advance(); // consume the '.'
+            advance(); // '.' 소비
             while (isDigit(peek())) advance();
         }
         addToken(TokenType.NUMBER, Double.parseDouble(source.substring(start, current)));
