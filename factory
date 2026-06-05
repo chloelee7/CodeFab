@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#
+# CodeFab factory control shell launcher.
+#
+#   ./factory                 Prompt mode (interactive REPL)
+#   ./factory run <file>      File mode (run a script once)
+#   ./factory debug <file>    Debug mode (interactive debugger)
+#   ./factory --help          Usage
+#
+# Args are passed straight through to codefab.shell.Main, which dispatches the
+# mode. Compiled classes are built on first run (or when missing).
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLASSES="$DIR/build/classes/java/main"
+
+# Build once if the entry point is not compiled yet.
+if [ ! -f "$CLASSES/codefab/shell/Main.class" ]; then
+    echo "Building CodeFab..." >&2
+    "$DIR/gradlew" -q classes
+fi
+
+# exec so stdin/stdout stay attached for the interactive REPL and debugger.
+exec java -cp "$CLASSES" codefab.shell.Main "$@"
