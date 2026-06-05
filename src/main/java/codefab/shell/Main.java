@@ -29,15 +29,33 @@ public final class Main {
             return;
         }
 
-        runFile(args[0]);
+        if (args[0].equals("run") && args.length == 2) {
+            runFile(args[1]);
+            return;
+        }
+
+        if (args[0].equals("debug") && args.length == 2) {
+            BufferedReader reader = new BufferedReader(
+                new InputStreamReader(System.in, StandardCharsets.UTF_8));
+            new DebugShell(reader, System.out, args[1]).run();
+            return;
+        }
+
+        // 하위호환: 단일 인자는 파일 경로로 처리
+        if (args.length == 1) {
+            runFile(args[0]);
+            return;
+        }
+
+        printUsage();
     }
 
-    private static void runFile(String path) {
+    static void runFile(String path) {
         String source;
         try {
             source = Files.readString(Path.of(path), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            System.err.println("Could not read file '" + path + "': " + e.getMessage());
+            System.err.println("Error: file not found: " + path);
             System.exit(EX_NO_INPUT);
             return;
         }
@@ -58,8 +76,9 @@ public final class Main {
         System.out.println("CodeFab Interpreter");
         System.out.println();
         System.out.println("Usage:");
-        System.out.println("  codefab            Start the interactive REPL");
-        System.out.println("  codefab <file>     Run a CodeFab script file");
-        System.out.println("  codefab --help     Show this help");
+        System.out.println("  codefab               Start the interactive REPL");
+        System.out.println("  codefab run <file>    Run a CodeFab script file");
+        System.out.println("  codefab debug <file>  Debug a CodeFab script file");
+        System.out.println("  codefab --help        Show this help");
     }
 }
