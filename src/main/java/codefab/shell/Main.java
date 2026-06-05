@@ -3,10 +3,14 @@ package codefab.shell;
 import codefab.CodeFab;
 import codefab.RunResult;
 import codefab.core.Diagnostic;
+import codefab.web.WebOptions;
+import codefab.web.WebRunnerConfig;
+import codefab.web.WebRunnerServer;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,6 +33,11 @@ public final class Main {
             return;
         }
 
+        if (args[0].equals("web")) {
+            runWeb(args);
+            return;
+        }
+
         if (args[0].equals("run") && args.length == 2) {
             runFile(args[1]);
             return;
@@ -48,6 +57,52 @@ public final class Main {
         }
 
         printUsage();
+    }
+
+    private static void runWeb(String[] args) {
+        WebOptions options;
+        try {
+            options = WebOptions.parse(args);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+            printUsage();
+            System.exit(EX_DATA_ERR);
+            return;
+        }
+
+        WebRunnerConfig defaults = WebRunnerConfig.defaults();
+        WebRunnerConfig config = new WebRunnerConfig(
+            options.port(),
+            defaults.maxBodyBytes(),
+            defaults.timeoutMillis());
+
+        WebRunnerServer server;
+        try {
+            server = new WebRunnerServer(
+                new InetSocketAddress("127.0.0.1", options.port()),
+                config,
+                source -> new CodeFab().run(source));
+        } catch (IOException e) {
+            System.err.println("Error: could not start web server: " + e.getMessage());
+            System.exit(EX_DATA_ERR);
+            return;
+        }
+
+        Runtime.getRuntime().addShutdownHook(new Thread(server::stop));
+        server.start();
+        System.out.println("CodeFab web runner: " + server.uri());
+        waitUntilInterrupted();
+    }
+
+    private static void waitUntilInterrupted() {
+        Object lock = new Object();
+        synchronized (lock) {
+            try {
+                lock.wait();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     static void runFile(String path) {
@@ -77,6 +132,7 @@ public final class Main {
         System.out.println();
         System.out.println("Usage:");
         System.out.println("  factory               Start the interactive REPL");
+        System.out.println("  factory web [--port <port>]  Start the local web runner");
         System.out.println("  factory run <file>    Run a CodeFab script file");
         System.out.println("  factory debug <file>  Debug a CodeFab script file (step/break/watch/inspect)");
         System.out.println("  factory --help        Show this help");
