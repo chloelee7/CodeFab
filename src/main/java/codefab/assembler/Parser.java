@@ -1,6 +1,8 @@
 package codefab.assembler;
 
 import static codefab.core.TokenType.AND;
+import static codefab.core.TokenType.ARRAY;
+import static codefab.core.TokenType.COMMA;
 import static codefab.core.TokenType.BANG;
 import static codefab.core.TokenType.BANG_EQUAL;
 import static codefab.core.TokenType.ELSE;
@@ -8,12 +10,15 @@ import static codefab.core.TokenType.EOF;
 import static codefab.core.TokenType.EQUAL;
 import static codefab.core.TokenType.EQUAL_EQUAL;
 import static codefab.core.TokenType.FALSE;
+import static codefab.core.TokenType.NIL;
 import static codefab.core.TokenType.FOR;
+import static codefab.core.TokenType.FUNC;
 import static codefab.core.TokenType.GREATER;
 import static codefab.core.TokenType.GREATER_EQUAL;
 import static codefab.core.TokenType.IDENTIFIER;
 import static codefab.core.TokenType.IF;
 import static codefab.core.TokenType.LEFT_BRACE;
+import static codefab.core.TokenType.LEFT_BRACKET;
 import static codefab.core.TokenType.LEFT_PAREN;
 import static codefab.core.TokenType.LESS;
 import static codefab.core.TokenType.LESS_EQUAL;
@@ -22,9 +27,12 @@ import static codefab.core.TokenType.NUMBER;
 import static codefab.core.TokenType.OR;
 import static codefab.core.TokenType.PLUS;
 import static codefab.core.TokenType.PRINT;
+import static codefab.core.TokenType.RETURN;
 import static codefab.core.TokenType.RIGHT_BRACE;
+import static codefab.core.TokenType.RIGHT_BRACKET;
 import static codefab.core.TokenType.RIGHT_PAREN;
 import static codefab.core.TokenType.SEMICOLON;
+import static codefab.core.TokenType.PERCENT;
 import static codefab.core.TokenType.SLASH;
 import static codefab.core.TokenType.STAR;
 import static codefab.core.TokenType.STRING;
@@ -38,6 +46,7 @@ import codefab.core.Expr;
 import codefab.core.Stmt;
 import codefab.core.Token;
 import codefab.core.TokenType;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -66,6 +75,9 @@ public final class Parser {
 
     private Stmt declaration() {
         try {
+            if (matchAndAdvance(FUNC)) {
+                return functionDeclaration();
+            }
             if (matchAndAdvance(VAR)) {
                 return varDeclaration();
             }
@@ -74,6 +86,22 @@ public final class Parser {
             recoverToNextStatement();
             return null;
         }
+    }
+
+    private Stmt functionDeclaration() {
+        Token name = expectAndConsume(IDENTIFIER, DiagnosticMessage.ERR_FUNCTION_NAME);
+        expectAndConsume(LEFT_PAREN, DiagnosticMessage.ERR_LEFT_PAREN_AFTER_FUNC_NAME);
+
+        List<Token> params = new ArrayList<>();
+        if (!currentTokenIs(RIGHT_PAREN)) {
+            do {
+                params.add(expectAndConsume(IDENTIFIER, DiagnosticMessage.ERR_PARAMETER_NAME));
+            } while (matchAndAdvance(COMMA));
+        }
+        expectAndConsume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_PARAMS);
+        expectAndConsume(LEFT_BRACE, DiagnosticMessage.ERR_LEFT_BRACE_BEFORE_FUNC_BODY);
+        List<Stmt> body = block();
+        return new Stmt.FunctionStmt(name, params, body);
     }
 
     private Stmt varDeclaration() {
@@ -87,6 +115,9 @@ public final class Parser {
     }
 
     private Stmt statement() {
+        if (matchAndAdvance(RETURN)) {
+            return returnStatement();
+        }
         if (matchAndAdvance(PRINT)) {
             return printStatement();
         }
@@ -103,6 +134,16 @@ public final class Parser {
             return new Stmt.BlockStmt(block());
         }
         return expressionStatement();
+    }
+
+    private Stmt returnStatement() {
+        Token keyword = previousToken();
+        Expr value = null;
+        if (!currentTokenIs(SEMICOLON)) {
+            value = expression();
+        }
+        expectAndConsume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_RETURN);
+        return new Stmt.ReturnStmt(keyword, value);
     }
 
     private Stmt printStatement() {
@@ -181,6 +222,11 @@ public final class Parser {
             if (expr instanceof Expr.Variable) {
                 return new Expr.Assign(((Expr.Variable) expr).name, value);
             }
+            // 배열 인덱스 대입: arr[i] = v
+            if (expr instanceof Expr.ArrayGet) {
+                Expr.ArrayGet get = (Expr.ArrayGet) expr;
+                return new Expr.ArraySet(get.array, get.index, value, get.bracket);
+            }
             reportError(equals, DiagnosticMessage.ERR_INVALID_ASSIGN_TARGET);
         }
         return expr;
@@ -207,7 +253,7 @@ public final class Parser {
     }
 
     private Expr factor() {
-        return leftAssocBinary(this::unary, SLASH, STAR);
+        return leftAssocBinary(this::unary, SLASH, STAR, PERCENT);
     }
 
     private Expr unary() {
@@ -215,10 +261,44 @@ public final class Parser {
             Token operator = previousToken();
             return new Expr.Unary(operator, unary());
         }
-        return primary();
+        return call();
+    }
+
+    /**
+     * postfix 단계: 함수 호출 expr(...) 과 배열 인덱싱 expr[...] 처리.
+     */
+    private Expr call() {
+        Expr expr = primary();
+        while (true) {
+            if (matchAndAdvance(LEFT_PAREN)) {
+                expr = finishCall(expr);
+            } else if (matchAndAdvance(LEFT_BRACKET)) {
+                Token bracket = previousToken();
+                Expr index = expression();
+                expectAndConsume(RIGHT_BRACKET, DiagnosticMessage.ERR_RIGHT_BRACKET_AFTER_INDEX);
+                expr = new Expr.ArrayGet(expr, index, bracket);
+            } else {
+                break;
+            }
+        }
+        return expr;
+    }
+
+    private Expr finishCall(Expr callee) {
+        List<Expr> arguments = new ArrayList<>();
+        if (!currentTokenIs(RIGHT_PAREN)) {
+            do {
+                arguments.add(expression());
+            } while (matchAndAdvance(COMMA));
+        }
+        Token paren = expectAndConsume(RIGHT_PAREN, DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_ARGS);
+        return new Expr.Call(callee, paren, arguments);
     }
 
     private Expr primary() {
+        if (matchAndAdvance(NIL)) {
+            return new Expr.Literal(null);
+        }
         if (matchAndAdvance(FALSE)) {
             return new Expr.Literal(false);
         }
@@ -227,6 +307,10 @@ public final class Parser {
         }
         if (matchAndAdvance(NUMBER, STRING)) {
             return new Expr.Literal(previousToken().literal);
+        }
+        if (matchAndAdvance(ARRAY)) {
+            // Array(n) — Variable 노드로 감싸 call() 단계에서 함수 호출로 처리
+            return new Expr.Variable(previousToken());
         }
         if (matchAndAdvance(IDENTIFIER)) {
             return new Expr.Variable(previousToken());
@@ -312,6 +396,8 @@ public final class Parser {
                 return;
             }
             switch (currentToken().type) {
+                case FUNC:
+                case RETURN:
                 case VAR:
                 case FOR:
                 case IF:

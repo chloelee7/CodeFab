@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+# factory — CodeFab 인터프리터 실행 래퍼
+# build/install/factory/bin/factory 가 없으면 먼저 빌드한다.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BINARY="$SCRIPT_DIR/build/install/factory/bin/factory"
+
+if [ ! -f "$BINARY" ]; then
+  echo "[factory] 먼저 빌드를 실행합니다..."
+  "$SCRIPT_DIR/gradlew" installDist -q || exit 1
+fi
+
+exec "$BINARY" "$@"

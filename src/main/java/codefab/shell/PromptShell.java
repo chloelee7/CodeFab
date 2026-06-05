@@ -10,9 +10,9 @@ import java.io.PrintStream;
 
 public final class PromptShell {
 
-    private static final String PRIMARY_PROMPT = "codefab> ";
+    private static final String PRIMARY_PROMPT = "> ";
     private static final String CONTINUATION_PROMPT = "....... > ";
-    private static final String BANNER = "CodeFab REPL. Type :exit to quit.";
+    private static final String BANNER = "CodeFab REPL. Type 'exit' to quit.";
 
     private final BufferedReader in;
     private final PrintStream out;
@@ -26,25 +26,62 @@ public final class PromptShell {
     public void run() {
         out.println(BANNER);
         StringBuilder buffer = new StringBuilder();
+        boolean pendingElse = false;
         try {
             while (true) {
-                prompt(buffer);
+                out.print(buffer.isEmpty() && !pendingElse ? PRIMARY_PROMPT : CONTINUATION_PROMPT);
+                out.flush();
 
                 String line = in.readLine();
-                if (isEOF(line)) {
+                if (line == null) {
+                    // EOF: pendingElse 상태라면 완성된 if 블록 실행 후 종료
+                    if (pendingElse && buffer.length() > 0) {
+                        execute(buffer.toString());
+                    }
                     break;
                 }
 
                 String trimmed = line.trim();
-                if (buffer.isEmpty() && isCommand(trimmed)) {
-                    if (handleCommand(trimmed)) {
-                        break;
+
+                // 명령어 처리 — pendingElse 상태에서도 단독 셸 명령은 우선 처리
+                if (isCommand(trimmed) && (buffer.isEmpty() || pendingElse)) {
+                    if (pendingElse && buffer.length() > 0) {
+                        execute(buffer.toString());
+                        buffer.setLength(0);
+                        pendingElse = false;
                     }
+                    if (handleCommand(trimmed)) break;
                     continue;
                 }
 
-                buffer.append(line).append('\n');
-                if (!isComplete(buffer.toString())) {
+                if (pendingElse) {
+                    if (trimmed.isEmpty()) {
+                        // 빈 줄 → if 블록 그대로 실행
+                        execute(buffer.toString());
+                        buffer.setLength(0);
+                        pendingElse = false;
+                        continue;
+                    }
+                    if (trimmed.startsWith("else")) {
+                        // else 절 → 누적 후 일반 멀티라인으로 복귀
+                        buffer.append(line).append('\n');
+                        pendingElse = false;
+                        // isComplete() 검사로 계속 진행
+                    } else {
+                        // else가 아닌 새 구문 → if 블록 먼저 실행, 새 줄 이어받기
+                        execute(buffer.toString());
+                        buffer.setLength(0);
+                        pendingElse = false;
+                        buffer.append(line).append('\n');
+                    }
+                } else {
+                    buffer.append(line).append('\n');
+                }
+
+                if (!isComplete(buffer.toString())) continue;
+
+                if (isPendingElse(buffer.toString())) {
+                    pendingElse = true;
                     continue;
                 }
 
@@ -56,21 +93,15 @@ public final class PromptShell {
         }
     }
 
-    private static boolean isEOF(String line) {
-        return line == null;
-    }
-
-    private void prompt(StringBuilder buffer) {
-        out.print(buffer.isEmpty() ? PRIMARY_PROMPT : CONTINUATION_PROMPT);
-        out.flush();
-    }
-
     private boolean isCommand(String trimmed) {
-        return trimmed.startsWith(":");
+        return trimmed.equals("exit") || trimmed.equals("quit")
+                || trimmed.startsWith(":");
     }
 
     private boolean handleCommand(String command) {
         switch (command) {
+            case "exit":
+            case "quit":
             case ":exit":
             case ":quit":
                 return true;
@@ -104,52 +135,97 @@ public final class PromptShell {
         return trimmed.endsWith(";") || trimmed.endsWith("}");
     }
 
+    /**
+     * isComplete()가 true인 버퍼에서 최상위 레벨의 if 블록이 else 없이
+     * 끝난 경우 true를 반환한다. 문자열·주석 내 if/else는 무시한다.
+     *
+     * 판별: braceDepth==0 조건에서 if/else 키워드를 카운트.
+     * topLevelIfCount > topLevelElseCount 이면 else 대기 필요.
+     */
+    public static boolean isPendingElse(String source) {
+        if (!isComplete(source)) return false;
 
-    private static boolean isBalanced(String source) {
+        int ifCount = 0;
+        int elseCount = 0;
+        int braceDepth = 0;
+        boolean inString = false;
+        boolean inComment = false;
+        char[] chars = source.toCharArray();
+
+        for (int i = 0; i < chars.length; i++) {
+            char c = chars[i];
+
+            if (inComment) {
+                if (c == '\n') inComment = false;
+                continue;
+            }
+            if (inString) {
+                if (c == '"') inString = false;
+                continue;
+            }
+
+            if (c == '"') { inString = true; continue; }
+            if (c == '/' && i + 1 < chars.length && chars[i + 1] == '/') {
+                inComment = true;
+                continue;
+            }
+
+            if (c == '{') { braceDepth++; continue; }
+            if (c == '}') { braceDepth--; continue; }
+
+            // 최상위 레벨에서만 키워드 카운트
+            if (braceDepth == 0 && isAlpha(c)) {
+                int start = i;
+                while (i < chars.length && isAlphaNumeric(chars[i])) i++;
+                String word = source.substring(start, i);
+                i--; // for 루프 i++ 보정
+                if (word.equals("if")) ifCount++;
+                else if (word.equals("else")) elseCount++;
+            }
+        }
+
+        return ifCount > elseCount;
+    }
+
+    public static boolean isBalanced(String source) {
         int parens = 0;
         int braces = 0;
+        int brackets = 0;
         boolean inString = false;
         boolean inComment = false;
         char[] chars = source.toCharArray();
         for (int i = 0; i < chars.length; i++) {
             char c = chars[i];
             if (inComment) {
-                if (c == '\n') {
-                    inComment = false;
-                }
+                if (c == '\n') inComment = false;
                 continue;
             }
             if (inString) {
-                if (c == '"') {
-                    inString = false;
-                }
+                if (c == '"') inString = false;
                 continue;
             }
             switch (c) {
-                case '"':
-                    inString = true;
-                    break;
+                case '"':   inString = true; break;
                 case '/':
-                    if (i + 1 < chars.length && chars[i + 1] == '/') {
-                        inComment = true;
-                    }
+                    if (i + 1 < chars.length && chars[i + 1] == '/') inComment = true;
                     break;
-                case '(':
-                    parens++;
-                    break;
-                case ')':
-                    parens--;
-                    break;
-                case '{':
-                    braces++;
-                    break;
-                case '}':
-                    braces--;
-                    break;
-                default:
-                    break;
+                case '(':   parens++; break;
+                case ')':   parens--; break;
+                case '{':   braces++; break;
+                case '}':   braces--; break;
+                case '[':   brackets++; break;
+                case ']':   brackets--; break;
+                default:    break;
             }
         }
-        return !inString && parens <= 0 && braces <= 0;
+        return !inString && parens == 0 && braces == 0 && brackets == 0;
+    }
+
+    private static boolean isAlpha(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    }
+
+    private static boolean isAlphaNumeric(char c) {
+        return isAlpha(c) || (c >= '0' && c <= '9');
     }
 }

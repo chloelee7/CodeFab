@@ -24,6 +24,10 @@ public abstract class Stmt {
 
         R visitWhileStmt(WhileStmt stmt);
 
+        R visitFunctionStmt(FunctionStmt stmt);
+
+        R visitReturnStmt(ReturnStmt stmt);
+
     }
 
     public abstract <R> R accept(Visitor<R> visitor);
@@ -137,6 +141,40 @@ public abstract class Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitWhileStmt(this);
+        }
+    }
+
+    public static final class FunctionStmt extends Stmt {
+
+        public final Token name;
+        public final List<Token> params;
+        public final List<Stmt> body;
+
+        public FunctionStmt(Token name, List<Token> params, List<Stmt> body) {
+            this.name = name;
+            this.params = params;
+            this.body = body;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitFunctionStmt(this);
+        }
+    }
+
+    public static final class ReturnStmt extends Stmt {
+
+        public final Token keyword;    // 'return' 토큰 — 오류 위치 보고용
+        public final Expr value;       // nullable (return; 은 null)
+
+        public ReturnStmt(Token keyword, Expr value) {
+            this.keyword = keyword;
+            this.value = value;
+        }
+
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitReturnStmt(this);
         }
     }
 }
