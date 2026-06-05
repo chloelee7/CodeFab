@@ -34,6 +34,7 @@ public final class DebugShell {
     private int cursor = 0;
     private final Set<Integer> breakpoints = new HashSet<>();
     private final Set<String> watchList = new LinkedHashSet<>();
+    private boolean stoppedAtBreakpoint = false;
 
     private CollectingOutputSink outputSink;
     private Executor executor;
@@ -142,6 +143,7 @@ public final class DebugShell {
         }
         executeOne(statements.get(cursor));
         cursor++;
+        stoppedAtBreakpoint = false;
         printWatches();
         if (cursor < statements.size()) {
             printCurrentStmt();
@@ -151,15 +153,16 @@ public final class DebugShell {
 
     private boolean doContinue() {
         while (cursor < statements.size()) {
-            int line = getLine(statements.get(cursor));
-            if (breakpoints.contains(line)) {
+            int line = findBreakpointLine(statements.get(cursor));
+            if (!stoppedAtBreakpoint && line > 0) {
                 out.println("[DEBUG] " + line + "번째 줄에서 정지 (breakpoint) → " + stmtText(statements.get(cursor)));
                 printWatches();
-                cursor++;
+                stoppedAtBreakpoint = true;
                 return true;
             }
             executeOne(statements.get(cursor));
             cursor++;
+            stoppedAtBreakpoint = false;
             printWatches();
         }
         return false;
@@ -298,6 +301,14 @@ public final class DebugShell {
         }
         if (stmt instanceof Stmt.IfStmt)         return getExprLine(((Stmt.IfStmt) stmt).condition);
         if (stmt instanceof Stmt.WhileStmt)      return getExprLine(((Stmt.WhileStmt) stmt).condition);
+        if (stmt instanceof Stmt.ForStmt) {
+            Stmt.ForStmt f = (Stmt.ForStmt) stmt;
+            int line = f.initializer != null ? getLine(f.initializer) : -1;
+            if (line > 0) return line;
+            line = f.condition != null ? getExprLine(f.condition) : -1;
+            if (line > 0) return line;
+            return f.increment != null ? getExprLine(f.increment) : -1;
+        }
         return -1;
     }
 
@@ -306,10 +317,53 @@ public final class DebugShell {
             return ((codefab.core.Expr.Variable) expr).name.line;
         if (expr instanceof codefab.core.Expr.Assign)
             return ((codefab.core.Expr.Assign) expr).name.line;
+        if (expr instanceof codefab.core.Expr.Unary)
+            return ((codefab.core.Expr.Unary) expr).operator.line;
         if (expr instanceof codefab.core.Expr.Binary)
             return ((codefab.core.Expr.Binary) expr).operator.line;
+        if (expr instanceof codefab.core.Expr.Logical)
+            return ((codefab.core.Expr.Logical) expr).operator.line;
+        if (expr instanceof codefab.core.Expr.Grouping)
+            return getExprLine(((codefab.core.Expr.Grouping) expr).expression);
         if (expr instanceof codefab.core.Expr.Call)
             return ((codefab.core.Expr.Call) expr).paren.line;
+        if (expr instanceof codefab.core.Expr.ArrayGet)
+            return ((codefab.core.Expr.ArrayGet) expr).bracket.line;
+        if (expr instanceof codefab.core.Expr.ArraySet)
+            return ((codefab.core.Expr.ArraySet) expr).bracket.line;
+        return -1;
+    }
+
+    private int findBreakpointLine(Stmt stmt) {
+        int line = getLine(stmt);
+        if (line > 0 && breakpoints.contains(line)) return line;
+
+        if (stmt instanceof Stmt.BlockStmt) {
+            for (Stmt inner : ((Stmt.BlockStmt) stmt).statements) {
+                line = findBreakpointLine(inner);
+                if (line > 0) return line;
+            }
+        } else if (stmt instanceof Stmt.IfStmt) {
+            Stmt.IfStmt s = (Stmt.IfStmt) stmt;
+            line = findBreakpointLine(s.thenBranch);
+            if (line > 0) return line;
+            if (s.elseBranch != null) {
+                line = findBreakpointLine(s.elseBranch);
+                if (line > 0) return line;
+            }
+        } else if (stmt instanceof Stmt.WhileStmt) {
+            line = findBreakpointLine(((Stmt.WhileStmt) stmt).body);
+            if (line > 0) return line;
+        } else if (stmt instanceof Stmt.ForStmt) {
+            Stmt.ForStmt s = (Stmt.ForStmt) stmt;
+            if (s.initializer != null) {
+                line = findBreakpointLine(s.initializer);
+                if (line > 0) return line;
+            }
+            line = findBreakpointLine(s.body);
+            if (line > 0) return line;
+        }
+
         return -1;
     }
 
