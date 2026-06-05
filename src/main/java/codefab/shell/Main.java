@@ -76,9 +76,9 @@ public final class Main {
         System.out.println("CodeFab Interpreter");
         System.out.println();
         System.out.println("Usage:");
-        System.out.println("  codefab               Start the interactive REPL");
-        System.out.println("  codefab run <file>    Run a CodeFab script file");
-        System.out.println("  codefab debug <file>  Debug a CodeFab script file");
-        System.out.println("  codefab --help        Show this help");
+        System.out.println("  factory               Start the interactive REPL");
+        System.out.println("  factory run <file>    Run a CodeFab script file");
+        System.out.println("  factory debug <file>  Debug a CodeFab script file (step/break/watch/inspect)");
+        System.out.println("  factory --help        Show this help");
     }
 }
