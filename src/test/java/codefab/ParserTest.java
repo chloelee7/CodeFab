@@ -194,6 +194,79 @@ class ParserTest {
         assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_BRACE_AFTER_BLOCK)));
     }
 
+    @DisplayName("함수 선언문을 FunctionStmt로 파싱한다")
+    @Test
+    void functionDeclarationIsParsedCorrectly() {
+        List<Token> tokens = tokensOf("Func foo ( ) { print 1 ; }");
+        List<Stmt> stmts = new Parser(tokens, diags).parse();
+
+        assertTrue(diags.isEmpty(), () -> "unexpected diagnostics: " + diags);
+        assertEquals(1, stmts.size());
+        assertInstanceOf(Stmt.FunctionStmt.class, stmts.get(0));
+        Stmt.FunctionStmt fn = (Stmt.FunctionStmt) stmts.get(0);
+        assertEquals("foo", fn.name.lexeme);
+        assertEquals(0, fn.params.size());
+    }
+
+    @DisplayName("매개변수가 있는 함수 선언문을 파싱한다")
+    @Test
+    void functionDeclarationWithParamsIsParsedCorrectly() {
+        List<Token> tokens = tokensOf("Func add ( a , b ) { print a ; }");
+        List<Stmt> stmts = new Parser(tokens, diags).parse();
+
+        assertTrue(diags.isEmpty(), () -> "unexpected diagnostics: " + diags);
+        assertInstanceOf(Stmt.FunctionStmt.class, stmts.get(0));
+        Stmt.FunctionStmt fn = (Stmt.FunctionStmt) stmts.get(0);
+        assertEquals(2, fn.params.size());
+        assertEquals("a", fn.params.get(0).lexeme);
+        assertEquals("b", fn.params.get(1).lexeme);
+    }
+
+    @DisplayName("return 문을 ReturnStmt로 파싱한다")
+    @Test
+    void returnStatementIsParsedCorrectly() {
+        List<Token> tokens = tokensOf("Func f ( ) { return 1 ; }");
+        List<Stmt> stmts = new Parser(tokens, diags).parse();
+
+        assertTrue(diags.isEmpty(), () -> "unexpected diagnostics: " + diags);
+        Stmt.FunctionStmt fn = (Stmt.FunctionStmt) stmts.get(0);
+        assertEquals(1, fn.body.size());
+        assertInstanceOf(Stmt.ReturnStmt.class, fn.body.get(0));
+    }
+
+    @DisplayName("Func 키워드 뒤에 이름이 없으면 에러를 보고한다")
+    @Test
+    void missingFunctionNameAfterFuncReportsError() {
+        List<Token> tokens = tokensOf("Func ( ) { }");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(
+            codefab.core.DiagnosticMessage.ERR_FUNCTION_NAME)));
+    }
+
+    @DisplayName("함수 파라미터 목록에 닫는 괄호가 없으면 에러를 보고한다")
+    @Test
+    void missingCloseParenAfterParamsReportsError() {
+        List<Token> tokens = tokensOf("Func f ( a { }");
+        new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(
+            codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_PARAMS)));
+    }
+
+    @DisplayName("배열 인덱싱 표현식(arr[i])을 파싱한다")
+    @Test
+    void arrayIndexingIsParsedCorrectly() {
+        List<Token> tokens = tokensOf("print arr [ 0 ] ;");
+        List<Stmt> stmts = new Parser(tokens, diags).parse();
+
+        assertTrue(diags.isEmpty(), () -> "unexpected diagnostics: " + diags);
+        assertEquals(1, stmts.size());
+        assertInstanceOf(Stmt.PrintStmt.class, stmts.get(0));
+        assertInstanceOf(codefab.core.Expr.ArrayGet.class,
+            ((Stmt.PrintStmt) stmts.get(0)).expression);
+    }
+
     private static List<Token> tokensOf(String source) {
         List<Token> tokens = new ArrayList<>();
         for (String lexeme : source.split(" ")) {
@@ -239,6 +312,20 @@ class ParserTest {
                 return new Token(TokenType.LEFT_BRACE, lexeme, null, 1);
             case "}":
                 return new Token(TokenType.RIGHT_BRACE, lexeme, null, 1);
+            case "Func":
+                return new Token(TokenType.FUNC, lexeme, null, 1);
+            case "return":
+                return new Token(TokenType.RETURN, lexeme, null, 1);
+            case "nil":
+                return new Token(TokenType.NIL, lexeme, null, 1);
+            case "Array":
+                return new Token(TokenType.ARRAY, lexeme, null, 1);
+            case ",":
+                return new Token(TokenType.COMMA, lexeme, null, 1);
+            case "[":
+                return new Token(TokenType.LEFT_BRACKET, lexeme, null, 1);
+            case "]":
+                return new Token(TokenType.RIGHT_BRACKET, lexeme, null, 1);
             default:
                 if (lexeme.matches("\\d+")) {
                     return new Token(TokenType.NUMBER, lexeme, Double.parseDouble(lexeme), 1);

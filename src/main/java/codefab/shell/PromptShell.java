@@ -218,7 +218,7 @@ public final class PromptShell {
                 default:    break;
             }
         }
-        return !inString && parens <= 0 && braces <= 0 && brackets <= 0;
+        return !inString && parens == 0 && braces == 0 && brackets == 0;
     }
 
     private static boolean isAlpha(char c) {

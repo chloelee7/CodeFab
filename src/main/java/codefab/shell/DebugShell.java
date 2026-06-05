@@ -99,7 +99,7 @@ public final class DebugShell {
             doBreak(cmd.substring(6).trim());
             return true;
         }
-        if (cmd.equals("Breakpoints")) {
+        if (cmd.equals("breakpoints")) {
             doListBreakpoints();
             return true;
         }
@@ -155,6 +155,7 @@ public final class DebugShell {
             if (breakpoints.contains(line)) {
                 out.println("[DEBUG] " + line + "번째 줄에서 정지 (breakpoint) → " + stmtText(statements.get(cursor)));
                 printWatches();
+                cursor++;
                 return true;
             }
             executeOne(statements.get(cursor));

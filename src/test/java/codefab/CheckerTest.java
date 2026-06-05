@@ -463,6 +463,94 @@ class CheckerTest {
     }
 
     @Test
+    @DisplayName("함수 선언 및 호출 시 에러가 없다")
+    void functionDeclarationAndCall_returnsNoErrors() {
+        // given: Func greet() { print 1; } greet();
+        Token fnName = new Token(TokenType.IDENTIFIER, "greet", null, 1);
+        Token fnRef  = new Token(TokenType.IDENTIFIER, "greet", null, 2);
+        Token paren  = new Token(TokenType.RIGHT_PAREN, ")", null, 2);
+
+        Stmt.FunctionStmt fn = new Stmt.FunctionStmt(fnName, List.of(),
+            List.of(new Stmt.PrintStmt(new Expr.Literal(1.0))));
+        Stmt.ExpressionStmt call = new Stmt.ExpressionStmt(
+            new Expr.Call(new Expr.Variable(fnRef), paren, List.of()));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(fn, call));
+
+        // then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("함수 외부의 top-level return은 CHECKER 에러가 발생한다")
+    void returnOutsideFunction_returnsCheckerError() {
+        // given: return 1;
+        Token keyword = new Token(TokenType.RETURN, "return", null, 1);
+        Stmt.ReturnStmt ret = new Stmt.ReturnStmt(keyword, new Expr.Literal(1.0));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(ret));
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).stage).isEqualTo(Diagnostic.Stage.CHECKER);
+        assertThat(result.get(0).message).containsIgnoringCase("top-level");
+    }
+
+    @Test
+    @DisplayName("함수 내부의 return은 에러가 없다")
+    void returnInsideFunction_returnsNoErrors() {
+        // given: Func f() { return 42; }
+        Token fnName = new Token(TokenType.IDENTIFIER, "f", null, 1);
+        Token keyword = new Token(TokenType.RETURN, "return", null, 2);
+        Stmt.FunctionStmt fn = new Stmt.FunctionStmt(fnName, List.of(),
+            List.of(new Stmt.ReturnStmt(keyword, new Expr.Literal(42.0))));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(fn));
+
+        // then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("파라미터 이름 중복 시 CHECKER 에러가 발생한다")
+    void duplicateParameterName_returnsCheckerError() {
+        // given: Func f(a, a) { }
+        Token fnName = new Token(TokenType.IDENTIFIER, "f", null, 1);
+        Token p1 = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Token p2 = new Token(TokenType.IDENTIFIER, "a", null, 1);
+        Stmt.FunctionStmt fn = new Stmt.FunctionStmt(fnName, List.of(p1, p2), List.of());
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(fn));
+
+        // then: 파라미터 중복 진단이 최소 1개 포함되어야 한다
+        assertThat(result).isNotEmpty();
+        assertThat(result).anyMatch(d ->
+            d.stage == Diagnostic.Stage.CHECKER
+            && d.message.toLowerCase().contains("parameter"));
+    }
+
+    @Test
+    @DisplayName("배열 인덱스 접근에서 미선언 변수를 참조하면 CHECKER 에러가 발생한다")
+    void undeclaredVarInArrayGet_returnsCheckerError() {
+        // given: print arr[0];  (arr 미선언)
+        Token arrTok    = new Token(TokenType.IDENTIFIER, "arr", null, 1);
+        Token bracket   = new Token(TokenType.LEFT_BRACKET, "[", null, 1);
+        Stmt.PrintStmt print = new Stmt.PrintStmt(
+            new Expr.ArrayGet(new Expr.Variable(arrTok), new Expr.Literal(0.0), bracket));
+
+        // when
+        List<Diagnostic> result = checker.check(List.of(print));
+
+        // then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).stage).isEqualTo(Diagnostic.Stage.CHECKER);
+    }
+
+    @Test
     @DisplayName("초기화 식에서 선언 중인 변수를 자기 참조하면 CHECKER 에러가 1개 발생한다")
     void selfReferenceInVarInitializer_returnsCheckerError() {
         // given: var a = a + 1;

@@ -76,6 +76,31 @@ class ScannerTest {
     }
 
     @Test
+    @DisplayName("신규 키워드(Func, return, nil, Array)를 올바른 토큰 타입으로 스캔한다")
+    void scansNewKeywords() {
+        assertEquals(
+                List.of(TokenType.FUNC, TokenType.RETURN, TokenType.NIL, TokenType.ARRAY,
+                        TokenType.EOF),
+                types("Func return nil Array"));
+    }
+
+    @Test
+    @DisplayName("% 연산자를 PERCENT 토큰으로 스캔한다")
+    void scansPercentOperator() {
+        assertEquals(
+                List.of(TokenType.PERCENT, TokenType.EOF),
+                types("%"));
+    }
+
+    @Test
+    @DisplayName("대괄호([, ])를 올바른 토큰 타입으로 스캔한다")
+    void scansBracketTokens() {
+        assertEquals(
+                List.of(TokenType.LEFT_BRACKET, TokenType.RIGHT_BRACKET, TokenType.EOF),
+                types("[]"));
+    }
+
+    @Test
     @DisplayName("줄 주석과 공백을 무시한다")
     void ignoresLineCommentsAndWhitespace() {
         List<Token> tokens = scan("var a = 1; // a comment\nprint a;");

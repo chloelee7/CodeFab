@@ -263,14 +263,15 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         }
 
         CodeFabFunction function = (CodeFabFunction) callee;
+
+        if (expr.arguments.size() != function.arity()) {
+            throw new InterpreterRuntimeError(expr.paren,
+                    "Expected " + function.arity() + " arguments but got " + expr.arguments.size() + ".");
+        }
+
         List<Object> args = new ArrayList<>();
         for (Expr arg : expr.arguments) {
             args.add(evaluate(arg));
-        }
-
-        if (args.size() != function.arity()) {
-            throw new InterpreterRuntimeError(expr.paren,
-                    "Expected " + function.arity() + " arguments but got " + args.size() + ".");
         }
 
         if (callDepth >= MAX_CALL_DEPTH) {
