@@ -15,9 +15,11 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -38,10 +40,29 @@ public final class DebugShell {
     private CollectingOutputSink outputSink;
     private Executor executor;
 
+    /** 명령 이름 → 명령(GoF Command). 첫 토큰으로 디스패치. */
+    private final Map<String, DebugCommand> commands = new HashMap<>();
+
     public DebugShell(BufferedReader in, PrintStream out, String filePath) {
         this.in = in;
         this.out = out;
         this.filePath = filePath;
+        registerCommands();
+    }
+
+    private void registerCommands() {
+        commands.put("step",        (s, a) -> s.doStep());
+        commands.put("next",        (s, a) -> s.doStep());
+        commands.put("continue",    (s, a) -> s.doContinue());
+        commands.put("break",       (s, a) -> { s.doBreak(a); return true; });
+        commands.put("breakpoints", (s, a) -> { s.doListBreakpoints(); return true; });
+        commands.put("remove",      (s, a) -> { s.doRemoveBreakpoint(a); return true; });
+        commands.put("watch",       (s, a) -> { s.doWatch(a); return true; });
+        commands.put("unwatch",     (s, a) -> { s.doUnwatch(a); return true; });
+        commands.put("watches",     (s, a) -> { s.doWatches(); return true; });
+        commands.put("inspect",     (s, a) -> { s.doInspect(); return true; });
+        commands.put("exit",        (s, a) -> false);
+        commands.put("quit",        (s, a) -> false);
     }
 
     public void run() {
@@ -92,45 +113,16 @@ public final class DebugShell {
     }
 
     private boolean handleCommand(String cmd) {
-        if (cmd.equals("step") || cmd.equals("next")) {
-            return doStep();
-        }
-        if (cmd.startsWith("break ")) {
-            doBreak(cmd.substring(6).trim());
+        int space = cmd.indexOf(' ');
+        String name = space < 0 ? cmd : cmd.substring(0, space);
+        String arg = space < 0 ? "" : cmd.substring(space + 1).trim();
+
+        DebugCommand command = commands.get(name);
+        if (command == null) {
+            out.println("Unknown command: " + cmd);
             return true;
         }
-        if (cmd.equals("breakpoints")) {
-            doListBreakpoints();
-            return true;
-        }
-        if (cmd.startsWith("remove ")) {
-            doRemoveBreakpoint(cmd.substring(7).trim());
-            return true;
-        }
-        if (cmd.equals("continue")) {
-            return doContinue();
-        }
-        if (cmd.startsWith("watch ")) {
-            doWatch(cmd.substring(6).trim());
-            return true;
-        }
-        if (cmd.startsWith("unwatch ")) {
-            doUnwatch(cmd.substring(8).trim());
-            return true;
-        }
-        if (cmd.equals("watches")) {
-            doWatches();
-            return true;
-        }
-        if (cmd.equals("inspect")) {
-            doInspect();
-            return true;
-        }
-        if (cmd.equals("exit") || cmd.equals("quit")) {
-            return false;
-        }
-        out.println("Unknown command: " + cmd);
-        return true;
+        return command.execute(this, arg);
     }
 
     // ── stepping ───────────────────────────────────────────────────────────────
