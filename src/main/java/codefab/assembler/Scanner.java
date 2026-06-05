@@ -67,6 +67,7 @@ public final class Scanner {
             case '+': addToken(PLUS); break;
             case '-': addToken(MINUS); break;
             case '*': addToken(STAR); break;
+            case '%': addToken(PERCENT); break;
             case '!': addToken(match('=') ? BANG_EQUAL : BANG); break;
             case '=': addToken(match('=') ? EQUAL_EQUAL : EQUAL); break;
             case '<': addToken(match('=') ? LESS_EQUAL : LESS); break;

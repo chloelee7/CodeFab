@@ -7,7 +7,9 @@ import codefab.core.Stmt;
 import codefab.core.Token;
 import codefab.core.TokenType;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Walks the AST with DFS and produces effects: printing through an injected
@@ -18,14 +20,57 @@ import java.util.List;
 public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     private final OutputSink output;
     private Environment environment;
+    // The global scope. Variables the Checker could not resolve to a distance
+    // (true globals, natives like Array, and REPL bindings from earlier runs)
+    // are looked up here directly.
+    private final Environment globals;
+    // Static-binding distances computed by the Checker (Variable/Assign -> hops).
+    // Absent entries mean "global"; see shared-contracts §9-1. Not final: a REPL
+    // session reuses one Executor across runs (to keep globals + natives alive)
+    // but the Checker produces a fresh distance map each run, so the session
+    // swaps in the new map via setLocals() before executing the folded program.
+    private Map<Expr, Integer> locals;
+    // Whether a resolver actually supplied a locals map. When false (the legacy
+    // (OutputSink, Environment) overload, used by a facade that has not been
+    // upgraded to pass CheckResult.locals), unresolved references fall back to
+    // a normal chain walk instead of treating them as globals -- this keeps the
+    // old end-to-end behaviour intact for callers that never resolve distances.
+    private final boolean resolved;
     // The closing paren of the call currently in flight, so native callables can
     // attach a meaningful line number to runtime faults (e.g. Array(...)).
     private Token currentCallToken;
 
+    /** Backwards-compatible overload: no resolved locals. Variable/Assign use a
+     * normal scope-chain walk, exactly as before static binding existed. */
     public Executor(OutputSink output, Environment globals) {
         this.output = output;
         this.environment = globals;
+        this.globals = globals;
+        this.locals = Collections.emptyMap();
+        this.resolved = false;
         defineNatives(globals);
+    }
+
+    public Executor(OutputSink output, Environment globals, Map<Expr, Integer> locals) {
+        this.output = output;
+        this.environment = globals;
+        this.globals = globals;
+        this.locals = locals;
+        this.resolved = true;
+        defineNatives(globals);
+    }
+
+    /**
+     * Swap in a fresh static-binding distance map for the next program run.
+     * A persistent REPL session reuses one Executor (keeping its globals and
+     * native bindings) but re-checks each input, yielding a new locals map whose
+     * keys are the freshly folded AST nodes. References this map does not record
+     * fall back to the global scope ({@code resolved} stays true), so variables
+     * defined in earlier runs are still found via {@code globals}. Only valid on
+     * an Executor built with the resolved (3-arg) constructor.
+     */
+    public void setLocals(Map<Expr, Integer> locals) {
+        this.locals = locals;
     }
 
     /** Bind native callables (e.g. {@code Array}) into the global scope so a
@@ -190,13 +235,32 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Object visitVariable(Expr.Variable expr) {
+        Integer distance = locals.get(expr);
+        if (distance != null) {
+            // Resolved: jump straight to the declaring scope (O(1), no search).
+            return environment.getAt(distance, expr.name.lexeme);
+        }
+        if (resolved) {
+            // Resolver ran but did not record this access -> it is a global
+            // (true global / native / earlier-run REPL binding).
+            return globals.get(expr.name);
+        }
+        // No resolver: fall back to the legacy chain walk.
         return environment.get(expr.name);
     }
 
     @Override
     public Object visitAssign(Expr.Assign expr) {
         Object value = evaluate(expr.value);
-        environment.assign(expr.name, value);
+        Integer distance = locals.get(expr);
+        if (distance != null) {
+            environment.assignAt(distance, expr.name, value);
+        } else if (resolved) {
+            globals.assign(expr.name, value);
+        } else {
+            // No resolver: fall back to the legacy chain walk.
+            environment.assign(expr.name, value);
+        }
         return value;
     }
 
@@ -255,6 +319,13 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
                     throw new InterpreterRuntimeError(op, "Division by zero.");
                 }
                 return (double) left / (double) right;
+            case PERCENT:
+                checkNumberOperands(op, left, right);
+                if ((double) right == 0.0) {
+                    // remainder by zero is still a division by zero
+                    throw new InterpreterRuntimeError(op, "Division by zero.");
+                }
+                return (double) left % (double) right;
             case GREATER:
                 checkNumberOperands(op, left, right);
                 return (double) left > (double) right;

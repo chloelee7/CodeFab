@@ -8,18 +8,27 @@ import codefab.core.Token;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Static semantic analysis over the AST, performed by DFS before execution.
+ * Static semantic analysis, variable resolution, and constant folding over the
+ * AST, performed by DFS before execution.
  *
- * <p>It detects four classes of static error and nothing else (syntax is the
- * Parser's job, type/runtime faults are the Executor's): declaring two
- * variables with the same name in one scope, reading a variable inside its own
- * initializer, returning from top-level code, and duplicate parameter names. It
- * never executes code. Non-function call targets and argument-count mismatches
- * are runtime concerns and are intentionally not checked here.
+ * <p>The Checker now runs two pre-execution optimizations on top of error
+ * checking (contract §9). It first constant-folds the program into a new AST
+ * (collapsing fully-constant sub-expressions into single literals), then walks
+ * that folded tree to (a) detect the four classes of static error and (b) record
+ * a static-binding distance for every {@code Variable}/{@code Assign} reference.
+ * Both products are returned as a {@link CheckResult}; diagnostics still
+ * accumulate into the injected list. It never executes code.
+ *
+ * <p>The four static errors: declaring two variables with the same name in one
+ * scope, reading a variable inside its own initializer, returning from top-level
+ * code, and duplicate parameter names. Non-function call targets and
+ * argument-count mismatches are runtime concerns and are not checked here.
  */
 public final class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
@@ -31,17 +40,27 @@ public final class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private final List<Diagnostic> diagnostics;
     private final Deque<Map<String, VarState>> scopes = new ArrayDeque<>();
+    // Static-binding distances, keyed by node identity (folded-tree nodes).
+    private final Map<Expr, Integer> locals = new IdentityHashMap<>();
     private FunctionType currentFunction = FunctionType.NONE;
 
     public Checker(List<Diagnostic> diagnostics) {
         this.diagnostics = diagnostics;
     }
 
-    /** Check a whole program. A top-level scope models global declarations. */
-    public void check(List<Stmt> statements) {
+    /**
+     * Check a whole program: constant-fold it, then resolve the folded tree for
+     * static errors and variable distances. A top-level scope models global
+     * declarations. Returns the folded program plus the locals distance map; the
+     * locals keys are nodes of the folded program so they match what the Executor
+     * walks.
+     */
+    public CheckResult check(List<Stmt> statements) {
+        List<Stmt> folded = new ConstantFolder().fold(statements);
         beginScope();
-        resolve(statements);
+        resolve(folded);
         endScope();
+        return new CheckResult(folded, locals);
     }
 
     // --- statements --------------------------------------------------------
@@ -145,12 +164,14 @@ public final class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         if (scope != null && scope.get(expr.name.lexeme) == VarState.DECLARED) {
             report(expr.name, "Can't read local variable in initializer.");
         }
+        resolveLocal(expr, expr.name);
         return null;
     }
 
     @Override
     public Void visitAssign(Expr.Assign expr) {
         resolve(expr.value);
+        resolveLocal(expr, expr.name);
         return null;
     }
 
@@ -176,7 +197,8 @@ public final class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitCall(Expr.Call expr) {
-        // Argument count is a runtime concern; here we only resolve sub-expressions.
+        // Argument count is a runtime concern; here we only resolve sub-expressions
+        // (which also records distances for any Variable/Assign nodes within).
         resolve(expr.callee);
         for (Expr argument : expr.arguments) {
             resolve(argument);
@@ -234,6 +256,24 @@ public final class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         Map<String, VarState> scope = scopes.peek();
         if (scope == null) return;
         scope.put(name.lexeme, VarState.DEFINED);
+    }
+
+    /**
+     * Record the static-binding distance for a {@code Variable}/{@code Assign}
+     * node: scan the scope stack from innermost (peek) outward and store the
+     * index of the first frame that holds the name (0 = current scope). If no
+     * frame holds it, leave it out of the map so the Executor falls back to the
+     * global environment (e.g. native {@code Array} or a variable from an earlier
+     * REPL run that this fresh Checker's empty global frame does not know).
+     */
+    private void resolveLocal(Expr expr, Token name) {
+        int distance = 0;
+        for (Iterator<Map<String, VarState>> it = scopes.iterator(); it.hasNext(); distance++) {
+            if (it.next().containsKey(name.lexeme)) {
+                locals.put(expr, distance);
+                return;
+            }
+        }
     }
 
     private void resolve(List<Stmt> statements) {

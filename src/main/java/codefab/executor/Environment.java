@@ -10,8 +10,18 @@ import java.util.Map;
  * A variable store for one scope. Environments form a chain via {@code enclosing};
  * lookups walk outward toward the global scope, so inner scopes can read and
  * assign outer variables while shadowing them locally.
+ *
+ * <p>Static binding (see shared-contracts §9-1) gives O(1) access: once the
+ * Checker has computed the distance to a variable's declaring scope, the
+ * Executor uses {@link #getAt}/{@link #assignAt} to jump exactly that many hops
+ * via {@link #ancestor} instead of searching the chain.
+ *
+ * <p><b>Not {@code final} on purpose.</b> Every single hop up the chain goes
+ * through {@link #step()}, which is {@code protected} so a test-double subclass
+ * can override it to count enclosing traversals and assert that distance-based
+ * access never walks more than {@code distance} hops.
  */
-public final class Environment {
+public class Environment {
     private final Environment enclosing;
     private final Map<String, Object> values = new HashMap<>();
 
@@ -33,7 +43,7 @@ public final class Environment {
             return values.get(name.lexeme);
         }
         if (enclosing != null) {
-            return enclosing.get(name);
+            return step().get(name);
         }
         throw new InterpreterRuntimeError(name, "Undefined variable '" + name.lexeme + "'.");
     }
@@ -45,9 +55,44 @@ public final class Environment {
             return;
         }
         if (enclosing != null) {
-            enclosing.assign(name, value);
+            step().assign(name, value);
             return;
         }
         throw new InterpreterRuntimeError(name, "Undefined variable '" + name.lexeme + "'.");
+    }
+
+    // --- static binding (distance) access ----------------------------------
+
+    /**
+     * The single seam for moving one hop up the chain. Every chain traversal in
+     * this class routes through here, so a counting test double can observe the
+     * exact number of enclosing hops a lookup performs without affecting
+     * production behaviour. Returns the immediately enclosing scope.
+     */
+    protected Environment step() {
+        return enclosing;
+    }
+
+    /**
+     * The Environment {@code distance} hops outward (0 = this one). Walks exactly
+     * {@code distance} hops via {@link #step()} and never further, so a resolved
+     * variable access is O(1) in the distance the Checker computed.
+     */
+    Environment ancestor(int distance) {
+        Environment environment = this;
+        for (int i = 0; i < distance; i++) {
+            environment = environment.step();
+        }
+        return environment;
+    }
+
+    /** Read a resolved binding directly at {@code distance}, no chain search. */
+    public Object getAt(int distance, String name) {
+        return ancestor(distance).values.get(name);
+    }
+
+    /** Assign a resolved binding directly at {@code distance}, no chain search. */
+    public void assignAt(int distance, Token name, Object value) {
+        ancestor(distance).values.put(name.lexeme, value);
     }
 }
