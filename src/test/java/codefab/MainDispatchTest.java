@@ -1,6 +1,7 @@
 package codefab;
 
 import codefab.shell.Main;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -14,11 +15,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Behaviour-preservation tests for the Mode=Strategy refactor: drive
- * {@link Main#dispatch} directly (no {@code System.exit}) and assert the exit
- * code and out/err output for each mode.
- */
+@DisplayName("Main 모드 디스패치")
 class MainDispatchTest {
 
     private String out;
@@ -37,6 +34,7 @@ class MainDispatchTest {
     }
 
     @Test
+    @DisplayName("인자 없음 → REPL 모드 실행")
     void dispatchNoArgs_startsRepl() {
         int code = dispatch(new String[]{}, "var a=5; var b=10; print a+b;\n:exit\n");
         assertTrue(out.contains("15"), () -> "expected 15 in REPL output:\n" + out);
@@ -44,6 +42,7 @@ class MainDispatchTest {
     }
 
     @Test
+    @DisplayName("run <파일> → 스크립트 실행")
     void dispatchRunFile_executesScript(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("ok.cf");
         Files.writeString(file, "print 1 + 2;\n");
@@ -53,6 +52,7 @@ class MainDispatchTest {
     }
 
     @Test
+    @DisplayName("단일 파일 경로 → run과 동일 (하위호환)")
     void dispatchBareFilePath_backwardCompatible(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("bare.cf");
         Files.writeString(file, "print 7 + 1;\n");
@@ -62,6 +62,7 @@ class MainDispatchTest {
     }
 
     @Test
+    @DisplayName("파일 없음 → 코드 66, stderr 오류")
     void dispatchMissingFile_returns66() {
         int code = dispatch(new String[]{"run", "/no/such/file.cf"}, "");
         assertTrue(err.contains("Error: file not found:"), () -> "expected not-found on err:\n" + err);
@@ -69,6 +70,7 @@ class MainDispatchTest {
     }
 
     @Test
+    @DisplayName("런타임 오류 → 코드 65")
     void dispatchRuntimeError_returns65(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("bad.cf");
         Files.writeString(file, "print missing;\n");
@@ -77,6 +79,7 @@ class MainDispatchTest {
     }
 
     @Test
+    @DisplayName("--help/-h → stdout 사용법, 코드 0")
     void dispatchHelp_printsUsageCode0() {
         int code = dispatch(new String[]{"--help"}, "");
         assertTrue(out.contains("Usage:"), () -> "expected usage:\n" + out);
@@ -88,6 +91,7 @@ class MainDispatchTest {
     }
 
     @Test
+    @DisplayName("잘못된 인자 조합 → 코드 64(EX_USAGE), stderr 사용법")
     void dispatchBadArgs_returns64UsageOnErr() {
         int code = dispatch(new String[]{"run"}, "");
         assertEquals(64, code, () -> "bad arg combo must yield EX_USAGE; out:\n" + out + "\nerr:\n" + err);
@@ -96,6 +100,7 @@ class MainDispatchTest {
     }
 
     @Test
+    @DisplayName("debug <파일> → 디버거 모드 실행")
     void dispatchDebug_smoke(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("dbg.cf");
         Files.writeString(file, "print 1;\n");
