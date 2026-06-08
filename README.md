@@ -67,6 +67,7 @@ cd CodeFab
 # 예제 파일 실행
 ./factory run examples/selfhost_showcase.cfab
 ./factory selfhost run examples/selfhost_showcase.cfab
+./factory explain examples/selfhost_showcase.cfab
 ```
 
 REPL이 시작되면 아래와 같이 입력합니다.
@@ -216,6 +217,42 @@ source.cfab -> Java host -> CodeFab-written Scanner/Parser/Checker/Executor
 ```
 
 selfhost 경로는 Java 경로와 같은 출력/진단을 내도록 parity test로 유지합니다. 대신 bootstrap CodeFab 코드를 한 번 더 실행하므로 성능은 Java 경로보다 느립니다. 일상 실행은 `factory run`, selfhost 검증이나 언어 구현 데모는 `factory selfhost run`을 권장합니다.
+
+---
+
+### Explain 실행
+
+Java interpreter 파이프라인을 단계별로 확인합니다.
+
+```bash
+./factory explain hello.cfab
+```
+
+출력은 Scanner 토큰, Parser AST, Checker 진단, ConstantFolder 적용 후 AST, Executor 결과 순서로 표시됩니다.
+
+```text
+== Scanner Tokens ==
+1: PRINT 'print'
+1: NUMBER '1' 1.0
+
+== Parser AST ==
+PrintStmt(Binary(Literal(1), +, Literal(2)))
+
+== Checker Diagnostics ==
+(none)
+
+== Constant-Folded AST ==
+PrintStmt(Literal(3))
+
+== Executor Result ==
+Success: true
+Output:
+3
+Diagnostics:
+(none)
+```
+
+구문 오류나 정적 진단이 있으면 실제 실행 단계는 건너뛰고, 어느 단계에서 멈췄는지 표시합니다.
 
 ---
 
@@ -870,6 +907,7 @@ codefab/
 └── shell/
     ├── Main.java              CLI 진입점 (run/debug 서브커맨드 라우팅)
     ├── PromptShell.java       대화형 REPL 셸 (멀티라인, isPendingElse)
+    ├── ExplainMode.java       파이프라인 설명 모드
     └── DebugShell.java        디버그 모드 셸 (step/break/watch/inspect)
 selfhost/
 ├── scanner.cfab              CodeFab selfhost scanner
