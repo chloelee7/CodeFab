@@ -1,0 +1,212 @@
+Func check(statements) {
+    var diagnostics = Array(0);
+    var scopes = Array(0);
+    var scopeCount = 0;
+    var initializingVar = nil;
+    var inFunction = false;
+    var replMode = true;
+
+    Func nodeLine(node) {
+        return node[len(node) - 1];
+    }
+
+    Func paramName(param) {
+        return param[0];
+    }
+
+    Func paramLine(param) {
+        return param[1];
+    }
+
+    Func diagnostic(line, message) {
+        var d = Array(3);
+        d[0] = "CHECKER";
+        d[1] = line;
+        d[2] = message;
+        return d;
+    }
+
+    Func addDiagnostic(line, message) {
+        push(diagnostics, diagnostic(line, message));
+        return nil;
+    }
+
+    Func containsName(names, name) {
+        for (var i = 0; i < len(names); i = i + 1) {
+            if (names[i] == name) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    Func beginScope() {
+        var names = Array(0);
+        if (scopeCount < len(scopes)) {
+            scopes[scopeCount] = names;
+        } else {
+            push(scopes, names);
+        }
+        scopeCount = scopeCount + 1;
+        return nil;
+    }
+
+    Func endScope() {
+        scopeCount = scopeCount - 1;
+        return nil;
+    }
+
+    Func currentScope() {
+        return scopes[scopeCount - 1];
+    }
+
+    Func declare(name, line) {
+        var current = currentScope();
+        if (containsName(current, name) and !(replMode and scopeCount == 1)) {
+            addDiagnostic(line, "Already a variable with this name in this scope.");
+        }
+        push(current, name);
+        return nil;
+    }
+
+    Func checkDeclared(name, line) {
+        if (initializingVar != nil and name == initializingVar) {
+            addDiagnostic(line, "Can't read local variable in initializer.");
+            return nil;
+        }
+
+        for (var i = scopeCount - 1; i >= 0; i = i - 1) {
+            if (containsName(scopes[i], name)) {
+                return nil;
+            }
+        }
+
+        if (!replMode) {
+            addDiagnostic(line, "undefined variable '" + name + "'");
+        }
+        return nil;
+    }
+
+    Func checkExpr(expr) {
+        var kind = expr[0];
+
+        if (kind == "literal") {
+            return nil;
+        } else if (kind == "variable") {
+            checkDeclared(expr[1], nodeLine(expr));
+        } else if (kind == "assign") {
+            checkExpr(expr[2]);
+            checkDeclared(expr[1], nodeLine(expr));
+        } else if (kind == "group") {
+            checkExpr(expr[1]);
+        } else if (kind == "unary") {
+            checkExpr(expr[2]);
+        } else if (kind == "binary" or kind == "logical") {
+            checkExpr(expr[1]);
+            checkExpr(expr[3]);
+        } else if (kind == "call") {
+            checkExpr(expr[1]);
+            var args = expr[2];
+            for (var i = 0; i < len(args); i = i + 1) {
+                checkExpr(args[i]);
+            }
+        } else if (kind == "get") {
+            checkExpr(expr[1]);
+            checkExpr(expr[2]);
+        } else if (kind == "set") {
+            checkExpr(expr[1]);
+            checkExpr(expr[2]);
+            checkExpr(expr[3]);
+        }
+        return nil;
+    }
+
+    Func checkStmt(stmt) {
+        var kind = stmt[0];
+
+        if (kind == "expr") {
+            checkExpr(stmt[1]);
+        } else if (kind == "print") {
+            checkExpr(stmt[1]);
+        } else if (kind == "var") {
+            var previousInitializingVar = initializingVar;
+            initializingVar = stmt[1];
+            if (stmt[2] != nil) {
+                checkExpr(stmt[2]);
+            }
+            initializingVar = previousInitializingVar;
+            declare(stmt[1], nodeLine(stmt));
+        } else if (kind == "block") {
+            beginScope();
+            var blockStatements = stmt[1];
+            for (var i = 0; i < len(blockStatements); i = i + 1) {
+                checkStmt(blockStatements[i]);
+            }
+            endScope();
+        } else if (kind == "if") {
+            checkExpr(stmt[1]);
+            checkStmt(stmt[2]);
+            if (stmt[3] != nil) {
+                checkStmt(stmt[3]);
+            }
+        } else if (kind == "while") {
+            checkExpr(stmt[1]);
+            checkStmt(stmt[2]);
+        } else if (kind == "for") {
+            beginScope();
+            if (stmt[1] != nil) {
+                checkStmt(stmt[1]);
+            }
+            if (stmt[2] != nil) {
+                checkExpr(stmt[2]);
+            }
+            // Match Java Checker and runtime order: body is checked before increment.
+            checkStmt(stmt[4]);
+            if (stmt[3] != nil) {
+                checkExpr(stmt[3]);
+            }
+            endScope();
+        } else if (kind == "function") {
+            declare(stmt[1], nodeLine(stmt));
+
+            var paramNames = Array(0);
+            var params = stmt[2];
+            for (var p = 0; p < len(params); p = p + 1) {
+                var name = paramName(params[p]);
+                if (containsName(paramNames, name)) {
+                    addDiagnostic(paramLine(params[p]), "Already a parameter with this name.");
+                }
+                push(paramNames, name);
+            }
+
+            var previousInFunction = inFunction;
+            inFunction = true;
+            beginScope();
+            for (var q = 0; q < len(params); q = q + 1) {
+                declare(paramName(params[q]), paramLine(params[q]));
+            }
+            var body = stmt[3];
+            for (var b = 0; b < len(body); b = b + 1) {
+                checkStmt(body[b]);
+            }
+            endScope();
+            inFunction = previousInFunction;
+        } else if (kind == "return") {
+            if (!inFunction) {
+                addDiagnostic(nodeLine(stmt), "Can't return from top-level code.");
+            }
+            if (stmt[1] != nil) {
+                checkExpr(stmt[1]);
+            }
+        }
+        return nil;
+    }
+
+    beginScope();
+    for (var i = 0; i < len(statements); i = i + 1) {
+        checkStmt(statements[i]);
+    }
+    endScope();
+
+    return diagnostics;
+}

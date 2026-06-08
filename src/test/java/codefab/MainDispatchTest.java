@@ -62,6 +62,28 @@ class MainDispatchTest {
     }
 
     @Test
+    @DisplayName("selfhost <파일> → selfhost 스크립트 실행")
+    void dispatchSelfhostFile_executesScript(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("selfhost.cf");
+        Files.writeString(file, "print 4;\n");
+        int code = dispatch(new String[]{"selfhost", file.toString()}, "");
+        assertEquals("4\n", out);
+        assertEquals("", err);
+        assertEquals(0, code);
+    }
+
+    @Test
+    @DisplayName("selfhost run <파일> → selfhost 스크립트 실행")
+    void dispatchSelfhostRunFile_executesScript(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("selfhost-run.cf");
+        Files.writeString(file, "print 8;\n");
+        int code = dispatch(new String[]{"selfhost", "run", file.toString()}, "");
+        assertEquals("8\n", out);
+        assertEquals("", err);
+        assertEquals(0, code);
+    }
+
+    @Test
     @DisplayName("파일 없음 → 코드 66, stderr 오류")
     void dispatchMissingFile_returns66() {
         int code = dispatch(new String[]{"run", "/no/such/file.cf"}, "");
@@ -83,10 +105,12 @@ class MainDispatchTest {
     void dispatchHelp_printsUsageCode0() {
         int code = dispatch(new String[]{"--help"}, "");
         assertTrue(out.contains("Usage:"), () -> "expected usage:\n" + out);
+        assertTrue(out.contains("factory selfhost run <file>"), () -> "expected selfhost usage:\n" + out);
         assertEquals(0, code);
 
         int codeShort = dispatch(new String[]{"-h"}, "");
         assertTrue(out.contains("Usage:"), () -> "expected usage for -h:\n" + out);
+        assertTrue(out.contains("factory selfhost run <file>"), () -> "expected selfhost usage for -h:\n" + out);
         assertEquals(0, codeShort);
     }
 

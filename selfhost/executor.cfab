@@ -1,0 +1,873 @@
+Func binding(name, value) {
+    var b = Array(2);
+    b[0] = name;
+    b[1] = value;
+    return b;
+}
+
+Func scope(enclosing) {
+    var s = Array(2);
+    s[0] = Array(0);
+    s[1] = enclosing;
+    return s;
+}
+
+Func envDefine(env, name, value) {
+    push(env[0], binding(name, value));
+    return value;
+}
+
+Func envGet(env, name) {
+    var cursor = env;
+    while (cursor != nil) {
+        var bindings = cursor[0];
+        for (var i = len(bindings) - 1; i >= 0; i = i - 1) {
+            var b = bindings[i];
+            if (b[0] == name) {
+                return b[1];
+            }
+        }
+        cursor = cursor[1];
+    }
+    return nil;
+}
+
+Func envHas(env, name) {
+    var cursor = env;
+    while (cursor != nil) {
+        var bindings = cursor[0];
+        for (var i = len(bindings) - 1; i >= 0; i = i - 1) {
+            var b = bindings[i];
+            if (b[0] == name) {
+                return true;
+            }
+        }
+        cursor = cursor[1];
+    }
+    return false;
+}
+
+Func envAssign(env, name, value) {
+    var cursor = env;
+    while (cursor != nil) {
+        var bindings = cursor[0];
+        for (var i = len(bindings) - 1; i >= 0; i = i - 1) {
+            var b = bindings[i];
+            if (b[0] == name) {
+                b[1] = value;
+                return value;
+            }
+        }
+        cursor = cursor[1];
+    }
+    return nil;
+}
+
+Func nodeKind(node) {
+    return node[0];
+}
+
+Func nodeLine(node) {
+    return node[len(node) - 1];
+}
+
+Func paramName(param) {
+    return param[0];
+}
+
+Func executeWithDiagnostics(statements) {
+    var env = scope(nil);
+    var output = Array(0);
+    var diagnostics = Array(0);
+    var callDepth = 0;
+    var maxCallDepth = 500;
+
+    Func runtimeDiagnostic(line, message) {
+        var d = Array(3);
+        d[0] = "RUNTIME";
+        d[1] = line;
+        d[2] = message;
+        return d;
+    }
+
+    Func addRuntimeDiagnostic(line, message) {
+        push(diagnostics, runtimeDiagnostic(line, message));
+        return nil;
+    }
+
+    Func hasRuntimeDiagnostics() {
+        return len(diagnostics) > 0;
+    }
+
+    Func isTruthy(value) {
+        if (value == nil) {
+            return false;
+        }
+        if (value == false) {
+            return false;
+        }
+        return true;
+    }
+
+    Func isEqual(left, right) {
+        if (left == nil and right == nil) {
+            return true;
+        }
+        if (left == nil or right == nil) {
+            return false;
+        }
+        return left == right;
+    }
+
+    Func functionValue(name, params, body, closure) {
+        var fn = Array(5);
+        fn[0] = "function";
+        fn[1] = name;
+        fn[2] = params;
+        fn[3] = body;
+        fn[4] = closure;
+        return fn;
+    }
+
+    Func returnSignal(value) {
+        var signal = Array(2);
+        signal[0] = "return";
+        signal[1] = value;
+        return signal;
+    }
+
+    Func runtimeSignal() {
+        var signal = Array(2);
+        signal[0] = "runtime";
+        signal[1] = nil;
+        return signal;
+    }
+
+    Func addArityDiagnostic(expected, actual, line) {
+        addRuntimeDiagnostic(line, "Expected " + valueText(expected) + " arguments but got " + valueText(actual) + ".");
+        return nil;
+    }
+
+    Func isNumber(value) {
+        return typeOf(value) == "Number";
+    }
+
+    Func isString(value) {
+        return typeOf(value) == "String";
+    }
+
+    Func isArray(value) {
+        return typeOf(value) == "Array";
+    }
+
+    Func isInteger(value) {
+        if (!isNumber(value)) {
+            return false;
+        }
+        var normalized = value;
+        if (normalized < 0) {
+            normalized = -normalized;
+        }
+        return normalized % 1 == 0;
+    }
+
+    Func validateArrayIndex(array, index, line) {
+        if (!isArray(array)) {
+            addRuntimeDiagnostic(line, "Only arrays can be indexed.");
+            return false;
+        }
+        if (!isNumber(index)) {
+            addRuntimeDiagnostic(line, "Array index must be a number.");
+            return false;
+        }
+        if (!isInteger(index)) {
+            addRuntimeDiagnostic(line, "Array index must be an integer.");
+            return false;
+        }
+        if (index < 0 or index >= len(array)) {
+            addRuntimeDiagnostic(line, "Array index " + valueText(index) + " out of bounds (size " + valueText(len(array)) + ").");
+            return false;
+        }
+        return true;
+    }
+
+    Func addNativeDiagnostic(line, message) {
+        addRuntimeDiagnostic(line, message);
+        return nil;
+    }
+
+    Func isDigitChar(c) {
+        var code = ord(c);
+        return code >= ord("0") and code <= ord("9");
+    }
+
+    Func isHexDigitChar(c) {
+        var code = ord(c);
+        return isDigitChar(c)
+            or (code >= ord("a") and code <= ord("f"))
+            or (code >= ord("A") and code <= ord("F"));
+    }
+
+    Func isWhitespaceChar(c) {
+        return c == " " or c == chr(9) or c == chr(10) or c == chr(13);
+    }
+
+    Func isFloatTypeSuffix(c) {
+        return c == "f" or c == "F" or c == "d" or c == "D";
+    }
+
+    Func isHexNumericString(value, i, end) {
+        i = i + 2;
+        var sawDigit = false;
+
+        while (i <= end and isHexDigitChar(charAt(value, i))) {
+            sawDigit = true;
+            i = i + 1;
+        }
+
+        if (i <= end and charAt(value, i) == ".") {
+            i = i + 1;
+            while (i <= end and isHexDigitChar(charAt(value, i))) {
+                sawDigit = true;
+                i = i + 1;
+            }
+        }
+
+        if (!sawDigit) {
+            return false;
+        }
+
+        if (i > end or !(charAt(value, i) == "p" or charAt(value, i) == "P")) {
+            return false;
+        }
+        i = i + 1;
+        if (i > end) {
+            return false;
+        }
+        if (charAt(value, i) == "-" or charAt(value, i) == "+") {
+            i = i + 1;
+            if (i > end) {
+                return false;
+            }
+        }
+
+        var sawExponentDigit = false;
+        while (i <= end and isDigitChar(charAt(value, i))) {
+            sawExponentDigit = true;
+            i = i + 1;
+        }
+
+        return sawExponentDigit and i > end;
+    }
+
+    Func isNumericString(value) {
+        if (!isString(value)) {
+            return false;
+        }
+
+        var start = 0;
+        var end = len(value) - 1;
+        while (start <= end and isWhitespaceChar(charAt(value, start))) {
+            start = start + 1;
+        }
+        while (end >= start and isWhitespaceChar(charAt(value, end))) {
+            end = end - 1;
+        }
+        if (start > end) {
+            return false;
+        }
+
+        var text = slice(value, start, end + 1);
+        if (text == "NaN" or text == "Infinity" or text == "+Infinity" or text == "-Infinity") {
+            return true;
+        }
+
+        if (isFloatTypeSuffix(charAt(value, end))) {
+            end = end - 1;
+            if (start > end) {
+                return false;
+            }
+        }
+
+        var i = start;
+        var sawDigit = false;
+
+        if (charAt(value, i) == "-" or charAt(value, i) == "+") {
+            i = i + 1;
+            if (i > end) {
+                return false;
+            }
+        }
+
+        if (i + 1 <= end and charAt(value, i) == "0" and (charAt(value, i + 1) == "x" or charAt(value, i + 1) == "X")) {
+            return isHexNumericString(value, i, end);
+        }
+
+        while (i <= end and isDigitChar(charAt(value, i))) {
+            sawDigit = true;
+            i = i + 1;
+        }
+
+        if (i <= end and charAt(value, i) == ".") {
+            i = i + 1;
+            while (i <= end and isDigitChar(charAt(value, i))) {
+                sawDigit = true;
+                i = i + 1;
+            }
+        }
+
+        if (!sawDigit) {
+            return false;
+        }
+
+        if (i <= end and (charAt(value, i) == "e" or charAt(value, i) == "E")) {
+            i = i + 1;
+            if (i > end) {
+                return false;
+            }
+            if (charAt(value, i) == "-" or charAt(value, i) == "+") {
+                i = i + 1;
+                if (i > end) {
+                    return false;
+                }
+            }
+
+            var sawExponentDigit = false;
+            while (i <= end and isDigitChar(charAt(value, i))) {
+                sawExponentDigit = true;
+                i = i + 1;
+            }
+            if (!sawExponentDigit) {
+                return false;
+            }
+        }
+
+        return i > end;
+    }
+
+    Func nativeFunction(name, arity) {
+        var fn = Array(3);
+        fn[0] = "native";
+        fn[1] = name;
+        fn[2] = arity;
+        return fn;
+    }
+
+    Func callNative(fn, args, line) {
+        var name = fn[1];
+
+        if (name == "Array") {
+            var size = args[0];
+            if (!isNumber(size)) {
+                return addNativeDiagnostic(line, "Array size must be a number.");
+            }
+            if (!isInteger(size)) {
+                return addNativeDiagnostic(line, "Array size must be an integer.");
+            }
+            if (size < 0) {
+                return addNativeDiagnostic(line, "Array size must be non-negative.");
+            }
+            return Array(size);
+        } else if (name == "len") {
+            var value = args[0];
+            if (isString(value) or isArray(value)) {
+                return len(value);
+            }
+            return addNativeDiagnostic(line, "len() expects a string or array.");
+        } else if (name == "charAt") {
+            var source = args[0];
+            var index = args[1];
+            if (!isString(source)) {
+                return addNativeDiagnostic(line, "charAt() expects a string.");
+            }
+            if (!isInteger(index)) {
+                return addNativeDiagnostic(line, "String index must be an integer.");
+            }
+            if (index < 0 or index >= len(source)) {
+                return addNativeDiagnostic(line, "String index out of bounds.");
+            }
+            return charAt(source, index);
+        } else if (name == "slice") {
+            var sliceSource = args[0];
+            var start = args[1];
+            var end = args[2];
+            if (!isString(sliceSource)) {
+                return addNativeDiagnostic(line, "slice() expects a string.");
+            }
+            if (!isInteger(start) or !isInteger(end)) {
+                return addNativeDiagnostic(line, "String index must be an integer.");
+            }
+            if (start < 0 or end < start or end > len(sliceSource)) {
+                return addNativeDiagnostic(line, "String slice out of bounds.");
+            }
+            return slice(sliceSource, start, end);
+        } else if (name == "push") {
+            var target = args[0];
+            if (!isArray(target)) {
+                return addNativeDiagnostic(line, "push() expects an array.");
+            }
+            return push(target, args[1]);
+        } else if (name == "chr") {
+            var code = args[0];
+            if (!isInteger(code)) {
+                return addNativeDiagnostic(line, "chr() expects an integer character code.");
+            }
+            if (code < 0 or code > 65535) {
+                return addNativeDiagnostic(line, "chr() expects an integer character code.");
+            }
+            return chr(code);
+        } else if (name == "num") {
+            var text = args[0];
+            if (!isNumericString(text)) {
+                return addNativeDiagnostic(line, "num() expects a numeric string.");
+            }
+            return num(text);
+        } else if (name == "ord") {
+            var char = args[0];
+            if (!isString(char) or len(char) != 1) {
+                return addNativeDiagnostic(line, "ord() expects a one-character string.");
+            }
+            return ord(char);
+        } else if (name == "typeOf") {
+            return typeOf(args[0]);
+        } else if (name == "valueText") {
+            return valueText(args[0]);
+        }
+
+        return nil;
+    }
+
+    Func callableArity(fn) {
+        if (typeOf(fn) != "Array" or len(fn) < 2) {
+            return -1;
+        }
+
+        var tag = fn[0];
+        if (tag == "native") {
+            return fn[2];
+        } else if (tag == "function") {
+            return len(fn[2]);
+        }
+
+        return -1;
+    }
+
+    Func validateCallableArity(fn, argCount, line) {
+        var arity = callableArity(fn);
+        if (arity < 0) {
+            addRuntimeDiagnostic(line, "Can only call functions.");
+            return false;
+        }
+        if (arity != argCount) {
+            addArityDiagnostic(arity, argCount, line);
+            return false;
+        }
+        return true;
+    }
+
+    Func callFunction(fn, args, line) {
+        if (typeOf(fn) != "Array" or len(fn) < 2) {
+            addRuntimeDiagnostic(line, "Can only call functions.");
+            return nil;
+        }
+
+        var tag = fn[0];
+        if (tag != "native" and tag != "function") {
+            addRuntimeDiagnostic(line, "Can only call functions.");
+            return nil;
+        }
+
+        if (tag == "native") {
+            if (len(args) != fn[2]) {
+                addArityDiagnostic(fn[2], len(args), line);
+                return nil;
+            }
+            return callNative(fn, args, line);
+        }
+
+        var params = fn[2];
+        if (len(args) != len(params)) {
+            addArityDiagnostic(len(params), len(args), line);
+            return nil;
+        }
+
+        if (callDepth >= maxCallDepth) {
+            addRuntimeDiagnostic(line, "Maximum call depth (500) exceeded.");
+            return nil;
+        }
+
+        callDepth = callDepth + 1;
+
+        var previous = env;
+        env = scope(fn[4]);
+
+        for (var i = 0; i < len(params); i = i + 1) {
+            envDefine(env, paramName(params[i]), args[i]);
+        }
+
+        var body = fn[3];
+        for (var j = 0; j < len(body); j = j + 1) {
+            var signal = execStmt(body[j]);
+            if (signal != nil) {
+                env = previous;
+                callDepth = callDepth - 1;
+                if (signal[0] == "return") {
+                    return signal[1];
+                }
+                return nil;
+            }
+        }
+
+        env = previous;
+        callDepth = callDepth - 1;
+        return nil;
+    }
+
+    Func evalExpr(expr) {
+        var kind = nodeKind(expr);
+
+        if (kind == "literal") {
+            return expr[1];
+        } else if (kind == "variable") {
+            if (!envHas(env, expr[1])) {
+                addRuntimeDiagnostic(nodeLine(expr), "Undefined variable '" + expr[1] + "'.");
+                return nil;
+            }
+            return envGet(env, expr[1]);
+        } else if (kind == "assign") {
+            var assigned = evalExpr(expr[2]);
+            if (hasRuntimeDiagnostics()) {
+                return nil;
+            }
+            if (!envHas(env, expr[1])) {
+                addRuntimeDiagnostic(nodeLine(expr), "Undefined variable '" + expr[1] + "'.");
+                return nil;
+            }
+            return envAssign(env, expr[1], assigned);
+        } else if (kind == "group") {
+            return evalExpr(expr[1]);
+        } else if (kind == "call") {
+            var callee = evalExpr(expr[1]);
+            if (hasRuntimeDiagnostics()) {
+                return nil;
+            }
+            var argNodes = expr[2];
+            if (!validateCallableArity(callee, len(argNodes), nodeLine(expr))) {
+                return nil;
+            }
+            var args = Array(0);
+            for (var i = 0; i < len(argNodes); i = i + 1) {
+                push(args, evalExpr(argNodes[i]));
+                if (hasRuntimeDiagnostics()) {
+                    return nil;
+                }
+            }
+            return callFunction(callee, args, nodeLine(expr));
+        } else if (kind == "get") {
+            var array = evalExpr(expr[1]);
+            if (hasRuntimeDiagnostics()) {
+                return nil;
+            }
+            var index = evalExpr(expr[2]);
+            if (hasRuntimeDiagnostics()) {
+                return nil;
+            }
+            if (!validateArrayIndex(array, index, nodeLine(expr))) {
+                return nil;
+            }
+            return array[index];
+        } else if (kind == "set") {
+            var array = evalExpr(expr[1]);
+            if (hasRuntimeDiagnostics()) {
+                return nil;
+            }
+            var index = evalExpr(expr[2]);
+            if (hasRuntimeDiagnostics()) {
+                return nil;
+            }
+            var value = evalExpr(expr[3]);
+            if (hasRuntimeDiagnostics()) {
+                return nil;
+            }
+            if (!validateArrayIndex(array, index, nodeLine(expr))) {
+                return nil;
+            }
+            array[index] = value;
+            return value;
+        } else if (kind == "logical") {
+            var left = evalExpr(expr[1]);
+            var operator = expr[2];
+
+            if (operator == "or") {
+                if (isTruthy(left)) {
+                    return left;
+                }
+            } else if (operator == "and") {
+                if (!isTruthy(left)) {
+                    return left;
+                }
+            }
+
+            return evalExpr(expr[3]);
+        } else if (kind == "unary") {
+            var operator = expr[1];
+            var right = evalExpr(expr[2]);
+            if (hasRuntimeDiagnostics()) {
+                return nil;
+            }
+            if (operator == "-") {
+                if (!isNumber(right)) {
+                    addRuntimeDiagnostic(nodeLine(expr), "Operand must be a number.");
+                    return nil;
+                }
+                return -right;
+            } else if (operator == "+") {
+                if (!isNumber(right)) {
+                    addRuntimeDiagnostic(nodeLine(expr), "Operand must be a number.");
+                    return nil;
+                }
+                return +right;
+            } else if (operator == "!") {
+                return !isTruthy(right);
+            }
+            return nil;
+        } else if (kind == "binary") {
+            var left = evalExpr(expr[1]);
+            if (hasRuntimeDiagnostics()) {
+                return nil;
+            }
+            var operator = expr[2];
+            var right = evalExpr(expr[3]);
+            if (hasRuntimeDiagnostics()) {
+                return nil;
+            }
+
+            if (operator == "+") {
+                if (isNumber(left) and isNumber(right)) {
+                    return left + right;
+                }
+                if (isString(left) and isString(right)) {
+                    return left + right;
+                }
+                addRuntimeDiagnostic(nodeLine(expr), "Operands must be two numbers or two strings.");
+                return nil;
+            } else if (operator == "-") {
+                if (!isNumber(left) or !isNumber(right)) {
+                    addRuntimeDiagnostic(nodeLine(expr), "Operands must be numbers.");
+                    return nil;
+                }
+                return left - right;
+            } else if (operator == "*") {
+                if (!isNumber(left) or !isNumber(right)) {
+                    addRuntimeDiagnostic(nodeLine(expr), "Operands must be numbers.");
+                    return nil;
+                }
+                return left * right;
+            } else if (operator == "/") {
+                if (!isNumber(left) or !isNumber(right)) {
+                    addRuntimeDiagnostic(nodeLine(expr), "Operands must be numbers.");
+                    return nil;
+                }
+                if (right == 0) {
+                    addRuntimeDiagnostic(nodeLine(expr), "Division by zero.");
+                    return nil;
+                }
+                return left / right;
+            } else if (operator == "%") {
+                if (!isNumber(left) or !isNumber(right)) {
+                    addRuntimeDiagnostic(nodeLine(expr), "Operands must be numbers.");
+                    return nil;
+                }
+                if (right == 0) {
+                    addRuntimeDiagnostic(nodeLine(expr), "Division by zero.");
+                    return nil;
+                }
+                return left % right;
+            } else if (operator == ">") {
+                if (!isNumber(left) or !isNumber(right)) {
+                    addRuntimeDiagnostic(nodeLine(expr), "Operands must be numbers.");
+                    return nil;
+                }
+                return left > right;
+            } else if (operator == ">=") {
+                if (!isNumber(left) or !isNumber(right)) {
+                    addRuntimeDiagnostic(nodeLine(expr), "Operands must be numbers.");
+                    return nil;
+                }
+                return left >= right;
+            } else if (operator == "<") {
+                if (!isNumber(left) or !isNumber(right)) {
+                    addRuntimeDiagnostic(nodeLine(expr), "Operands must be numbers.");
+                    return nil;
+                }
+                return left < right;
+            } else if (operator == "<=") {
+                if (!isNumber(left) or !isNumber(right)) {
+                    addRuntimeDiagnostic(nodeLine(expr), "Operands must be numbers.");
+                    return nil;
+                }
+                return left <= right;
+            } else if (operator == "==") {
+                return isEqual(left, right);
+            } else if (operator == "!=") {
+                return !isEqual(left, right);
+            }
+            return nil;
+        }
+        return nil;
+    }
+
+    Func execStmt(stmt) {
+        var kind = nodeKind(stmt);
+
+        if (kind == "print") {
+            var printed = evalExpr(stmt[1]);
+            if (hasRuntimeDiagnostics()) {
+                return runtimeSignal();
+            }
+            push(output, valueText(printed));
+        } else if (kind == "var") {
+            var value = nil;
+            if (stmt[2] != nil) {
+                value = evalExpr(stmt[2]);
+                if (hasRuntimeDiagnostics()) {
+                    return runtimeSignal();
+                }
+            }
+            envDefine(env, stmt[1], value);
+        } else if (kind == "function") {
+            envDefine(env, stmt[1], functionValue(stmt[1], stmt[2], stmt[3], env));
+        } else if (kind == "expr") {
+            evalExpr(stmt[1]);
+            if (hasRuntimeDiagnostics()) {
+                return runtimeSignal();
+            }
+        } else if (kind == "return") {
+            var returned = nil;
+            if (stmt[1] != nil) {
+                returned = evalExpr(stmt[1]);
+                if (hasRuntimeDiagnostics()) {
+                    return runtimeSignal();
+                }
+            }
+            return returnSignal(returned);
+        } else if (kind == "block") {
+            return executeBlock(stmt[1]);
+        } else if (kind == "if") {
+            var condition = evalExpr(stmt[1]);
+            if (hasRuntimeDiagnostics()) {
+                return runtimeSignal();
+            }
+            if (isTruthy(condition)) {
+                return execStmt(stmt[2]);
+            } else if (stmt[3] != nil) {
+                return execStmt(stmt[3]);
+            }
+        } else if (kind == "for") {
+            return executeFor(stmt);
+        } else if (kind == "while") {
+            var keepGoing = evalExpr(stmt[1]);
+            if (hasRuntimeDiagnostics()) {
+                return runtimeSignal();
+            }
+            while (isTruthy(keepGoing)) {
+                var signal = execStmt(stmt[2]);
+                if (signal != nil) {
+                    return signal;
+                }
+                keepGoing = evalExpr(stmt[1]);
+                if (hasRuntimeDiagnostics()) {
+                    return runtimeSignal();
+                }
+            }
+        }
+        return nil;
+    }
+
+    Func executeFor(stmt) {
+        var previous = env;
+        env = scope(previous);
+
+        if (stmt[1] != nil) {
+            var initializerSignal = execStmt(stmt[1]);
+            if (initializerSignal != nil) {
+                env = previous;
+                return initializerSignal;
+            }
+        }
+
+        while (true) {
+            var condition = true;
+            if (stmt[2] != nil) {
+                condition = evalExpr(stmt[2]);
+                if (hasRuntimeDiagnostics()) {
+                    env = previous;
+                    return runtimeSignal();
+                }
+            }
+            if (!isTruthy(condition)) {
+                env = previous;
+                return nil;
+            }
+            var bodySignal = execStmt(stmt[4]);
+            if (bodySignal != nil) {
+                env = previous;
+                return bodySignal;
+            }
+            if (stmt[3] != nil) {
+                evalExpr(stmt[3]);
+                if (hasRuntimeDiagnostics()) {
+                    env = previous;
+                    return runtimeSignal();
+                }
+            }
+        }
+
+        env = previous;
+        return nil;
+    }
+
+    Func executeBlock(blockStatements) {
+        var previous = env;
+        env = scope(previous);
+        for (var i = 0; i < len(blockStatements); i = i + 1) {
+            var signal = execStmt(blockStatements[i]);
+            if (signal != nil) {
+                env = previous;
+                return signal;
+            }
+        }
+        env = previous;
+        return nil;
+    }
+
+    envDefine(env, "Array", nativeFunction("Array", 1));
+    envDefine(env, "len", nativeFunction("len", 1));
+    envDefine(env, "charAt", nativeFunction("charAt", 2));
+    envDefine(env, "slice", nativeFunction("slice", 3));
+    envDefine(env, "push", nativeFunction("push", 2));
+    envDefine(env, "chr", nativeFunction("chr", 1));
+    envDefine(env, "num", nativeFunction("num", 1));
+    envDefine(env, "ord", nativeFunction("ord", 1));
+    envDefine(env, "typeOf", nativeFunction("typeOf", 1));
+    envDefine(env, "valueText", nativeFunction("valueText", 1));
+
+    for (var i = 0; i < len(statements); i = i + 1) {
+        var signal = execStmt(statements[i]);
+        if (signal != nil) {
+            var earlyResult = Array(2);
+            earlyResult[0] = output;
+            earlyResult[1] = diagnostics;
+            return earlyResult;
+        }
+    }
+
+    var result = Array(2);
+    result[0] = output;
+    result[1] = diagnostics;
+    return result;
+}
+
+Func execute(statements) {
+    return executeWithDiagnostics(statements)[0];
+}

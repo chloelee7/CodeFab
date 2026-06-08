@@ -47,6 +47,15 @@ public final class Main {
         if (first.equals("debug")) {
             return args.length == 2 ? new DebugMode(args[1]) : null;
         }
+        if (first.equals("selfhost")) {
+            if (args.length == 2) {
+                return new SelfHostRunMode(args[1]);
+            }
+            if (args.length == 3 && args[1].equals("run")) {
+                return new SelfHostRunMode(args[2]);
+            }
+            return null;
+        }
         // 하위호환: 서브커맨드가 아닌 단일 인자는 파일 경로로 처리.
         if (args.length == 1) {
             return new RunMode(first);
@@ -59,9 +68,11 @@ public final class Main {
         out.println("CodeFab Interpreter");
         out.println();
         out.println("Usage:");
-        out.println("  factory               Start the interactive REPL");
-        out.println("  factory run <file>    Run a CodeFab script file");
-        out.println("  factory debug <file>  Debug a CodeFab script file (step/break/watch/inspect)");
-        out.println("  factory --help        Show this help");
+        out.println("  factory                       Start the interactive REPL");
+        out.println("  factory run <file>            Run a CodeFab script file with the Java interpreter");
+        out.println("  factory selfhost run <file>   Run a CodeFab script file with the CodeFab-written selfhost interpreter");
+        out.println("  factory selfhost <file>       Alias for factory selfhost run <file>");
+        out.println("  factory debug <file>          Debug a CodeFab script file (step/break/watch/inspect)");
+        out.println("  factory --help                Show this help");
     }
 }

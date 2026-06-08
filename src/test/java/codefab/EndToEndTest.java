@@ -2,8 +2,6 @@ package codefab;
 
 import static codefab.core.DiagnosticMessage.ERR_EXPECT_EXPRESSION;
 import static codefab.core.DiagnosticMessage.ERR_INVALID_ASSIGN_TARGET;
-import static codefab.core.DiagnosticMessage.ERR_LEN_ARITY;
-import static codefab.core.DiagnosticMessage.ERR_LEN_NOT_ARRAY;
 import static codefab.core.DiagnosticMessage.ERR_RIGHT_PAREN_AFTER_EXPR;
 import static codefab.core.DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -364,24 +362,24 @@ class EndToEndTest {
         }
 
         @Test
-        @DisplayName("len()에 배열이 아닌 값을 넘기면 런타임 오류")
+        @DisplayName("len()에 문자열/배열이 아닌 값을 넘기면 런타임 오류")
         void lenNonArrayIsRuntimeError() {
             assertFailsAtStage("print len(123);", Diagnostic.Stage.RUNTIME,
-                    ERR_LEN_NOT_ARRAY);
+                    "len() expects a string or array.");
         }
 
         @Test
         @DisplayName("len() 인자 수가 맞지 않으면 런타임 오류")
         void lenArityMismatchIsRuntimeError() {
             assertFailsAtStage("print len();", Diagnostic.Stage.RUNTIME,
-                    ERR_LEN_ARITY);
+                    "Expected 1 arguments but got 0.");
         }
 
         @Test
         @DisplayName("len() 인자가 2개 이상이면 런타임 오류")
         void lenTooManyArgsIsRuntimeError() {
             assertFailsAtStage("var a = Array(2); print len(a, a);", Diagnostic.Stage.RUNTIME,
-                    ERR_LEN_ARITY);
+                    "Expected 1 arguments but got 2.");
         }
     }
 
