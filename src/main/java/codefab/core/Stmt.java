@@ -2,10 +2,6 @@ package codefab.core;
 
 import java.util.List;
 
-/**
- * Statement AST nodes. A Stmt may hold Exprs, other Stmts and Tokens as fields. Traversal uses the
- * visitor pattern.
- */
 public abstract class Stmt {
 
     public interface Visitor<R> {
