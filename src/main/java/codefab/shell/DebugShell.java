@@ -30,6 +30,7 @@ public final class DebugShell {
 
     private final BufferedReader in;
     private final PrintStream out;
+    private final PrintStream err;
     private final String filePath;
 
     private List<Stmt> statements;
@@ -43,9 +44,10 @@ public final class DebugShell {
     /** 명령 이름 → 명령(GoF Command). 첫 토큰으로 디스패치. */
     private final Map<String, DebugCommand> commands = new HashMap<>();
 
-    public DebugShell(BufferedReader in, PrintStream out, String filePath) {
+    public DebugShell(BufferedReader in, PrintStream out, PrintStream err, String filePath) {
         this.in = in;
         this.out = out;
+        this.err = err;
         this.filePath = filePath;
         registerCommands();
     }
@@ -76,7 +78,7 @@ public final class DebugShell {
         try {
             source = Files.readString(Path.of(filePath), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            out.println("Error: file not found: " + filePath);
+            err.println("Error: file not found: " + filePath);
             return;
         }
 

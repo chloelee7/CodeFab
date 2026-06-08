@@ -30,8 +30,23 @@ class DebugShellTest {
         BufferedReader in = new BufferedReader(new StringReader(commands));
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         PrintStream out = new PrintStream(bytes, true, StandardCharsets.UTF_8);
-        new DebugShell(in, out, file.toString()).run();
+        PrintStream err = new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8);
+        new DebugShell(in, out, err, file.toString()).run();
         return bytes.toString(StandardCharsets.UTF_8);
+    }
+
+    @Test
+    void missingFileErrorGoesToStderrNotStdout() throws Exception {
+        BufferedReader in = new BufferedReader(new StringReader(""));
+        ByteArrayOutputStream outBytes = new ByteArrayOutputStream();
+        ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
+        PrintStream out = new PrintStream(outBytes, true, StandardCharsets.UTF_8);
+        PrintStream err = new PrintStream(errBytes, true, StandardCharsets.UTF_8);
+        new DebugShell(in, out, err, "/no/such/file.cf").run();
+        String outStr = outBytes.toString(StandardCharsets.UTF_8);
+        String errStr = errBytes.toString(StandardCharsets.UTF_8);
+        assertTrue(errStr.contains("Error: file not found:"), () -> "expected on err: " + errStr);
+        assertFalse(outStr.contains("Error: file not found:"), () -> "must not be on out: " + outStr);
     }
 
     @Test
