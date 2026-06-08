@@ -1,6 +1,7 @@
 package codefab.executor;
 
 import codefab.core.Expr;
+import codefab.core.DiagnosticMessage;
 import codefab.core.InterpreterRuntimeError;
 import codefab.core.OutputSink;
 import codefab.core.Stmt;
@@ -262,12 +263,12 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         if (callee == LEN_BUILTIN) {
             if (expr.arguments.size() != 1) {
                 throw new InterpreterRuntimeError(expr.paren,
-                        "len() takes exactly 1 argument.");
+                        DiagnosticMessage.ERR_LEN_ARITY);
             }
             Object value = evaluate(expr.arguments.get(0));
             if (!(value instanceof List)) {
                 throw new InterpreterRuntimeError(expr.paren,
-                        "len() expects an array.");
+                        DiagnosticMessage.ERR_LEN_NOT_ARRAY);
             }
             return (double) ((List<?>) value).size();
         }
