@@ -93,6 +93,9 @@ public class ConstantFolder implements Expr.Visitor<Expr> {
 
     @Override
     public Expr visitAssign(Assign expr) {
+        // Assign은 record가 아니라 final class로 둔다 (Expr.Assign 주석 참고): 폴딩으로
+        // 새 노드를 만든 뒤 distance를 다시 설정해야 하는데, record의 불변 컴포넌트로는
+        // 이 가변 상태를 표현할 수 없다.
         Assign result = new Assign(expr.name, expr.value.accept(this));
         result.distance = expr.distance;
         return result;
