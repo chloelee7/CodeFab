@@ -1,0 +1,86 @@
+Func diagnostic(stage, line, message) {
+    var d = Array(3);
+    d[0] = stage;
+    d[1] = line;
+    d[2] = message;
+    return d;
+}
+
+Func failureResult(diagnostics) {
+    var result = Array(3);
+    result[0] = false;
+    result[1] = Array(0);
+    result[2] = diagnostics;
+    return result;
+}
+
+Func failureResultWithOutput(output, diagnostics) {
+    var result = Array(3);
+    result[0] = false;
+    result[1] = output;
+    result[2] = diagnostics;
+    return result;
+}
+
+Func scannerDiagnostics(tokens) {
+    var diagnostics = Array(0);
+    for (var i = 0; i < len(tokens); i = i + 1) {
+        var token = tokens[i];
+        if (token[0] == "ERROR") {
+            var message = token[2];
+            if (message == "unexpected character") {
+                message = "unexpected character '" + token[1] + "'";
+            }
+            push(diagnostics, diagnostic("SCANNER", token[3], message));
+        }
+    }
+    return diagnostics;
+}
+
+Func parserTokens(tokens) {
+    var filtered = Array(0);
+    for (var i = 0; i < len(tokens); i = i + 1) {
+        if (tokens[i][0] != "ERROR") {
+            push(filtered, tokens[i]);
+        }
+    }
+    return filtered;
+}
+
+Func appendDiagnostics(target, source) {
+    for (var i = 0; i < len(source); i = i + 1) {
+        push(target, source[i]);
+    }
+    return target;
+}
+
+Func run(source) {
+    var result = Array(3);
+
+    var tokens = scan(source);
+    var diagnostics = scannerDiagnostics(tokens);
+
+    var parseResult = parseWithDiagnostics(parserTokens(tokens));
+    var statements = parseResult[0];
+    diagnostics = appendDiagnostics(diagnostics, parseResult[1]);
+    if (len(diagnostics) > 0) {
+        return failureResult(diagnostics);
+    }
+
+    diagnostics = check(statements);
+    if (len(diagnostics) > 0) {
+        return failureResult(diagnostics);
+    }
+
+    var execution = executeWithDiagnostics(statements);
+    var output = execution[0];
+    diagnostics = execution[1];
+    if (len(diagnostics) > 0) {
+        return failureResultWithOutput(output, diagnostics);
+    }
+
+    result[0] = true;
+    result[1] = output;
+    result[2] = diagnostics;
+    return result;
+}

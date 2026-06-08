@@ -34,6 +34,24 @@ application {
     applicationName = 'factory'
 }
 
+distributions {
+    main {
+        contents {
+            from('examples') {
+                into 'examples'
+                include '*.cfab'
+            }
+        }
+    }
+}
+
+tasks.named('processResources') {
+    from('selfhost') {
+        into 'selfhost'
+        include '*.cfab'
+    }
+}
+
 test {
     useJUnitPlatform()
     testLogging {

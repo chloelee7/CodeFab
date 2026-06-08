@@ -1,0 +1,498 @@
+Func node1(kind, a, line) {
+    var node = Array(3);
+    node[0] = kind;
+    node[1] = a;
+    node[2] = line;
+    return node;
+}
+
+Func node2(kind, a, b, line) {
+    var node = Array(4);
+    node[0] = kind;
+    node[1] = a;
+    node[2] = b;
+    node[3] = line;
+    return node;
+}
+
+Func node3(kind, a, b, c, line) {
+    var node = Array(5);
+    node[0] = kind;
+    node[1] = a;
+    node[2] = b;
+    node[3] = c;
+    node[4] = line;
+    return node;
+}
+
+Func node4(kind, a, b, c, d, line) {
+    var node = Array(6);
+    node[0] = kind;
+    node[1] = a;
+    node[2] = b;
+    node[3] = c;
+    node[4] = d;
+    node[5] = line;
+    return node;
+}
+
+Func nodeLine(node) {
+    return node[len(node) - 1];
+}
+
+Func paramRecord(token) {
+    var param = Array(2);
+    param[0] = tokenLexeme(token);
+    param[1] = tokenLine(token);
+    return param;
+}
+
+Func tokenType(token) {
+    return token[0];
+}
+
+Func tokenLexeme(token) {
+    return token[1];
+}
+
+Func tokenLiteral(token) {
+    return token[2];
+}
+
+Func tokenLine(token) {
+    return token[3];
+}
+
+Func parseWithDiagnostics(tokens) {
+    var current = 0;
+    var diagnostics = Array(0);
+    var panicMode = false;
+
+    Func addDiagnostic(line, message) {
+        var d = Array(3);
+        d[0] = "PARSER";
+        d[1] = line;
+        d[2] = message;
+        push(diagnostics, d);
+        return nil;
+    }
+
+    Func diagnosticMessage(token, message) {
+        if (tokenType(token) == "EOF") {
+            return message + " at end";
+        }
+        return message + " at '" + tokenLexeme(token) + "'";
+    }
+
+    Func addDiagnosticForToken(token, message) {
+        if (!panicMode) {
+            addDiagnostic(tokenLine(token), diagnosticMessage(token, message));
+        }
+        panicMode = true;
+        return nil;
+    }
+
+    Func tokenLine(token) {
+        return token[3];
+    }
+
+    Func isAtEnd() {
+        return tokenType(peek()) == "EOF";
+    }
+
+    Func peek() {
+        return tokens[current];
+    }
+
+    Func previous() {
+        return tokens[current - 1];
+    }
+
+    Func check(type) {
+        if (isAtEnd()) {
+            return false;
+        }
+        return tokenType(peek()) == type;
+    }
+
+    Func advance() {
+        if (!isAtEnd()) {
+            current = current + 1;
+        }
+        return previous();
+    }
+
+    Func matchType(type) {
+        if (check(type)) {
+            advance();
+            return true;
+        }
+        return false;
+    }
+
+    Func isStatementStart(type) {
+        return type == "FUNC" or type == "RETURN" or type == "VAR" or type == "FOR" or type == "IF" or type == "PRINT";
+    }
+
+    Func recoverToNextStatement() {
+        advance();
+        while (!isAtEnd()) {
+            if (tokenType(previous()) == "SEMICOLON") {
+                panicMode = false;
+                return nil;
+            }
+            if (isStatementStart(tokenType(peek()))) {
+                panicMode = false;
+                return nil;
+            }
+            advance();
+        }
+        panicMode = false;
+        return nil;
+    }
+
+    Func consume(type, message) {
+        if (check(type)) {
+            return advance();
+        }
+        addDiagnosticForToken(peek(), message);
+        return node2("error", type, tokenLexeme(peek()), tokenLine(peek()));
+    }
+
+    Func expression() {
+        return assignment();
+    }
+
+    Func assignment() {
+        var expr = orExpr();
+
+        if (matchType("EQUAL")) {
+            var equalsToken = previous();
+            var equalsLine = tokenLine(equalsToken);
+            var value = assignment();
+            if (expr[0] == "variable") {
+                return node2("assign", expr[1], value, nodeLine(expr));
+            }
+            if (expr[0] == "get") {
+                return node3("set", expr[1], expr[2], value, nodeLine(expr));
+            }
+            addDiagnosticForToken(equalsToken, "Invalid assignment target.");
+            return node2("error", "assignment", value, equalsLine);
+        }
+
+        return expr;
+    }
+
+    Func orExpr() {
+        var expr = andExpr();
+        while (matchType("OR")) {
+            var operatorToken = previous();
+            var operator = tokenLexeme(operatorToken);
+            var right = andExpr();
+            expr = node3("logical", expr, operator, right, tokenLine(operatorToken));
+        }
+        return expr;
+    }
+
+    Func andExpr() {
+        var expr = equality();
+        while (matchType("AND")) {
+            var operatorToken = previous();
+            var operator = tokenLexeme(operatorToken);
+            var right = equality();
+            expr = node3("logical", expr, operator, right, tokenLine(operatorToken));
+        }
+        return expr;
+    }
+
+    Func equality() {
+        var expr = comparison();
+        while (matchType("BANG_EQUAL") or matchType("EQUAL_EQUAL")) {
+            var operatorToken = previous();
+            var operator = tokenLexeme(operatorToken);
+            var right = comparison();
+            expr = node3("binary", expr, operator, right, tokenLine(operatorToken));
+        }
+        return expr;
+    }
+
+    Func comparison() {
+        var expr = term();
+        while (matchType("GREATER") or matchType("GREATER_EQUAL") or matchType("LESS") or matchType("LESS_EQUAL")) {
+            var operatorToken = previous();
+            var operator = tokenLexeme(operatorToken);
+            var right = term();
+            expr = node3("binary", expr, operator, right, tokenLine(operatorToken));
+        }
+        return expr;
+    }
+
+    Func term() {
+        var expr = factor();
+        while (matchType("MINUS") or matchType("PLUS")) {
+            var operatorToken = previous();
+            var operator = tokenLexeme(operatorToken);
+            var right = factor();
+            expr = node3("binary", expr, operator, right, tokenLine(operatorToken));
+        }
+        return expr;
+    }
+
+    Func factor() {
+        var expr = unary();
+        while (matchType("SLASH") or matchType("STAR") or matchType("PERCENT")) {
+            var operatorToken = previous();
+            var operator = tokenLexeme(operatorToken);
+            var right = unary();
+            expr = node3("binary", expr, operator, right, tokenLine(operatorToken));
+        }
+        return expr;
+    }
+
+    Func unary() {
+        if (matchType("BANG") or matchType("MINUS") or matchType("PLUS")) {
+            var operatorToken = previous();
+            var operator = tokenLexeme(operatorToken);
+            return node2("unary", operator, unary(), tokenLine(operatorToken));
+        }
+        return call();
+    }
+
+    Func call() {
+        var expr = primary();
+
+        while (true) {
+            if (matchType("LEFT_PAREN")) {
+                var args = Array(0);
+                if (!check("RIGHT_PAREN")) {
+                    push(args, expression());
+                    while (matchType("COMMA")) {
+                        push(args, expression());
+                    }
+                }
+                var paren = consume("RIGHT_PAREN", "Expected ')' after arguments");
+                expr = node2("call", expr, args, tokenLine(paren));
+            } else if (matchType("LEFT_BRACKET")) {
+                var bracket = previous();
+                var index = expression();
+                consume("RIGHT_BRACKET", "Expected ']' after index");
+                expr = node2("get", expr, index, tokenLine(bracket));
+            } else {
+                return expr;
+            }
+        }
+    }
+
+    Func primary() {
+        if (matchType("NIL")) {
+            return node1("literal", nil, tokenLine(previous()));
+        }
+        if (matchType("FALSE")) {
+            return node1("literal", false, tokenLine(previous()));
+        }
+        if (matchType("TRUE")) {
+            return node1("literal", true, tokenLine(previous()));
+        }
+        if (matchType("NUMBER") or matchType("STRING")) {
+            return node1("literal", tokenLiteral(previous()), tokenLine(previous()));
+        }
+        if (matchType("IDENTIFIER") or matchType("ARRAY")) {
+            return node1("variable", tokenLexeme(previous()), tokenLine(previous()));
+        }
+        if (matchType("LEFT_PAREN")) {
+            var paren = previous();
+            var expr = expression();
+            consume("RIGHT_PAREN", "Expect ')' after expression.");
+            return node1("group", expr, tokenLine(paren));
+        }
+        addDiagnosticForToken(peek(), "Expect expression.");
+        return node1("error", tokenLexeme(peek()), tokenLine(peek()));
+    }
+
+    Func block() {
+        var statements = Array(0);
+        while (!check("RIGHT_BRACE") and !isAtEnd()) {
+            var decl = declaration();
+            if (decl != nil) {
+                push(statements, decl);
+            }
+        }
+        consume("RIGHT_BRACE", "Expect '}' after block.");
+        return statements;
+    }
+
+    Func functionDeclaration() {
+        var name = consume("IDENTIFIER", "Expected function name after 'Func'");
+        if (panicMode) {
+            return nil;
+        }
+        consume("LEFT_PAREN", "Expected '(' after function name");
+        if (panicMode) {
+            return nil;
+        }
+
+        var params = Array(0);
+        if (!check("RIGHT_PAREN")) {
+            var firstParam = consume("IDENTIFIER", "Expected parameter name");
+            if (panicMode) {
+                return nil;
+            }
+            push(params, paramRecord(firstParam));
+            while (matchType("COMMA")) {
+                var param = consume("IDENTIFIER", "Expected parameter name");
+                if (panicMode) {
+                    return nil;
+                }
+                push(params, paramRecord(param));
+            }
+        }
+        consume("RIGHT_PAREN", "Expected ')' after parameters");
+        if (panicMode) {
+            return nil;
+        }
+        consume("LEFT_BRACE", "Expected '{' before function body");
+        if (panicMode) {
+            return nil;
+        }
+
+        var body = block();
+        if (panicMode) {
+            return nil;
+        }
+        return node3("function", tokenLexeme(name), params, body, tokenLine(name));
+    }
+
+    Func returnStatement(line) {
+        var value = nil;
+        if (!check("SEMICOLON")) {
+            value = expression();
+        }
+        consume("SEMICOLON", "Expected ';' after return value");
+        return node1("return", value, line);
+    }
+
+    Func printStatement(line) {
+        var value = expression();
+        consume("SEMICOLON", "Expect ';' after value.");
+        return node1("print", value, line);
+    }
+
+    Func expressionStatement() {
+        var value = expression();
+        consume("SEMICOLON", "Expect ';' after value.");
+        return node1("expr", value, nodeLine(value));
+    }
+
+    Func ifStatement(line) {
+        consume("LEFT_PAREN", "Expect '(' after 'if'.");
+        var condition = expression();
+        consume("RIGHT_PAREN", "Expect ')' after if condition.");
+
+        var thenBranch = statement();
+        var elseBranch = nil;
+        if (matchType("ELSE")) {
+            elseBranch = statement();
+        }
+        return node3("if", condition, thenBranch, elseBranch, line);
+    }
+
+    Func whileStatement(line) {
+        consume("LEFT_PAREN", "Expect '(' after 'while'.");
+        var condition = expression();
+        consume("RIGHT_PAREN", "Expect ')' after condition.");
+        var body = statement();
+        return node2("while", condition, body, line);
+    }
+
+    Func forStatement(line) {
+        consume("LEFT_PAREN", "Expect '(' after 'for'.");
+
+        var initializer = nil;
+        if (matchType("SEMICOLON")) {
+            initializer = nil;
+        } else if (matchType("VAR")) {
+            initializer = varDeclaration();
+        } else {
+            initializer = expressionStatement();
+        }
+
+        var condition = nil;
+        if (!check("SEMICOLON")) {
+            condition = expression();
+        }
+        consume("SEMICOLON", "Expect ';' after loop condition.");
+
+        var increment = nil;
+        if (!check("RIGHT_PAREN")) {
+            increment = expression();
+        }
+        consume("RIGHT_PAREN", "Expect ')' after for clauses.");
+
+        return node4("for", initializer, condition, increment, statement(), line);
+    }
+
+    Func varDeclaration() {
+        var name = consume("IDENTIFIER", "Expect variable name.");
+        var initializer = nil;
+        if (matchType("EQUAL")) {
+            initializer = expression();
+        }
+        consume("SEMICOLON", "Expect ';' after variable declaration.");
+        return node2("var", tokenLexeme(name), initializer, tokenLine(name));
+    }
+
+    Func statement() {
+        if (matchType("PRINT")) {
+            return printStatement(tokenLine(previous()));
+        }
+        if (matchType("RETURN")) {
+            return returnStatement(tokenLine(previous()));
+        }
+        if (matchType("IF")) {
+            return ifStatement(tokenLine(previous()));
+        }
+        if (matchType("FOR")) {
+            return forStatement(tokenLine(previous()));
+        }
+        if (matchType("WHILE")) {
+            return whileStatement(tokenLine(previous()));
+        }
+        if (matchType("LEFT_BRACE")) {
+            var line = tokenLine(previous());
+            return node1("block", block(), line);
+        }
+        return expressionStatement();
+    }
+
+    Func declaration() {
+        var stmt = nil;
+        if (matchType("FUNC")) {
+            stmt = functionDeclaration();
+        } else if (matchType("VAR")) {
+            stmt = varDeclaration();
+        } else {
+            stmt = statement();
+        }
+        if (panicMode) {
+            recoverToNextStatement();
+            return nil;
+        }
+        return stmt;
+    }
+
+    var statements = Array(0);
+    while (!isAtEnd()) {
+        var decl = declaration();
+        if (decl != nil) {
+            push(statements, decl);
+        }
+    }
+    var result = Array(2);
+    result[0] = statements;
+    result[1] = diagnostics;
+    return result;
+}
+
+Func parse(tokens) {
+    return parseWithDiagnostics(tokens)[0];
+}

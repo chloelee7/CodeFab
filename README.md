@@ -23,6 +23,7 @@ CodeFab는 Java로 구현된 커스텀 스크립팅 언어 인터프리터입니
    - [블록과 스코프](#블록과-스코프)
    - [함수](#함수)
    - [배열](#배열)
+   - [내장 함수](#내장-함수)
    - [주석](#주석)
 5. [예제 프로그램](#예제-프로그램)
 6. [에러 처리](#에러-처리)
@@ -39,9 +40,12 @@ CodeFab는 Java로 구현된 커스텀 스크립팅 언어 인터프리터입니
 git clone <repository-url>
 cd CodeFab
 ./gradlew build
+./gradlew installDist
 
-# 대화형 REPL 실행
-./gradlew run --console=plain
+# 대화형 REPL 실행 또는 예제 파일 실행
+./build/install/factory/bin/factory
+./build/install/factory/bin/factory run examples/selfhost_showcase.cfab
+./build/install/factory/bin/factory selfhost run examples/selfhost_showcase.cfab
 ```
 
 ```
@@ -67,6 +71,9 @@ Hello, CodeFab!
 ```bash
 # 빌드 (컴파일 + 테스트)
 ./gradlew build
+
+# 실행 파일 배포 디렉터리 생성
+./gradlew installDist
 
 # 컴파일만
 ./gradlew compileJava
@@ -99,7 +106,7 @@ Hello, CodeFab!
 `.cfab` 확장자(혹은 임의 텍스트 파일)로 저장한 스크립트를 실행합니다.
 
 ```bash
-./build/scripts/CodeFab run hello.cfab
+./build/install/factory/bin/factory run hello.cfab
 ```
 
 또는 Gradle로 실행:
@@ -108,12 +115,48 @@ Hello, CodeFab!
 ./gradlew run --args="run hello.cfab"
 ```
 
+### Selfhost 실행
+
+CodeFab로 작성된 selfhost 파이프라인을 통해 같은 스크립트를 실행할 수 있습니다.
+
+```bash
+./build/install/factory/bin/factory selfhost run hello.cfab
+```
+
+하위 호환 별칭으로 `selfhost <file>`도 동작합니다.
+
+```bash
+./build/install/factory/bin/factory selfhost hello.cfab
+```
+
+또는 Gradle로 실행:
+
+```bash
+./gradlew run --args="selfhost run hello.cfab"
+```
+
+### Java interpreter vs selfhost interpreter
+
+`factory run <file>`은 Java로 구현된 기본 트리워킹 인터프리터를 사용합니다.
+
+`factory selfhost run <file>`은 Java 런타임 위에서 `selfhost/*.cfab`에 들어 있는 CodeFab-written scanner/parser/checker/executor/runner를 실행하고, 그 selfhost runner가 대상 `.cfab` 파일을 다시 해석합니다.
+
+```text
+factory run
+source.cfab -> Java Scanner/Parser/Checker/Executor
+
+factory selfhost run
+source.cfab -> Java host -> CodeFab-written Scanner/Parser/Checker/Executor
+```
+
+selfhost 경로는 Java 경로와 같은 출력/진단을 내도록 parity test로 유지합니다. 대신 bootstrap CodeFab 코드를 한 번 더 실행하므로 성능은 Java 경로보다 느립니다. 일상 실행은 `factory run`, selfhost 검증이나 언어 구현 데모는 `factory selfhost run`을 권장합니다.
+
 ### 디버그 모드
 
 파일을 Stmt(문장) 단위로 한 줄씩 실행하며 내부 상태를 확인할 수 있습니다.
 
 ```bash
-./build/scripts/CodeFab debug hello.cfab
+./build/install/factory/bin/factory debug hello.cfab
 ```
 
 | 디버그 명령어 | 설명 |
@@ -132,7 +175,7 @@ Hello, CodeFab!
 **도움말 출력**
 
 ```bash
-./build/scripts/CodeFab --help
+./build/install/factory/bin/factory --help
 ```
 
 ---
@@ -431,6 +474,7 @@ print count;  // 2
 ### 배열
 
 `Array(n)` 으로 크기 `n` 의 배열을 생성합니다. 모든 원소는 `nil` 로 초기화됩니다.
+`push(array, value)` 내장 함수로 배열 끝에 새 값을 추가할 수 있습니다.
 
 ```
 var 배열명 = Array(크기);
@@ -463,6 +507,42 @@ print total;  // 267
 
 ---
 
+### 내장 함수
+
+Self-hosting과 일반 스크립트 편의를 위해 다음 내장 함수를 제공합니다.
+
+| 함수 | 설명 |
+|------|------|
+| `len(value)` | 문자열 또는 배열의 길이를 반환 |
+| `charAt(source, index)` | 문자열의 한 문자 반환 |
+| `slice(source, start, end)` | 문자열의 `[start, end)` 구간 반환 |
+| `push(array, value)` | 배열 끝에 값을 추가하고 새 길이를 반환 |
+| `chr(code)` | 문자 코드에 해당하는 한 문자 문자열 반환 |
+| `ord(char)` | 한 문자 문자열의 문자 코드 반환 |
+| `num(text)` | 숫자 문자열을 number 값으로 변환 |
+| `typeOf(value)` | 런타임 값 타입 이름(`nil`, `Boolean`, `Number`, `String`, `Array`, `Function`)을 반환 |
+| `valueText(value)` | 값을 `print`와 같은 CodeFab 출력 문자열로 변환 |
+
+```
+var text = "CodeFab";
+print len(text);          // 7
+print charAt(text, 4);    // F
+print slice(text, 4, 7);  // Fab
+print chr(34);            // "
+print ord("A");           // 65
+print num("12") + 1;      // 13
+
+var items = Array(0);
+print push(items, "tok"); // 1
+print items[0];           // tok
+print typeOf(items);       // Array
+print valueText(items);    // [tok]
+```
+
+> **런타임 오류**: 문자열 인덱스/슬라이스 범위 초과, 정수가 아닌 인덱스, 또는 잘못된 인자 타입은 RUNTIME 오류를 발생시킵니다.
+
+---
+
 ### 주석
 
 `//` 이후 같은 줄은 주석으로 처리되어 무시됩니다.
@@ -477,6 +557,15 @@ print x;    // 42
 ---
 
 ## 예제 프로그램
+
+Repo-local 예제 파일:
+
+```bash
+./build/install/factory/bin/factory run examples/selfhost_showcase.cfab
+./build/install/factory/bin/factory selfhost run examples/selfhost_showcase.cfab
+```
+
+두 명령은 같은 결과를 출력해야 합니다. 이 파일은 Java interpreter와 selfhost interpreter parity 테스트에도 사용됩니다.
 
 ### 1. 1부터 10까지 합계
 
@@ -682,6 +771,7 @@ codefab/
 ├── CodeFab.java              진입점 (단일 run() 메서드)
 ├── CodeFabSession.java       파이프라인 조립 및 상태 유지 (REPL 세션)
 ├── RunResult.java            실행 결과 (성공 여부, 출력, 진단)
+├── SelfHostCodeFab.java      CodeFab selfhost runner facade
 ├── assembler/
 │   ├── Scanner.java          어휘 분석 (소스 → 토큰)
 │   └── Parser.java           구문 분석 (토큰 → AST)
@@ -703,6 +793,12 @@ codefab/
     ├── Main.java              CLI 진입점 (run/debug 서브커맨드 라우팅)
     ├── PromptShell.java       대화형 REPL 셸 (멀티라인, isPendingElse)
     └── DebugShell.java        디버그 모드 셸 (step/break/watch/inspect)
+selfhost/
+├── scanner.cfab              CodeFab selfhost scanner
+├── parser.cfab               CodeFab selfhost parser
+├── checker.cfab              CodeFab selfhost checker
+├── executor.cfab             CodeFab selfhost executor
+└── runner.cfab               scan -> parse -> check -> execute composition
 ```
 
 ---
@@ -728,6 +824,7 @@ open build/reports/tests/test/index.html
 | `EndToEndTest` | 전체 파이프라인 통합 테스트 (함수·배열·상수 폴딩 포함) |
 | `PromptShellTest` | REPL 동작 테스트 (멀티라인, isPendingElse 포함) |
 | `CodeFabSessionTest` | 세션 단위 테스트 |
+| `SelfHost*Test` | CodeFab-written selfhost scanner/parser/checker/executor/runner 및 Java-vs-selfhost parity 테스트 |
 
 ---
 

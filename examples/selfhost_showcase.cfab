@@ -1,0 +1,24 @@
+// Run with:
+//   factory run examples/selfhost_showcase.cfab
+//   factory selfhost run examples/selfhost_showcase.cfab
+
+Func fact(n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * fact(n - 1);
+}
+
+var values = Array(0);
+push(values, 1);
+push(values, 2);
+push(values, 3);
+
+print fact(5);
+print len(values);
+print values[2];
+print num("0x1.0p0") + num("1e2");
+
+if (values[0] < values[2]) {
+    print "selfhost parity ok";
+}
