@@ -76,4 +76,40 @@ class DebugShellTest {
         assertTrue(containsOutputLine(output, "1"), () -> output);
         assertFalse(containsOutputLine(output, "2"), () -> output);
     }
+
+    @Test
+    @DisplayName("continue는 실행되지 않는 if 분기 내부 breakpoint에서 멈추지 않는다")
+    void continueDoesNotStopAtBreakpointInsideUntakenIfBranch() throws IOException {
+        String source = String.join("\n",
+                "var x = 1;",
+                "if (false) {",
+                "  print x;",
+                "}",
+                "print 2;",
+                "");
+
+        String output = drive(source, "break 3\ncontinue\n");
+
+        assertFalse(output.contains("3번째 줄에서 정지 (breakpoint)"), () -> output);
+        assertFalse(containsOutputLine(output, "1"), () -> output);
+        assertTrue(containsOutputLine(output, "2"), () -> output);
+    }
+
+    @Test
+    @DisplayName("continue는 실행되지 않는 while 본문 내부 breakpoint에서 멈추지 않는다")
+    void continueDoesNotStopAtBreakpointInsideSkippedWhileBody() throws IOException {
+        String source = String.join("\n",
+                "var x = 1;",
+                "while (false) {",
+                "  print x;",
+                "}",
+                "print 2;",
+                "");
+
+        String output = drive(source, "break 3\ncontinue\n");
+
+        assertFalse(output.contains("3번째 줄에서 정지 (breakpoint)"), () -> output);
+        assertFalse(containsOutputLine(output, "1"), () -> output);
+        assertTrue(containsOutputLine(output, "2"), () -> output);
+    }
 }

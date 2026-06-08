@@ -343,25 +343,6 @@ public final class DebugShell {
                 line = findBreakpointLine(inner);
                 if (line > 0) return line;
             }
-        } else if (stmt instanceof Stmt.IfStmt) {
-            Stmt.IfStmt s = (Stmt.IfStmt) stmt;
-            line = findBreakpointLine(s.thenBranch);
-            if (line > 0) return line;
-            if (s.elseBranch != null) {
-                line = findBreakpointLine(s.elseBranch);
-                if (line > 0) return line;
-            }
-        } else if (stmt instanceof Stmt.WhileStmt) {
-            line = findBreakpointLine(((Stmt.WhileStmt) stmt).body);
-            if (line > 0) return line;
-        } else if (stmt instanceof Stmt.ForStmt) {
-            Stmt.ForStmt s = (Stmt.ForStmt) stmt;
-            if (s.initializer != null) {
-                line = findBreakpointLine(s.initializer);
-                if (line > 0) return line;
-            }
-            line = findBreakpointLine(s.body);
-            if (line > 0) return line;
         }
 
         return -1;
