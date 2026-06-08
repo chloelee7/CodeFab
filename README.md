@@ -9,10 +9,14 @@ CodeFab는 Java로 구현된 커스텀 스크립팅 언어 인터프리터입니
 
 ## 목차
 
-1. [빠른 시작](#빠른-시작)
-2. [설치 및 빌드](#설치-및-빌드)
-3. [실행 방법](#실행-방법)
-4. [언어 문법](#언어-문법)
+1. [웹에서 실행](#웹에서-실행)
+2. [빠른 시작](#빠른-시작)
+3. [설치 및 빌드](#설치-및-빌드)
+4. [실행 방법](#실행-방법)
+   - [모드 1 — 프롬프트 모드 (REPL)](#모드-1--프롬프트-모드-repl)
+   - [모드 2 — 파일 모드](#모드-2--파일-모드)
+   - [모드 3 — 디버그 모드](#모드-3--디버그-모드)
+5. [언어 문법](#언어-문법)
    - [기본 타입](#기본-타입)
    - [변수](#변수)
    - [출력](#출력)
@@ -24,31 +28,50 @@ CodeFab는 Java로 구현된 커스텀 스크립팅 언어 인터프리터입니
    - [함수](#함수)
    - [배열](#배열)
    - [주석](#주석)
-5. [예제 프로그램](#예제-프로그램)
-6. [에러 처리](#에러-처리)
-7. [아키텍처](#아키텍처)
-8. [테스트](#테스트)
-9. [코드리뷰](#코드리뷰)
+6. [예제 프로그램](#예제-프로그램)
+7. [에러 처리](#에러-처리)
+8. [아키텍처](#아키텍처)
+9. [테스트](#테스트)
+10. [코드리뷰](#코드리뷰)
+
+---
+
+## 웹에서 실행
+
+JDK나 Gradle 없이 브라우저에서 바로 CodeFab 코드를 실행해볼 수 있습니다.
+
+| 링크 | 설명 |
+|------|------|
+| 🌐 <a href="http://158.179.194.73/">CodeFab 웹사이트 바로가기</a> | 배포된 서버에서 바로 CodeFab 코드를 실행 |
+| 📦 **[FirstCCCProject (GitHub)](https://github.com/mylhb9/FirstCCCProject)** | 웹 실행 환경의 소스코드 저장소 |
+
+> 로컬 설치 없이 언어 문법을 바로 체험하고 싶다면 위 웹사이트 링크를 먼저 방문하세요.
 
 ---
 
 ## 빠른 시작
 
 ```bash
-# 프로젝트 클론 후 빌드
+# 1. 프로젝트 클론
 git clone <repository-url>
 cd CodeFab
+
+# 2. 빌드
 ./gradlew build
 
-# 대화형 REPL 실행
-./gradlew run --console=plain
+# 3. REPL 실행
+./factory
 ```
+
+REPL이 시작되면 아래와 같이 입력합니다.
+`>` 로 시작하는 줄이 **입력**, 나머지는 **출력**입니다.
 
 ```
 CodeFab REPL. Type 'exit' to quit.
 > print "Hello, CodeFab!";
 Hello, CodeFab!
-> var x = 10; print x * 2;
+> var x = 10;
+> print x * 2;
 20
 > exit
 ```
@@ -76,13 +99,34 @@ Hello, CodeFab!
 
 ## 실행 방법
 
-### 대화형 REPL
+> **사전 준비**: 아래 세 모드 모두 `./gradlew build` 로 먼저 빌드해야 합니다.
+
+---
+
+### 모드 1 — 프롬프트 모드 (REPL)
 
 인자 없이 실행하면 대화형 셸(REPL)이 열립니다.
-세미콜론 `;` 또는 닫는 중괄호 `}` 로 끝나는 완전한 문장이 입력되면 즉시 실행됩니다.
+세미콜론 `;` 또는 닫는 중괄호 `}` 로 끝나는 완전한 문장을 입력하면 즉시 실행됩니다.
+
+**실행**
 
 ```bash
-./gradlew run --console=plain
+./factory
+```
+
+> ⚠️ `./gradlew run --console=plain` 으로도 실행할 수 있지만, Gradle 초기화(2~5초)가 끝나기 전에 코드를 붙여넣으면 zsh가 CodeFab 코드를 쉘 명령으로 실행합니다.
+> `./gradlew run` 사용 시에는 반드시 `>` 프롬프트가 화면에 나타난 것을 확인한 후 입력하세요.
+
+**예시 — `>` 가 입력, 나머지는 출력**
+
+```
+CodeFab REPL. Type 'exit' to quit.
+> print "Hello, CodeFab!";
+Hello, CodeFab!
+> var x = 10;
+> print x * 2;
+20
+> exit
 ```
 
 **멀티라인 입력**: 괄호 `(` / 중괄호 `{` / 대괄호 `[` 가 열려 있으면 `....... > ` 프롬프트로 계속 입력을 받습니다.
@@ -94,30 +138,54 @@ Hello, CodeFab!
 | `exit`      | REPL 종료 |
 | `quit`      | REPL 종료 (`exit` 와 동일) |
 
-### 스크립트 파일 실행
+---
 
-`.cfab` 확장자(혹은 임의 텍스트 파일)로 저장한 스크립트를 실행합니다.
+### 모드 2 — 파일 모드
 
-```bash
-./build/scripts/CodeFab run hello.cfab
+`.cfab` 확장자(혹은 임의 텍스트 파일)로 저장한 스크립트를 한 번에 실행합니다.
+
+**1단계 — 스크립트 파일 작성**
+
+```
+var name = "CodeFab";
+print "Hello, " + name + "!";
 ```
 
-또는 Gradle로 실행:
+위 내용을 `hello.cfab` 으로 저장합니다.
+
+**2단계 — 실행**
 
 ```bash
-./gradlew run --args="run hello.cfab"
+./factory run hello.cfab
 ```
 
-### 디버그 모드
+> Gradle로도 실행 가능합니다.
+> ```bash
+> ./gradlew run --args="run hello.cfab"
+> ```
 
-파일을 Stmt(문장) 단위로 한 줄씩 실행하며 내부 상태를 확인할 수 있습니다.
+**실행 결과**
+
+```
+Hello, CodeFab!
+```
+
+---
+
+### 모드 3 — 디버그 모드
+
+스크립트 파일을 문장(Stmt) 단위로 한 줄씩 실행하며 변수 상태를 직접 확인합니다.
+
+**실행**
 
 ```bash
-./build/scripts/CodeFab debug hello.cfab
+./factory debug hello.cfab
 ```
 
-| 디버그 명령어 | 설명 |
-|--------------|------|
+**디버그 명령어**
+
+| 명령어 | 설명 |
+|--------|------|
 | `step` / `next` | 다음 문장 실행 |
 | `break <줄>` | 해당 줄에 중단점 설정 |
 | `Breakpoints` | 설정된 중단점 목록 확인 |
@@ -129,10 +197,12 @@ Hello, CodeFab!
 | `inspect` | 현재 스코프 모든 변수 + 타입 출력 |
 | `exit` / `quit` | 디버그 종료 |
 
+---
+
 **도움말 출력**
 
 ```bash
-./build/scripts/CodeFab --help
+./factory --help
 ```
 
 ---
