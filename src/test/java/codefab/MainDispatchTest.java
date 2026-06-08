@@ -88,6 +88,14 @@ class MainDispatchTest {
     }
 
     @Test
+    void dispatchBadArgs_returns64UsageOnErr() {
+        int code = dispatch(new String[]{"run"}, "");
+        assertEquals(64, code, () -> "bad arg combo must yield EX_USAGE; out:\n" + out + "\nerr:\n" + err);
+        assertTrue(err.contains("Usage:"), () -> "usage should go to err:\n" + err);
+        assertFalse(out.contains("Usage:"), () -> "usage must not go to out on error:\n" + out);
+    }
+
+    @Test
     void dispatchDebug_smoke(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("dbg.cf");
         Files.writeString(file, "print 1;\n");
