@@ -84,6 +84,39 @@ class MainDispatchTest {
     }
 
     @Test
+    @DisplayName("compare <파일> → Java와 selfhost 결과 일치 여부를 보고한다")
+    void dispatchCompareFile_reportsMatchingRuntimes(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("compare-ok.cf");
+        Files.writeString(file, "Func fact(n) { if (n <= 1) { return 1; } return n * fact(n - 1); } print fact(5);\n");
+
+        int code = dispatch(new String[]{"compare", file.toString()}, "");
+
+        assertEquals(0, code, () -> "compare should pass for matching runtimes:\n" + out + "\nerr:\n" + err);
+        assertEquals("", err);
+        assertTrue(out.contains("Java"), () -> "expected Java runtime row:\n" + out);
+        assertTrue(out.contains("Selfhost"), () -> "expected selfhost runtime row:\n" + out);
+        assertTrue(out.contains("Success: identical"), () -> "expected success parity:\n" + out);
+        assertTrue(out.contains("Output: identical"), () -> "expected output parity:\n" + out);
+        assertTrue(out.contains("Diagnostics: identical"), () -> "expected diagnostic parity:\n" + out);
+    }
+
+    @Test
+    @DisplayName("compare <파일> → 동일한 실패 진단도 parity 성공으로 보고한다")
+    void dispatchCompareFile_reportsMatchingDiagnostics(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("compare-bad.cf");
+        Files.writeString(file, "print missing;\n");
+
+        int code = dispatch(new String[]{"compare", file.toString()}, "");
+
+        assertEquals(0, code, () -> "matching diagnostics should still be compare success:\n" + out + "\nerr:\n" + err);
+        assertEquals("", err);
+        assertTrue(out.contains("Java      FAIL"), () -> "expected Java failure status:\n" + out);
+        assertTrue(out.contains("Selfhost  FAIL"), () -> "expected selfhost failure status:\n" + out);
+        assertTrue(out.contains("Diagnostics: identical"), () -> "expected diagnostic parity:\n" + out);
+        assertTrue(out.contains("Undefined variable 'missing'."), () -> "expected diagnostic text:\n" + out);
+    }
+
+    @Test
     @DisplayName("파일 없음 → 코드 66, stderr 오류")
     void dispatchMissingFile_returns66() {
         int code = dispatch(new String[]{"run", "/no/such/file.cf"}, "");
@@ -106,11 +139,13 @@ class MainDispatchTest {
         int code = dispatch(new String[]{"--help"}, "");
         assertTrue(out.contains("Usage:"), () -> "expected usage:\n" + out);
         assertTrue(out.contains("factory selfhost run <file>"), () -> "expected selfhost usage:\n" + out);
+        assertTrue(out.contains("factory compare <file>"), () -> "expected compare usage:\n" + out);
         assertEquals(0, code);
 
         int codeShort = dispatch(new String[]{"-h"}, "");
         assertTrue(out.contains("Usage:"), () -> "expected usage for -h:\n" + out);
         assertTrue(out.contains("factory selfhost run <file>"), () -> "expected selfhost usage for -h:\n" + out);
+        assertTrue(out.contains("factory compare <file>"), () -> "expected compare usage for -h:\n" + out);
         assertEquals(0, codeShort);
     }
 

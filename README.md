@@ -67,6 +67,7 @@ cd CodeFab
 # 예제 파일 실행
 ./factory run examples/selfhost_showcase.cfab
 ./factory selfhost run examples/selfhost_showcase.cfab
+./factory compare examples/selfhost_showcase.cfab
 ```
 
 REPL이 시작되면 아래와 같이 입력합니다.
@@ -216,6 +217,29 @@ source.cfab -> Java host -> CodeFab-written Scanner/Parser/Checker/Executor
 ```
 
 selfhost 경로는 Java 경로와 같은 출력/진단을 내도록 parity test로 유지합니다. 대신 bootstrap CodeFab 코드를 한 번 더 실행하므로 성능은 Java 경로보다 느립니다. 일상 실행은 `factory run`, selfhost 검증이나 언어 구현 데모는 `factory selfhost run`을 권장합니다.
+
+---
+
+### Compare 실행
+
+Java interpreter와 selfhost interpreter를 모두 실행해 성공 여부, 출력, 진단이 같은지 비교합니다.
+
+```bash
+./factory compare hello.cfab
+```
+
+예시 출력:
+
+```text
+Java      PASS 12ms
+Selfhost  PASS 180ms
+
+Success: identical
+Output: identical
+Diagnostics: identical
+```
+
+대상 프로그램이 런타임 오류나 정적 진단으로 실패하더라도 두 interpreter의 결과가 같으면 `compare` 자체는 성공 코드 `0`으로 종료합니다. 성공 여부, 출력, 진단 중 하나라도 다르면 `65`로 종료합니다.
 
 ---
 
@@ -870,6 +894,7 @@ codefab/
 └── shell/
     ├── Main.java              CLI 진입점 (run/debug 서브커맨드 라우팅)
     ├── PromptShell.java       대화형 REPL 셸 (멀티라인, isPendingElse)
+    ├── CompareMode.java       Java/selfhost 결과 비교 모드
     └── DebugShell.java        디버그 모드 셸 (step/break/watch/inspect)
 selfhost/
 ├── scanner.cfab              CodeFab selfhost scanner

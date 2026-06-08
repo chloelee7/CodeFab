@@ -47,6 +47,9 @@ public final class Main {
         if (first.equals("debug")) {
             return args.length == 2 ? new DebugMode(args[1]) : null;
         }
+        if (first.equals("compare")) {
+            return args.length == 2 ? new CompareMode(args[1]) : null;
+        }
         if (first.equals("selfhost")) {
             if (args.length == 2) {
                 return new SelfHostRunMode(args[1]);
@@ -72,6 +75,7 @@ public final class Main {
         out.println("  factory run <file>            Run a CodeFab script file with the Java interpreter");
         out.println("  factory selfhost run <file>   Run a CodeFab script file with the CodeFab-written selfhost interpreter");
         out.println("  factory selfhost <file>       Alias for factory selfhost run <file>");
+        out.println("  factory compare <file>        Compare Java and selfhost interpreter results");
         out.println("  factory debug <file>          Debug a CodeFab script file (step/break/watch/inspect)");
         out.println("  factory --help                Show this help");
     }
