@@ -402,20 +402,31 @@ public final class DebugShell {
         if (stmt instanceof Stmt.ExpressionStmt s) return exprText(s.expression) + ";";
         if (stmt instanceof Stmt.PrintStmt s)      return "print " + exprText(s.expression) + ";";
         if (stmt instanceof Stmt.ReturnStmt s)     return s.value != null ? "return " + exprText(s.value) + ";" : "return;";
-        if (stmt instanceof Stmt.IfStmt s)         return "if (" + exprText(s.condition) + ") { ... }";
-        if (stmt instanceof Stmt.WhileStmt s)      return "while (" + exprText(s.condition) + ") { ... }";
+        if (stmt instanceof Stmt.IfStmt s) {
+            String els = s.elseBranch != null ? " else " + bodyText(s.elseBranch) : "";
+            return "if (" + exprText(s.condition) + ") " + bodyText(s.thenBranch) + els;
+        }
+        if (stmt instanceof Stmt.WhileStmt s)      return "while (" + exprText(s.condition) + ") " + bodyText(s.body);
         if (stmt instanceof Stmt.ForStmt s) {
             String init = s.initializer != null ? stmtText(s.initializer).replaceAll(";$", "") : "";
             String cond = s.condition  != null ? exprText(s.condition)  : "";
             String incr = s.increment  != null ? exprText(s.increment)  : "";
-            return "for (" + init + "; " + cond + "; " + incr + ") { ... }";
+            return "for (" + init + "; " + cond + "; " + incr + ") " + bodyText(s.body);
         }
         if (stmt instanceof Stmt.FunctionStmt s) {
             String params = String.join(", ", s.params.stream().map(t -> t.lexeme).toList());
             return "Func " + s.name.lexeme + "(" + params + ") { ... }";
         }
-        if (stmt instanceof Stmt.BlockStmt)        return "{ ... }";
+        if (stmt instanceof Stmt.BlockStmt s)      return bodyText(s);
         return stmt.getClass().getSimpleName();
+    }
+
+    private String bodyText(Stmt body) {
+        if (body instanceof Stmt.BlockStmt b) {
+            String inner = b.statements.stream().map(this::stmtText).collect(java.util.stream.Collectors.joining(" "));
+            return "{ " + inner + " }";
+        }
+        return stmtText(body);
     }
 
     private String exprText(Expr expr) {
