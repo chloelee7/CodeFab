@@ -160,6 +160,7 @@ Func check(statements) {
             if (stmt[2] != nil) {
                 checkExpr(stmt[2]);
             }
+            // Match Java Checker and runtime order: body is checked before increment.
             checkStmt(stmt[4]);
             if (stmt[3] != nil) {
                 checkExpr(stmt[3]);

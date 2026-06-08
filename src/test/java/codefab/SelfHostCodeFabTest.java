@@ -196,6 +196,41 @@ class SelfHostCodeFabTest {
     }
 
     @Test
+    @DisplayName("SelfHostCodeFab preserves commas inside diagnostic messages")
+    void preservesCommasInsideDiagnosticMessages() throws IOException {
+        Path bootstrap = Files.createTempFile("codefab-selfhost-comma-diagnostic", ".cfab");
+        Files.writeString(bootstrap, """
+            Func run(source) {
+                var diagnostic = Array(3);
+                diagnostic[0] = "RUNTIME";
+                diagnostic[1] = 7;
+                diagnostic[2] = "message with comma, still intact";
+
+                var diagnostics = Array(1);
+                diagnostics[0] = diagnostic;
+
+                var result = Array(3);
+                result[0] = false;
+                result[1] = Array(0);
+                result[2] = diagnostics;
+                return result;
+            }
+            """, StandardCharsets.UTF_8);
+
+        try {
+            RunResult result = new SelfHostCodeFab(List.of(bootstrap)).run("print 1;");
+
+            assertEquals(false, result.success());
+            assertEquals(1, result.diagnostics().size());
+            assertEquals(Diagnostic.Stage.RUNTIME, result.diagnostics().get(0).stage);
+            assertEquals(7, result.diagnostics().get(0).line);
+            assertEquals("message with comma, still intact", result.diagnostics().get(0).message);
+        } finally {
+            Files.deleteIfExists(bootstrap);
+        }
+    }
+
+    @Test
     @DisplayName("selfhost bootstrap files are packaged as classpath resources")
     void selfhostBootstrapFilesArePackagedAsClasspathResources() {
         ClassLoader loader = SelfHostCodeFab.class.getClassLoader();

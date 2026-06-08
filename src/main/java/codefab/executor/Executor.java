@@ -531,7 +531,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             throw new InterpreterRuntimeError(token, message);
         }
         double number = (Double) value;
-        if (number != Math.floor(number) || Double.isInfinite(number) || Double.isNaN(number)) {
+        if (number != Math.floor(number) || Double.isInfinite(number)) {
             throw new InterpreterRuntimeError(token, message);
         }
         return (int) number;

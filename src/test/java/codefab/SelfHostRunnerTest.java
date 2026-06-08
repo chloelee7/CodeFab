@@ -107,6 +107,10 @@ class SelfHostRunnerTest {
     void reportsArityMismatches() throws IOException {
         assertEquals(List.of("false", "[RUNTIME, 1, Expected 2 arguments but got 1.]"),
             runSelfhost(cfString("Func add(a, b) { return a + b; } print add(1);")));
+        assertEquals(List.of("false", "[RUNTIME, 1, Expected 11 arguments but got 12.]"),
+            runSelfhost(cfString(
+                "Func f(a, b, c, d, e, f, g, h, i, j, k) { return a; } "
+                    + "print f(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);")));
     }
 
     @Test

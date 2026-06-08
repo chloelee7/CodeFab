@@ -60,8 +60,7 @@ Func envAssign(env, name, value) {
         }
         cursor = cursor[1];
     }
-    envDefine(env, name, value);
-    return value;
+    return nil;
 }
 
 Func nodeKind(node) {
@@ -144,38 +143,8 @@ Func executeWithDiagnostics(statements) {
         return signal;
     }
 
-    Func smallNumberText(value) {
-        if (value == -1) {
-            return "-1";
-        }
-        if (value == 0) {
-            return "0";
-        } else if (value == 1) {
-            return "1";
-        } else if (value == 2) {
-            return "2";
-        } else if (value == 3) {
-            return "3";
-        } else if (value == 4) {
-            return "4";
-        } else if (value == 5) {
-            return "5";
-        } else if (value == 6) {
-            return "6";
-        } else if (value == 7) {
-            return "7";
-        } else if (value == 8) {
-            return "8";
-        } else if (value == 9) {
-            return "9";
-        } else if (value == 10) {
-            return "10";
-        }
-        return "many";
-    }
-
     Func addArityDiagnostic(expected, actual, line) {
-        addRuntimeDiagnostic(line, "Expected " + smallNumberText(expected) + " arguments but got " + smallNumberText(actual) + ".");
+        addRuntimeDiagnostic(line, "Expected " + valueText(expected) + " arguments but got " + valueText(actual) + ".");
         return nil;
     }
 
@@ -216,7 +185,7 @@ Func executeWithDiagnostics(statements) {
             return false;
         }
         if (index < 0 or index >= len(array)) {
-            addRuntimeDiagnostic(line, "Array index " + smallNumberText(index) + " out of bounds (size " + smallNumberText(len(array)) + ").");
+            addRuntimeDiagnostic(line, "Array index " + valueText(index) + " out of bounds (size " + valueText(len(array)) + ").");
             return false;
         }
         return true;
