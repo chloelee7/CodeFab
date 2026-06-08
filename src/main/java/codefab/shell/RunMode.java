@@ -26,7 +26,7 @@ public final class RunMode implements Mode {
     }
 
     @Override
-    public int execute(String[] args, BufferedReader in, PrintStream out, PrintStream err) {
+    public int execute(BufferedReader in, PrintStream out, PrintStream err) {
         String source;
         try {
             source = Files.readString(Path.of(path), StandardCharsets.UTF_8);

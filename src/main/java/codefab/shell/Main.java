@@ -47,7 +47,7 @@ public final class Main {
             printUsage(err);
             return EX_USAGE;
         }
-        return mode.execute(args, in, out, err);
+        return mode.execute(in, out, err);
     }
 
     private static Mode select(String[] args) {

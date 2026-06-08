@@ -8,7 +8,7 @@ import java.io.PrintStream;
  */
 public final class ReplMode implements Mode {
     @Override
-    public int execute(String[] args, BufferedReader in, PrintStream out, PrintStream err) {
+    public int execute(BufferedReader in, PrintStream out, PrintStream err) {
         new PromptShell(in, out).run();
         return 0;
     }

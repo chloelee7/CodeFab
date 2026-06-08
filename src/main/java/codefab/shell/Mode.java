@@ -11,5 +11,5 @@ import java.io.PrintStream;
  *         담당하므로 모드는 코드만 반환해 테스트 가능하다.
  */
 public interface Mode {
-    int execute(String[] args, BufferedReader in, PrintStream out, PrintStream err);
+    int execute(BufferedReader in, PrintStream out, PrintStream err);
 }

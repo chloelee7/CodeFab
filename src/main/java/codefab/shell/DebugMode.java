@@ -15,7 +15,7 @@ public final class DebugMode implements Mode {
     }
 
     @Override
-    public int execute(String[] args, BufferedReader in, PrintStream out, PrintStream err) {
+    public int execute(BufferedReader in, PrintStream out, PrintStream err) {
         new DebugShell(in, out, err, path).run();
         return 0;
     }
