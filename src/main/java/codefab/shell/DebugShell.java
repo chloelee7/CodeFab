@@ -57,8 +57,14 @@ public final class DebugShell {
         commands.put("break",       (s, a) -> { s.doBreak(a); return true; });
         commands.put("breakpoints", (s, a) -> { s.doListBreakpoints(); return true; });
         commands.put("remove",      (s, a) -> { s.doRemoveBreakpoint(a); return true; });
-        commands.put("watch",       (s, a) -> { s.doWatch(a); return true; });
-        commands.put("unwatch",     (s, a) -> { s.doUnwatch(a); return true; });
+        commands.put("watch",       (s, a) -> {
+            if (a.isEmpty()) { s.out.println("Usage: watch <variable>"); return true; }
+            s.doWatch(a); return true;
+        });
+        commands.put("unwatch",     (s, a) -> {
+            if (a.isEmpty()) { s.out.println("Usage: unwatch <variable>"); return true; }
+            s.doUnwatch(a); return true;
+        });
         commands.put("watches",     (s, a) -> { s.doWatches(); return true; });
         commands.put("inspect",     (s, a) -> { s.doInspect(); return true; });
         commands.put("exit",        (s, a) -> false);

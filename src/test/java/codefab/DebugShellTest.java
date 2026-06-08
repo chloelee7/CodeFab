@@ -71,6 +71,14 @@ class DebugShellTest {
     }
 
     @Test
+    void watchWithoutArgIsRejectedNotRegistered() throws Exception {
+        String out = drive("var x = 1;\n", "watch\nwatches\nexit\n");
+        assertTrue(out.contains("Usage: watch <variable>"), () -> out);
+        assertTrue(out.contains("감시 중인 변수 없음"), () -> out);
+        assertFalse(out.contains("'' 감시 등록"), () -> out);
+    }
+
+    @Test
     void breakpointsAndRemoveManageList() throws Exception {
         String out = drive("var a = 1;\nvar b = 2;\n",
                 "break 1\nbreakpoints\nremove 1\nbreakpoints\nexit\n");
