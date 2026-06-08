@@ -1,13 +1,13 @@
 package codefab.shell;
 
 import codefab.CodeFabSession;
-import codefab.core.Diagnostic;
-import codefab.core.Stmt;
-import java.util.ArrayList;
-import codefab.core.Token;
-import codefab.executor.Environment;
-import codefab.executor.Executor;
 import codefab.CollectingOutputSink;
+import codefab.core.Diagnostic;
+import codefab.core.Expr;
+import codefab.core.Stmt;
+import codefab.core.Token;
+import codefab.executor.Executor;
+import codefab.executor.Environment;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -15,6 +15,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -34,6 +35,7 @@ public final class DebugShell {
     private int cursor = 0;
     private final Set<Integer> breakpoints = new HashSet<>();
     private final Set<String> watchList = new LinkedHashSet<>();
+    private boolean stoppedAtBreakpoint = false;
 
     private CollectingOutputSink outputSink;
     private Executor executor;
@@ -142,6 +144,7 @@ public final class DebugShell {
         }
         executeOne(statements.get(cursor));
         cursor++;
+        stoppedAtBreakpoint = false;
         printWatches();
         if (cursor < statements.size()) {
             printCurrentStmt();
@@ -151,15 +154,16 @@ public final class DebugShell {
 
     private boolean doContinue() {
         while (cursor < statements.size()) {
-            int line = getLine(statements.get(cursor));
-            if (breakpoints.contains(line)) {
+            int line = findBreakpointLine(statements.get(cursor));
+            if (!stoppedAtBreakpoint && line > 0) {
                 out.println("[DEBUG] " + line + "번째 줄에서 정지 (breakpoint) → " + stmtText(statements.get(cursor)));
                 printWatches();
-                cursor++;
+                stoppedAtBreakpoint = true;
                 return true;
             }
             executeOne(statements.get(cursor));
             cursor++;
+            stoppedAtBreakpoint = false;
             printWatches();
         }
         return false;
@@ -286,30 +290,52 @@ public final class DebugShell {
     }
 
     private int getLine(Stmt stmt) {
-        if (stmt instanceof Stmt.VarStmt)        return ((Stmt.VarStmt) stmt).name.line;
-        if (stmt instanceof Stmt.FunctionStmt)   return ((Stmt.FunctionStmt) stmt).name.line;
-        if (stmt instanceof Stmt.ReturnStmt)     return ((Stmt.ReturnStmt) stmt).keyword.line;
-        if (stmt instanceof Stmt.PrintStmt) {
-            Stmt.PrintStmt p = (Stmt.PrintStmt) stmt;
-            return getExprLine(p.expression);
+        if (stmt instanceof Stmt.VarStmt s)        return s.name.line;
+        if (stmt instanceof Stmt.FunctionStmt s)   return s.name.line;
+        if (stmt instanceof Stmt.ReturnStmt s)     return s.keyword.line;
+        if (stmt instanceof Stmt.PrintStmt s)      return getExprLine(s.expression);
+        if (stmt instanceof Stmt.ExpressionStmt s) return getExprLine(s.expression);
+        if (stmt instanceof Stmt.IfStmt s)         return getExprLine(s.condition);
+        if (stmt instanceof Stmt.WhileStmt s)      return getExprLine(s.condition);
+        if (stmt instanceof Stmt.ForStmt f) {
+            int line = f.initializer != null ? getLine(f.initializer) : -1;
+            if (line > 0) return line;
+            line = f.condition != null ? getExprLine(f.condition) : -1;
+            if (line > 0) return line;
+            return f.increment != null ? getExprLine(f.increment) : -1;
         }
-        if (stmt instanceof Stmt.ExpressionStmt) {
-            return getExprLine(((Stmt.ExpressionStmt) stmt).expression);
-        }
-        if (stmt instanceof Stmt.IfStmt)         return getExprLine(((Stmt.IfStmt) stmt).condition);
-        if (stmt instanceof Stmt.WhileStmt)      return getExprLine(((Stmt.WhileStmt) stmt).condition);
         return -1;
     }
 
-    private int getExprLine(codefab.core.Expr expr) {
-        if (expr instanceof codefab.core.Expr.Variable)
-            return ((codefab.core.Expr.Variable) expr).name.line;
-        if (expr instanceof codefab.core.Expr.Assign)
-            return ((codefab.core.Expr.Assign) expr).name.line;
-        if (expr instanceof codefab.core.Expr.Binary)
-            return ((codefab.core.Expr.Binary) expr).operator.line;
-        if (expr instanceof codefab.core.Expr.Call)
-            return ((codefab.core.Expr.Call) expr).paren.line;
+    private int getExprLine(Expr expr) {
+        if (expr instanceof Expr.Variable e) return e.name.line;
+        if (expr instanceof Expr.Assign e)   return e.name.line;
+        if (expr instanceof Expr.Unary e)    return e.operator.line;
+        if (expr instanceof Expr.Binary e)   return e.operator.line;
+        if (expr instanceof Expr.Logical e)  return e.operator.line;
+        if (expr instanceof Expr.Grouping e) return getExprLine(e.expression);
+        if (expr instanceof Expr.Call e)     return e.paren.line;
+        if (expr instanceof Expr.ArrayGet e) return e.bracket.line;
+        if (expr instanceof Expr.ArraySet e) return e.bracket.line;
+        return -1;
+    }
+
+    private int findBreakpointLine(Stmt stmt) {
+        int line = getLine(stmt);
+        if (line > 0 && breakpoints.contains(line)) return line;
+
+        if (stmt instanceof Stmt.BlockStmt s) {
+            return firstBreakpointLine(s.statements);
+        }
+
+        return -1;
+    }
+
+    private int firstBreakpointLine(List<Stmt> candidates) {
+        for (Stmt candidate : candidates) {
+            int line = findBreakpointLine(candidate);
+            if (line > 0) return line;
+        }
         return -1;
     }
 

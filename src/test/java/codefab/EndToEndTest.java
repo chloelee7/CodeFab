@@ -332,6 +332,22 @@ class EndToEndTest {
         }
 
         @Test
+        @DisplayName("len(array)는 배열 길이를 반환하고 반복문 경계로 사용할 수 있다")
+        void lenReturnsArrayLength() {
+            String src = "var a = Array(3); a[0] = 2; a[1] = 4; a[2] = 6; "
+                    + "var total = 0; "
+                    + "for (var i = 0; i < len(a); i = i + 1) { total = total + a[i]; } "
+                    + "print len(a); print total;";
+            assertEquals(List.of("3", "12"), out(src));
+        }
+
+        @Test
+        @DisplayName("빈 배열의 len은 0을 반환한다")
+        void lenOfEmptyArrayIsZero() {
+            assertEquals(List.of("0"), out("var a = Array(0); print len(a);"));
+        }
+
+        @Test
         @DisplayName("배열 범위 초과는 런타임 오류")
         void outOfBoundsIsRuntimeError() {
             assertFailsAtStage("var a = Array(2); print a[5];", Diagnostic.Stage.RUNTIME,
@@ -343,6 +359,27 @@ class EndToEndTest {
         void indexingNonArrayIsRuntimeError() {
             assertFailsAtStage("var a = 3; print a[0];", Diagnostic.Stage.RUNTIME,
                     "Only arrays can be indexed.");
+        }
+
+        @Test
+        @DisplayName("len()에 문자열/배열이 아닌 값을 넘기면 런타임 오류")
+        void lenNonArrayIsRuntimeError() {
+            assertFailsAtStage("print len(123);", Diagnostic.Stage.RUNTIME,
+                    "len() expects a string or array.");
+        }
+
+        @Test
+        @DisplayName("len() 인자 수가 맞지 않으면 런타임 오류")
+        void lenArityMismatchIsRuntimeError() {
+            assertFailsAtStage("print len();", Diagnostic.Stage.RUNTIME,
+                    "Expected 1 arguments but got 0.");
+        }
+
+        @Test
+        @DisplayName("len() 인자가 2개 이상이면 런타임 오류")
+        void lenTooManyArgsIsRuntimeError() {
+            assertFailsAtStage("var a = Array(2); print len(a, a);", Diagnostic.Stage.RUNTIME,
+                    "Expected 1 arguments but got 2.");
         }
     }
 
