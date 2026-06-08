@@ -24,7 +24,7 @@ class EndToEndTest {
     /** 정상 프로그램: 캡처된 stdout을 검증한다. */
     @Nested
     @DisplayName("정상 동작")
-    class 정상동작 {
+    class NormalOperation {
 
         private List<String> out(String src) {
             RunResult r = run(src);
@@ -159,12 +159,12 @@ class EndToEndTest {
     /** 오류 프로그램: 의미있는 diagnostic과 함께 실패해야 한다. */
     @Nested
     @DisplayName("오류 처리")
-    class 오류처리 {
+    class ErrorHandling {
 
         /** 구문 오류: PARSER 단계에서 실패한다. */
         @Nested
         @DisplayName("구문 오류 (PARSER)")
-        class 구문오류 {
+        class SyntaxErrors {
 
             @DisplayName("세미콜론 누락")
             @Test
@@ -195,7 +195,7 @@ class EndToEndTest {
         /** 검사기 오류: CHECKER 단계에서 실패하며 실행되지 않는다. */
         @Nested
         @DisplayName("검사기 오류 (CHECKER)")
-        class 검사기오류 {
+        class CheckerErrors {
 
             @DisplayName("자기 초기화자에서 지역 변수 읽기")
             @Test
@@ -224,7 +224,7 @@ class EndToEndTest {
         /** 런타임 오류: RUNTIME 단계에서 실패한다. */
         @Nested
         @DisplayName("런타임 오류 (RUNTIME)")
-        class 런타임오류 {
+        class RuntimeErrors {
 
             @DisplayName("정의되지 않은 변수")
             @Test
@@ -271,7 +271,7 @@ class EndToEndTest {
 
     @Nested
     @DisplayName("함수 지원")
-    class 함수지원 {
+    class FunctionSupport {
 
         private List<String> out(String src) {
             RunResult r = run(src);
@@ -316,7 +316,7 @@ class EndToEndTest {
 
     @Nested
     @DisplayName("배열 지원")
-    class 배열지원 {
+    class ArraySupport {
 
         private List<String> out(String src) {
             RunResult r = run(src);
@@ -348,7 +348,7 @@ class EndToEndTest {
 
     @Nested
     @DisplayName("상수 폴딩 최적화")
-    class 상수폴딩최적화 {
+    class ConstantFoldingOptimization {
 
         private List<String> out(String src) {
             RunResult r = run(src);

@@ -1,0 +1,128 @@
+// ========================================================================
+// CodeFab 문법 쇼케이스 — 현재 지원되는 모든 케이스 망라
+// ========================================================================
+
+// ── 1. 리터럴 & print ────────────────────────────────────────────────
+print 42;            // 정수 (정수형 double은 정수로 출력)
+print 3.14;          // 소수
+print "hello";       // 문자열
+print true;          // 불리언
+print false;
+print nil;           // nil 리터럴 → "nil"
+
+// ── 2. 산술 연산자 (+ - * / % ) ──────────────────────────────────────
+print 1 + 2;         // 3
+print 10 - 4;        // 6
+print 6 * 7;         // 42
+print 20 / 8;        // 2.5
+print 17 % 5;        // 2
+
+// ── 3. 단항 연산자 (- + !) ───────────────────────────────────────────
+print -5;            // -5
+print +5;            // 5
+print !true;         // false
+print !false;        // true
+
+// ── 4. 그룹핑 & 연산자 우선순위 ──────────────────────────────────────
+print (1 + 2) * 3;   // 9
+print 1 + 2 * 3;     // 7
+
+// ── 5. 비교 & 동등 연산자 ────────────────────────────────────────────
+print 3 > 2;         // true
+print 3 >= 3;        // true
+print 2 < 1;         // false
+print 2 <= 2;        // true
+print 1 == 1;        // true
+print 1 != 2;        // true
+
+// ── 6. 논리 연산자 (and / or, 단축 평가) ─────────────────────────────
+print true and false;  // false
+print true or false;   // true
+print false or "fallback";  // "fallback" (단축 평가: 좌측 falsy → 우측 반환)
+
+// ── 7. 변수 선언 / 재할당 / 미초기화(nil) ────────────────────────────
+var x = 10;
+print x;             // 10
+x = x + 5;
+print x;             // 15
+var uninit;          // 초기화 생략 → nil
+print uninit;        // nil
+
+// ── 8. 문자열 연결 ───────────────────────────────────────────────────
+var greeting = "Code" + "Fab";
+print greeting;      // CodeFab
+
+// ── 9. 블록 스코프 (shadowing) ───────────────────────────────────────
+var shadowed = "outer";
+{
+    var shadowed = "inner";
+    print shadowed;  // inner
+}
+print shadowed;      // outer
+
+// ── 10. if / else ────────────────────────────────────────────────────
+if (x > 10) {
+    print "x > 10";
+} else {
+    print "x <= 10";
+}
+
+// ── 11. while 루프 ───────────────────────────────────────────────────
+var count = 0;
+while (count < 3) {
+    print "while " + "tick";
+    count = count + 1;
+}
+
+// ── 12. for 루프 ─────────────────────────────────────────────────────
+for (var i = 0; i < 3; i = i + 1) {
+    print i;         // 0 1 2
+}
+
+// ── 13. 배열: 생성 / 인덱스 set / 인덱스 get ─────────────────────────
+var nums = Array(3);
+nums[0] = 100;
+nums[1] = 200;
+nums[2] = nums[0] + nums[1];
+print nums[2];       // 300
+
+// ── 14. 함수: 선언 / 호출 / 매개변수 / 반환값 ───────────────────────
+Func add(a, b) {
+    return a + b;
+}
+print add(4, 6);     // 10
+
+// ── 15. 반환값 없는 함수 (암묵적 nil) ────────────────────────────────
+Func noReturn() {
+    var local = 1;
+}
+print noReturn();    // nil
+
+// ── 16. 재귀 함수 ────────────────────────────────────────────────────
+Func factorial(n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+print factorial(5);  // 120
+
+// ── 17. 클로저 (중첩 함수가 외부 스코프 변수 캡처) ──────────────────
+Func makeAdder(base) {
+    Func adder(v) {
+        return base + v;
+    }
+    return adder;
+}
+var add10 = makeAdder(10);
+print add10(7);      // 17
+
+// ── 18. 종합: 배열을 인자로 받아 합산 (섹션 13의 nums 배열 재사용) ──────
+Func sumArray(arr, size) {
+    var total = 0;
+    for (var i = 0; i < size; i = i + 1) {
+        total = total + arr[i];
+    }
+    return total;
+}
+print sumArray(nums, 3);  // 600

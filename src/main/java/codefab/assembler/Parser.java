@@ -400,6 +400,7 @@ public final class Parser {
                 case RETURN:
                 case VAR:
                 case FOR:
+                case WHILE:
                 case IF:
                 case PRINT:
                     return;
