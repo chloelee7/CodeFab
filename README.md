@@ -68,6 +68,7 @@ cd CodeFab
 ./factory run examples/selfhost_showcase.cfab
 ./factory selfhost run examples/selfhost_showcase.cfab
 ./factory compare examples/selfhost_showcase.cfab
+./factory explain examples/selfhost_showcase.cfab
 ```
 
 REPL이 시작되면 아래와 같이 입력합니다.
@@ -240,6 +241,40 @@ Diagnostics: identical
 ```
 
 대상 프로그램이 런타임 오류나 정적 진단으로 실패하더라도 두 interpreter의 결과가 같으면 `compare` 자체는 성공 코드 `0`으로 종료합니다. 성공 여부, 출력, 진단 중 하나라도 다르면 `65`로 종료합니다.
+
+### Explain 실행
+
+Java interpreter 파이프라인을 단계별로 확인합니다.
+
+```bash
+./factory explain hello.cfab
+```
+
+출력은 Scanner 토큰, Parser AST, Checker 진단, ConstantFolder 적용 후 AST, Executor 결과 순서로 표시됩니다.
+
+```text
+== Scanner Tokens ==
+1: PRINT 'print'
+1: NUMBER '1' 1.0
+
+== Parser AST ==
+PrintStmt(Binary(Literal(1), +, Literal(2)))
+
+== Checker Diagnostics ==
+(none)
+
+== Constant-Folded AST ==
+PrintStmt(Literal(3))
+
+== Executor Result ==
+Success: true
+Output:
+3
+Diagnostics:
+(none)
+```
+
+구문 오류나 정적 진단이 있으면 실제 실행 단계는 건너뛰고, 어느 단계에서 멈췄는지 표시합니다.
 
 ---
 
@@ -895,6 +930,7 @@ codefab/
     ├── Main.java              CLI 진입점 (run/debug 서브커맨드 라우팅)
     ├── PromptShell.java       대화형 REPL 셸 (멀티라인, isPendingElse)
     ├── CompareMode.java       Java/selfhost 결과 비교 모드
+    ├── ExplainMode.java       파이프라인 설명 모드
     └── DebugShell.java        디버그 모드 셸 (step/break/watch/inspect)
 selfhost/
 ├── scanner.cfab              CodeFab selfhost scanner

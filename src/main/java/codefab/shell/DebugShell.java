@@ -11,9 +11,6 @@ import codefab.executor.Executor;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -95,9 +92,9 @@ public final class DebugShell {
     public void run() {
         String source;
         try {
-            source = Files.readString(Path.of(filePath), StandardCharsets.UTF_8);
+            source = ShellFiles.readUtf8(filePath);
         } catch (IOException e) {
-            err.println("Error: file not found: " + filePath);
+            ShellFiles.printReadError(err, filePath);
             return;
         }
 
@@ -395,30 +392,61 @@ public final class DebugShell {
     }
 
     private String stmtText(Stmt stmt) {
-        if (stmt instanceof Stmt.VarStmt) {
-            return "var " + ((Stmt.VarStmt) stmt).name.lexeme + " = ...;";
+        if (stmt instanceof Stmt.VarStmt s) {
+            String init = s.initializer != null ? " = " + exprText(s.initializer) : "";
+            return "var " + s.name.lexeme + init + ";";
         }
-        if (stmt instanceof Stmt.FunctionStmt) {
-            return "Func " + ((Stmt.FunctionStmt) stmt).name.lexeme + "(...) { ... }";
+        if (stmt instanceof Stmt.ExpressionStmt s) return exprText(s.expression) + ";";
+        if (stmt instanceof Stmt.PrintStmt s)      return "print " + exprText(s.expression) + ";";
+        if (stmt instanceof Stmt.ReturnStmt s)     return s.value != null ? "return " + exprText(s.value) + ";" : "return;";
+        if (stmt instanceof Stmt.IfStmt s) {
+            String els = s.elseBranch != null ? " else " + bodyText(s.elseBranch) : "";
+            return "if (" + exprText(s.condition) + ") " + bodyText(s.thenBranch) + els;
         }
-        if (stmt instanceof Stmt.ReturnStmt) {
-            return "return ...;";
+        if (stmt instanceof Stmt.WhileStmt s)      return "while (" + exprText(s.condition) + ") " + bodyText(s.body);
+        if (stmt instanceof Stmt.ForStmt s) {
+            String init = s.initializer != null ? stmtText(s.initializer).replaceAll(";$", "") : "";
+            String cond = s.condition  != null ? exprText(s.condition)  : "";
+            String incr = s.increment  != null ? exprText(s.increment)  : "";
+            return "for (" + init + "; " + cond + "; " + incr + ") " + bodyText(s.body);
         }
-        if (stmt instanceof Stmt.PrintStmt) {
-            return "print ...;";
+        if (stmt instanceof Stmt.FunctionStmt s) {
+            String params = String.join(", ", s.params.stream().map(t -> t.lexeme).toList());
+            String body = s.body.stream().map(this::stmtText).collect(java.util.stream.Collectors.joining(" "));
+            return "Func " + s.name.lexeme + "(" + params + ") { " + body + " }";
         }
-        if (stmt instanceof Stmt.IfStmt) {
-            return "if (...) { ... }";
-        }
-        if (stmt instanceof Stmt.WhileStmt) {
-            return "while (...) { ... }";
-        }
-        if (stmt instanceof Stmt.ForStmt) {
-            return "for (...) { ... }";
-        }
-        if (stmt instanceof Stmt.BlockStmt) {
-            return "{ ... }";
-        }
+        if (stmt instanceof Stmt.BlockStmt s)      return bodyText(s);
         return stmt.getClass().getSimpleName();
+    }
+
+    private String bodyText(Stmt body) {
+        if (body instanceof Stmt.BlockStmt b) {
+            String inner = b.statements.stream().map(this::stmtText).collect(java.util.stream.Collectors.joining(" "));
+            return "{ " + inner + " }";
+        }
+        return stmtText(body);
+    }
+
+    private String exprText(Expr expr) {
+        if (expr instanceof Expr.Literal e) {
+            if (e.value == null)             return "nil";
+            if (e.value instanceof Boolean)  return e.value.toString();
+            if (e.value instanceof Double d) return d == Math.floor(d) && !Double.isInfinite(d)
+                                                    ? String.valueOf(d.longValue()) : d.toString();
+            return "\"" + e.value + "\"";
+        }
+        if (expr instanceof Expr.Variable e)  return e.name.lexeme;
+        if (expr instanceof Expr.Assign e)    return e.name.lexeme + " = " + exprText(e.value);
+        if (expr instanceof Expr.Unary e)     return e.operator.lexeme + exprText(e.right);
+        if (expr instanceof Expr.Binary e)    return exprText(e.left) + " " + e.operator.lexeme + " " + exprText(e.right);
+        if (expr instanceof Expr.Logical e)   return exprText(e.left) + " " + e.operator.lexeme + " " + exprText(e.right);
+        if (expr instanceof Expr.Grouping e)  return "(" + exprText(e.expression) + ")";
+        if (expr instanceof Expr.Call e) {
+            String args = e.arguments.stream().map(this::exprText).reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
+            return exprText(e.callee) + "(" + args + ")";
+        }
+        if (expr instanceof Expr.ArrayGet e)  return exprText(e.array) + "[" + exprText(e.index) + "]";
+        if (expr instanceof Expr.ArraySet e)  return exprText(e.array) + "[" + exprText(e.index) + "] = " + exprText(e.value);
+        return "?";
     }
 }

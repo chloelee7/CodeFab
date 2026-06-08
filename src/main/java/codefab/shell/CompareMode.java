@@ -8,9 +8,6 @@ import codefab.core.Diagnostic;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 public final class CompareMode implements Mode {
@@ -19,27 +16,36 @@ public final class CompareMode implements Mode {
     private static final int EX_NO_INPUT = 66;
 
     private final String path;
+    private final RuntimeRunner javaRunner;
+    private final RuntimeRunner selfhostRunner;
 
     public CompareMode(String path) {
+        this(path, source -> new CodeFab().run(source), source -> new SelfHostCodeFab().run(source));
+    }
+
+    CompareMode(String path, RuntimeRunner javaRunner, RuntimeRunner selfhostRunner) {
         this.path = path;
+        this.javaRunner = javaRunner;
+        this.selfhostRunner = selfhostRunner;
     }
 
     @Override
     public int execute(BufferedReader in, PrintStream out, PrintStream err) {
         String source;
         try {
-            source = Files.readString(Path.of(path), StandardCharsets.UTF_8);
+            source = ShellFiles.readUtf8(path);
         } catch (IOException e) {
-            err.println("Error: file not found: " + path);
+            ShellFiles.printReadError(err, path);
             return EX_NO_INPUT;
         }
 
-        TimedResult javaResult = runJava(source);
-        TimedResult selfhostResult = runSelfhost(source);
+        TimedResult javaResult = runTimed(javaRunner, source);
+        TimedResult selfhostResult = runTimed(selfhostRunner, source);
+        List<String> javaDiagnostics = renderedDiagnostics(javaResult.result);
+        List<String> selfhostDiagnostics = renderedDiagnostics(selfhostResult.result);
         boolean successMatches = javaResult.result.success() == selfhostResult.result.success();
         boolean outputMatches = javaResult.result.output().equals(selfhostResult.result.output());
-        boolean diagnosticsMatches = renderedDiagnostics(javaResult.result)
-            .equals(renderedDiagnostics(selfhostResult.result));
+        boolean diagnosticsMatches = javaDiagnostics.equals(selfhostDiagnostics);
         boolean matches = successMatches && outputMatches && diagnosticsMatches;
 
         out.printf("%-9s %-4s %dms%n", "Java", status(javaResult.result), javaResult.elapsedMillis);
@@ -51,23 +57,16 @@ public final class CompareMode implements Mode {
 
         printSection(out, "Java output", javaResult.result.output(), !outputMatches);
         printSection(out, "Selfhost output", selfhostResult.result.output(), !outputMatches);
-        printSection(out, "Diagnostics", renderedDiagnostics(javaResult.result),
-            diagnosticsMatches && !javaResult.result.diagnostics().isEmpty());
-        printSection(out, "Java diagnostics", renderedDiagnostics(javaResult.result), !diagnosticsMatches);
-        printSection(out, "Selfhost diagnostics", renderedDiagnostics(selfhostResult.result), !diagnosticsMatches);
+        printSection(out, "Diagnostics (both)", javaDiagnostics, diagnosticsMatches && !javaDiagnostics.isEmpty());
+        printSection(out, "Java diagnostics", javaDiagnostics, !diagnosticsMatches);
+        printSection(out, "Selfhost diagnostics", selfhostDiagnostics, !diagnosticsMatches);
 
         return matches ? 0 : EX_DATA_ERR;
     }
 
-    private TimedResult runJava(String source) {
+    private TimedResult runTimed(RuntimeRunner runner, String source) {
         long start = System.nanoTime();
-        RunResult result = new CodeFab().run(source);
-        return new TimedResult(result, elapsedMillis(start));
-    }
-
-    private TimedResult runSelfhost(String source) {
-        long start = System.nanoTime();
-        RunResult result = new SelfHostCodeFab().run(source);
+        RunResult result = runner.run(source);
         return new TimedResult(result, elapsedMillis(start));
     }
 
@@ -105,5 +104,10 @@ public final class CompareMode implements Mode {
     }
 
     private record TimedResult(RunResult result, long elapsedMillis) {
+    }
+
+    @FunctionalInterface
+    interface RuntimeRunner {
+        RunResult run(String source);
     }
 }
