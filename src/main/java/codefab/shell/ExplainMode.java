@@ -1,6 +1,6 @@
 package codefab.shell;
 
-import codefab.CodeFab;
+import codefab.CollectingOutputSink;
 import codefab.RunResult;
 import codefab.assembler.Parser;
 import codefab.assembler.Scanner;
@@ -8,15 +8,15 @@ import codefab.checker.Checker;
 import codefab.checker.ConstantFolder;
 import codefab.core.Diagnostic;
 import codefab.core.Expr;
+import codefab.core.InterpreterRuntimeError;
 import codefab.core.Stmt;
 import codefab.core.Token;
+import codefab.executor.Environment;
+import codefab.executor.Executor;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,19 +35,22 @@ public final class ExplainMode implements Mode {
     public int execute(BufferedReader in, PrintStream out, PrintStream err) {
         String source;
         try {
-            source = Files.readString(Path.of(path), StandardCharsets.UTF_8);
+            source = ShellFiles.readUtf8(path);
         } catch (IOException e) {
-            err.println("Error: file not found: " + path);
+            ShellFiles.printReadError(err, path);
             return EX_NO_INPUT;
         }
 
-        List<Diagnostic> parserDiagnostics = new ArrayList<>();
-        List<Token> tokens = new Scanner(source, parserDiagnostics).scanTokens();
+        List<Diagnostic> scannerDiagnostics = new ArrayList<>();
+        List<Token> tokens = new Scanner(source, scannerDiagnostics).scanTokens();
         printHeader(out, "Scanner Tokens");
         for (Token token : tokens) {
             out.println(token.line + ": " + token);
         }
+        printHeader(out, "Scanner Diagnostics");
+        printDiagnostics(out, scannerDiagnostics);
 
+        List<Diagnostic> parserDiagnostics = new ArrayList<>();
         List<Stmt> statements = new Parser(tokens, parserDiagnostics).parse();
         printHeader(out, "Parser AST");
         printStatements(out, statements);
@@ -55,9 +58,10 @@ public final class ExplainMode implements Mode {
         printDiagnostics(out, parserDiagnostics);
 
         printHeader(out, "Checker Diagnostics");
-        if (!parserDiagnostics.isEmpty()) {
-            out.println("(skipped: parser diagnostics)");
-            printSkippedRemainder(out, "parser diagnostics");
+        if (!scannerDiagnostics.isEmpty() || !parserDiagnostics.isEmpty()) {
+            String reason = assembleDiagnosticsReason(scannerDiagnostics, parserDiagnostics);
+            out.println("(skipped: " + reason + ")");
+            printSkippedRemainder(out, reason);
             return 0;
         }
 
@@ -74,8 +78,34 @@ public final class ExplainMode implements Mode {
         printStatements(out, folded);
 
         printHeader(out, "Executor Result");
-        printRunResult(out, new CodeFab().run(source));
+        printRunResult(out, executeFolded(folded));
         return 0;
+    }
+
+    private static String assembleDiagnosticsReason(
+        List<Diagnostic> scannerDiagnostics,
+        List<Diagnostic> parserDiagnostics
+    ) {
+        if (!scannerDiagnostics.isEmpty() && !parserDiagnostics.isEmpty()) {
+            return "scanner/parser diagnostics";
+        }
+        if (!scannerDiagnostics.isEmpty()) {
+            return "scanner diagnostics";
+        }
+        return "parser diagnostics";
+    }
+
+    private static RunResult executeFolded(List<Stmt> folded) {
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        CollectingOutputSink output = new CollectingOutputSink();
+        Executor executor = new Executor(output, new Environment());
+        try {
+            executor.execute(folded);
+        } catch (InterpreterRuntimeError error) {
+            diagnostics.add(new Diagnostic(Diagnostic.Stage.RUNTIME, error.line(), error.getMessage()));
+            return new RunResult(false, output.lines(), diagnostics);
+        }
+        return new RunResult(true, output.lines(), diagnostics);
     }
 
     private static void printSkippedRemainder(PrintStream out, String reason) {
@@ -264,15 +294,19 @@ public final class ExplainMode implements Mode {
             if (value == null) {
                 return "nil";
             }
-            if (value instanceof Double number) {
-                if (number == Math.rint(number)) {
-                    return Long.toString(number.longValue());
-                }
-            }
             if (value instanceof String text) {
-                return "\"" + text + "\"";
+                return "\"" + escapeString(text) + "\"";
             }
-            return value.toString();
+            return Executor.stringify(value);
+        }
+
+        private String escapeString(String text) {
+            return text
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
         }
     }
 }

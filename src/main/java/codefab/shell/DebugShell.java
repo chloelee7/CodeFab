@@ -11,9 +11,6 @@ import codefab.executor.Executor;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -95,9 +92,9 @@ public final class DebugShell {
     public void run() {
         String source;
         try {
-            source = Files.readString(Path.of(filePath), StandardCharsets.UTF_8);
+            source = ShellFiles.readUtf8(filePath);
         } catch (IOException e) {
-            err.println("Error: file not found: " + filePath);
+            ShellFiles.printReadError(err, filePath);
             return;
         }
 
