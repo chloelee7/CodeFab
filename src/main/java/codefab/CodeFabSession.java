@@ -18,7 +18,15 @@ public final class CodeFabSession {
 
     private final Environment globals = new Environment();
     private final CollectingOutputSink output = new CollectingOutputSink();
-    private final Executor executor = new Executor(output, globals);
+    private final Executor executor;
+
+    public CodeFabSession() {
+        this(Executor.DEFAULT_MAX_CALL_DEPTH);
+    }
+
+    CodeFabSession(int maxCallDepth) {
+        this.executor = new Executor(output, globals, maxCallDepth);
+    }
 
     public RunResult run(String source) {
         output.clear();

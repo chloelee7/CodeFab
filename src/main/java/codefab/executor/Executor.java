@@ -15,15 +15,19 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     private final OutputSink output;
     private Environment environment;
 
-    // Array() 내장 함수 식별용 sentinel
-    private static final Object ARRAY_BUILTIN = new Object();
-
-    private static final int MAX_CALL_DEPTH = 500;
+    public static final int DEFAULT_MAX_CALL_DEPTH = 500;
+    private final int maxCallDepth;
     private int callDepth = 0;
 
     public Executor(OutputSink output, Environment globals) {
+        this(output, globals, DEFAULT_MAX_CALL_DEPTH);
+    }
+
+    public Executor(OutputSink output, Environment globals, int maxCallDepth) {
         this.output = output;
         this.environment = globals;
+        this.maxCallDepth = maxCallDepth;
+        defineNativeFunctions(globals);
     }
 
     public void execute(List<Stmt> statements) {
@@ -127,8 +131,6 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Object visitVariable(Expr.Variable expr) {
-        // ARRAY 토큰은 환경 조회 없이 내장 함수 sentinel 반환
-        if (expr.name.type == TokenType.ARRAY) return ARRAY_BUILTIN;
         if (expr.distance >= 0) {
             return environment.getAt(expr.distance, expr.name.lexeme);
         }
@@ -229,44 +231,19 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Object visitCall(Expr.Call expr) {
         Object callee = evaluate(expr.callee);
 
-        // Array() 내장 함수 처리
-        if (callee == ARRAY_BUILTIN) {
-            if (expr.arguments.size() != 1) {
-                throw new InterpreterRuntimeError(expr.paren,
-                        "Array() takes exactly 1 argument.");
-            }
-            Object sizeObj = evaluate(expr.arguments.get(0));
-            if (!(sizeObj instanceof Double)) {
-                throw new InterpreterRuntimeError(expr.paren,
-                        "Array size must be a number.");
-            }
-            double sizeDouble = (Double) sizeObj;
-            if (sizeDouble != Math.floor(sizeDouble) || Double.isInfinite(sizeDouble)) {
-                throw new InterpreterRuntimeError(expr.paren,
-                        "Array size must be an integer.");
-            }
-            int size = (int) sizeDouble;
-            if (size < 0) {
-                throw new InterpreterRuntimeError(expr.paren,
-                        "Array size must be non-negative.");
-            }
-            return new ArrayList<>(Collections.nCopies(size, null));
-        }
-
-        if (!(callee instanceof CodeFabFunction)) {
+        if (!(callee instanceof CodeFabCallable)) {
             throw new InterpreterRuntimeError(expr.paren,
                     "Can only call functions.");
         }
 
-        CodeFabFunction function = (CodeFabFunction) callee;
+        CodeFabCallable callable = (CodeFabCallable) callee;
 
-        if (expr.arguments.size() != function.arity()) {
+        if (expr.arguments.size() != callable.arity()) {
             throw new InterpreterRuntimeError(expr.paren,
-                    "Expected " + function.arity() + " arguments but got " + expr.arguments.size() + ".");
+                    "Expected " + callable.arity() + " arguments but got " + expr.arguments.size() + ".");
         }
 
         List<Object> args = new ArrayList<>();
@@ -274,9 +251,13 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             args.add(evaluate(arg));
         }
 
-        if (callDepth >= MAX_CALL_DEPTH) {
-            throw new InterpreterRuntimeError(expr.paren,
-                    "Maximum call depth (" + MAX_CALL_DEPTH + ") exceeded.");
+        return callable.call(this, expr.paren, args);
+    }
+
+    Object callUserFunction(CodeFabFunction function, Token token, List<Object> args) {
+        if (callDepth >= maxCallDepth) {
+            throw new InterpreterRuntimeError(token,
+                    "Maximum call depth (" + maxCallDepth + ") exceeded.");
         }
 
         Environment callEnv = new Environment(function.closure);
@@ -395,10 +376,170 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         throw new InterpreterRuntimeError(operator, "Operands must be numbers.");
     }
 
+    private void defineNativeFunctions(Environment globals) {
+        globals.define("Array", new NativeFunction("Array", 1) {
+            @Override
+            public Object call(Executor executor, Token token, List<Object> arguments) {
+                Object sizeObj = arguments.get(0);
+                if (!(sizeObj instanceof Double)) {
+                    throw new InterpreterRuntimeError(token, "Array size must be a number.");
+                }
+                int size = requireInteger(token, sizeObj, "Array size must be an integer.");
+                if (size < 0) {
+                    throw new InterpreterRuntimeError(token, "Array size must be non-negative.");
+                }
+                return new ArrayList<>(Collections.nCopies(size, null));
+            }
+        });
+
+        globals.define("len", new NativeFunction("len", 1) {
+            @Override
+            public Object call(Executor executor, Token token, List<Object> arguments) {
+                Object value = arguments.get(0);
+                if (value instanceof String) {
+                    return (double) ((String) value).length();
+                }
+                if (value instanceof List) {
+                    return (double) ((List<?>) value).size();
+                }
+                throw new InterpreterRuntimeError(token, "len() expects a string or array.");
+            }
+        });
+
+        globals.define("charAt", new NativeFunction("charAt", 2) {
+            @Override
+            public Object call(Executor executor, Token token, List<Object> arguments) {
+                Object sourceObj = arguments.get(0);
+                if (!(sourceObj instanceof String)) {
+                    throw new InterpreterRuntimeError(token, "charAt() expects a string.");
+                }
+                String source = (String) sourceObj;
+                int index = requireInteger(token, arguments.get(1), "String index must be an integer.");
+                if (index < 0 || index >= source.length()) {
+                    throw new InterpreterRuntimeError(token, "String index out of bounds.");
+                }
+                return Character.toString(source.charAt(index));
+            }
+        });
+
+        globals.define("slice", new NativeFunction("slice", 3) {
+            @Override
+            public Object call(Executor executor, Token token, List<Object> arguments) {
+                Object sourceObj = arguments.get(0);
+                if (!(sourceObj instanceof String)) {
+                    throw new InterpreterRuntimeError(token, "slice() expects a string.");
+                }
+                String source = (String) sourceObj;
+                int start = requireInteger(token, arguments.get(1), "String index must be an integer.");
+                int end = requireInteger(token, arguments.get(2), "String index must be an integer.");
+                if (start < 0 || end < start || end > source.length()) {
+                    throw new InterpreterRuntimeError(token, "String slice out of bounds.");
+                }
+                return source.substring(start, end);
+            }
+        });
+
+        globals.define("push", new NativeFunction("push", 2) {
+            @Override
+            @SuppressWarnings("unchecked")
+            public Object call(Executor executor, Token token, List<Object> arguments) {
+                Object target = arguments.get(0);
+                if (!(target instanceof List)) {
+                    throw new InterpreterRuntimeError(token, "push() expects an array.");
+                }
+                List<Object> list = (List<Object>) target;
+                list.add(arguments.get(1));
+                return (double) list.size();
+            }
+        });
+
+        globals.define("chr", new NativeFunction("chr", 1) {
+            @Override
+            public Object call(Executor executor, Token token, List<Object> arguments) {
+                int code = requireInteger(token, arguments.get(0),
+                        "chr() expects an integer character code.");
+                if (code < 0 || code > Character.MAX_VALUE) {
+                    throw new InterpreterRuntimeError(token,
+                            "chr() expects an integer character code.");
+                }
+                return Character.toString((char) code);
+            }
+        });
+
+        globals.define("num", new NativeFunction("num", 1) {
+            @Override
+            public Object call(Executor executor, Token token, List<Object> arguments) {
+                Object value = arguments.get(0);
+                if (!(value instanceof String)) {
+                    throw new InterpreterRuntimeError(token, "num() expects a numeric string.");
+                }
+                try {
+                    return Double.parseDouble((String) value);
+                } catch (NumberFormatException error) {
+                    throw new InterpreterRuntimeError(token, "num() expects a numeric string.");
+                }
+            }
+        });
+
+        globals.define("ord", new NativeFunction("ord", 1) {
+            @Override
+            public Object call(Executor executor, Token token, List<Object> arguments) {
+                Object value = arguments.get(0);
+                if (!(value instanceof String) || ((String) value).length() != 1) {
+                    throw new InterpreterRuntimeError(token, "ord() expects a one-character string.");
+                }
+                return (double) ((String) value).charAt(0);
+            }
+        });
+
+        globals.define("typeOf", new NativeFunction("typeOf", 1) {
+            @Override
+            public Object call(Executor executor, Token token, List<Object> arguments) {
+                Object value = arguments.get(0);
+                if (value == null) {
+                    return "nil";
+                }
+                if (value instanceof Boolean) {
+                    return "Boolean";
+                }
+                if (value instanceof Double) {
+                    return "Number";
+                }
+                if (value instanceof String) {
+                    return "String";
+                }
+                if (value instanceof List) {
+                    return "Array";
+                }
+                if (value instanceof CodeFabCallable) {
+                    return "Function";
+                }
+                return value.getClass().getSimpleName();
+            }
+        });
+
+        globals.define("valueText", new NativeFunction("valueText", 1) {
+            @Override
+            public Object call(Executor executor, Token token, List<Object> arguments) {
+                return stringify(arguments.get(0));
+            }
+        });
+    }
+
+    private static int requireInteger(Token token, Object value, String message) {
+        if (!(value instanceof Double)) {
+            throw new InterpreterRuntimeError(token, message);
+        }
+        double number = (Double) value;
+        if (number != Math.floor(number) || Double.isInfinite(number) || Double.isNaN(number)) {
+            throw new InterpreterRuntimeError(token, message);
+        }
+        return (int) number;
+    }
+
     @SuppressWarnings("unchecked")
     public static String stringify(Object value) {
         if (value == null) return "nil";
-        if (value == ARRAY_BUILTIN) return "<Array builtin>";
         if (value instanceof Double) {
             double d = (Double) value;
             if (d == Math.floor(d) && !Double.isInfinite(d) && !Double.isNaN(d)) {
