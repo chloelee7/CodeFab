@@ -84,10 +84,152 @@ class MainDispatchTest {
     }
 
     @Test
+    @DisplayName("explain <파일> → Java 파이프라인 단계를 출력한다")
+    void dispatchExplainFile_printsPipelineStages(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("explain-ok.cf");
+        Files.writeString(file, "print 1 + 2 * 3;\n");
+
+        int code = dispatch(new String[]{"explain", file.toString()}, "");
+
+        assertEquals(0, code, () -> "explain should inspect valid source:\n" + out + "\nerr:\n" + err);
+        assertEquals("", err);
+        assertTrue(out.contains("== Scanner Tokens =="), () -> "expected scanner section:\n" + out);
+        assertTrue(out.contains("NUMBER '1' 1.0"), () -> "expected number token:\n" + out);
+        assertTrue(out.contains("== Scanner Diagnostics =="), () -> "expected scanner diagnostics section:\n" + out);
+        assertTrue(out.contains("== Parser AST =="), () -> "expected parser section:\n" + out);
+        assertTrue(out.contains("PrintStmt"), () -> "expected AST print statement:\n" + out);
+        assertTrue(out.contains("== Parser Diagnostics =="), () -> "expected parser diagnostics section:\n" + out);
+        assertTrue(out.contains("== Checker Diagnostics =="), () -> "expected checker section:\n" + out);
+        assertTrue(out.contains("(none)"), () -> "expected empty diagnostics marker:\n" + out);
+        assertTrue(out.contains("== Constant-Folded AST =="), () -> "expected folded section:\n" + out);
+        assertTrue(out.contains("Literal(7)"), () -> "expected folded literal:\n" + out);
+        assertTrue(out.contains("== Executor Result =="), () -> "expected executor section:\n" + out);
+        assertTrue(out.contains("Output:\n7"), () -> "expected executor output:\n" + out);
+    }
+
+    @Test
+    @DisplayName("explain <파일> → parser diagnostic 이후 후속 단계를 건너뛴다")
+    void dispatchExplainFile_shortCircuitsOnParserDiagnostics(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("explain-bad.cf");
+        Files.writeString(file, "print 1\n");
+
+        int code = dispatch(new String[]{"explain", file.toString()}, "");
+
+        assertEquals(0, code, () -> "explain should complete even for invalid source:\n" + out + "\nerr:\n" + err);
+        assertEquals("", err);
+        assertTrue(out.contains("== Parser Diagnostics =="), () -> "expected parser diagnostics:\n" + out);
+        assertTrue(out.contains("Expect ';' after value."), () -> "expected parser diagnostic text:\n" + out);
+        assertTrue(out.contains("== Checker Diagnostics =="), () -> "expected checker section:\n" + out);
+        assertTrue(out.contains("(skipped: parser diagnostics)"), () -> "expected checker skip:\n" + out);
+        assertTrue(out.contains("== Constant-Folded AST =="), () -> "expected folder section:\n" + out);
+        assertTrue(out.contains("(skipped: parser diagnostics)"), () -> "expected folder skip:\n" + out);
+        assertTrue(out.contains("== Executor Result =="), () -> "expected executor section:\n" + out);
+        assertTrue(out.contains("(skipped: parser diagnostics)"), () -> "expected executor skip:\n" + out);
+    }
+
+    @Test
+    @DisplayName("explain <파일> → scanner diagnostic은 parser diagnostic과 분리한다")
+    void dispatchExplainFile_separatesScannerDiagnostics(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("explain-scan-error.cf");
+        Files.writeString(file, "print \"unterminated\n");
+
+        int code = dispatch(new String[]{"explain", file.toString()}, "");
+
+        assertEquals(0, code, () -> "explain should complete for scanner diagnostics:\n" + out + "\nerr:\n" + err);
+        assertEquals("", err);
+        assertTrue(out.contains("== Scanner Diagnostics =="), () -> "expected scanner diagnostics section:\n" + out);
+        assertTrue(out.contains("[line 2] SCANNER error: unterminated string"),
+            () -> "expected scanner diagnostic text:\n" + out);
+        assertTrue(out.contains("== Parser Diagnostics =="), () -> "expected parser diagnostics section:\n" + out);
+        assertTrue(out.contains("[line 2] PARSER error: Expect expression. at end"),
+            () -> "expected parser diagnostic text:\n" + out);
+        assertTrue(out.contains("(skipped: scanner/parser diagnostics)"),
+            () -> "expected combined skip reason:\n" + out);
+    }
+
+    @Test
+    @DisplayName("explain <파일> → checker diagnostic 이후 후속 단계를 건너뛴다")
+    void dispatchExplainFile_shortCircuitsOnCheckerDiagnostics(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("explain-checker-error.cf");
+        Files.writeString(file, "{ var a = a; }\n");
+
+        int code = dispatch(new String[]{"explain", file.toString()}, "");
+
+        assertEquals(0, code, () -> "explain should complete for checker diagnostics:\n" + out + "\nerr:\n" + err);
+        assertEquals("", err);
+        assertTrue(out.contains("== Checker Diagnostics =="), () -> "expected checker diagnostics:\n" + out);
+        assertTrue(out.contains("CHECKER error: Can't read local variable in initializer."),
+            () -> "expected checker diagnostic text:\n" + out);
+        assertTrue(out.contains("== Constant-Folded AST =="), () -> "expected folder section:\n" + out);
+        assertTrue(out.contains("(skipped: checker diagnostics)"), () -> "expected checker skip:\n" + out);
+        assertTrue(out.contains("== Executor Result =="), () -> "expected executor section:\n" + out);
+    }
+
+    @Test
+    @DisplayName("explain <파일> → non-finite 숫자 리터럴을 Executor 포맷과 맞춘다")
+    void dispatchExplainFile_formatsNonFiniteNumberLiterals(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("explain-infinity.cf");
+        String hugeNumber = "9".repeat(400);
+        Files.writeString(file, "print " + hugeNumber + ";\n");
+
+        int code = dispatch(new String[]{"explain", file.toString()}, "");
+
+        assertEquals(0, code, () -> "explain should complete for huge numeric literal:\n" + out + "\nerr:\n" + err);
+        assertEquals("", err);
+        assertTrue(out.contains("NUMBER '" + hugeNumber + "' Infinity"),
+            () -> "expected scanner token literal to be Infinity:\n" + out);
+        assertTrue(out.contains("PrintStmt(Literal(Infinity))"),
+            () -> "expected AST to preserve Infinity:\n" + out);
+        assertFalse(out.contains("Literal(9223372036854775807)"),
+            () -> "must not coerce Infinity to Long.MAX_VALUE:\n" + out);
+        assertTrue(out.contains("Output:\nInfinity"), () -> "expected executor output to match:\n" + out);
+    }
+
+    @Test
+    @DisplayName("explain <파일> → 문자열 리터럴 줄바꿈을 AST 한 줄로 escape한다")
+    void dispatchExplainFile_escapesStringLiteralsInAst(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("explain-string.cf");
+        Files.writeString(file, "print \"line\nbreak\";\n");
+
+        int code = dispatch(new String[]{"explain", file.toString()}, "");
+
+        assertEquals(0, code, () -> "explain should complete for string literals:\n" + out + "\nerr:\n" + err);
+        assertEquals("", err);
+        assertTrue(out.contains("PrintStmt(Literal(\"line\\nbreak\"))"),
+            () -> "expected escaped string literal in AST:\n" + out);
+    }
+
+    @Test
+    @DisplayName("explain <파일> → 런타임 진단을 Executor Result에 출력한다")
+    void dispatchExplainFile_reportsRuntimeDiagnostics(@TempDir Path dir) throws Exception {
+        Path file = dir.resolve("explain-runtime-error.cf");
+        Files.writeString(file, "print 1 / 0;\n");
+
+        int code = dispatch(new String[]{"explain", file.toString()}, "");
+
+        assertEquals(0, code, () -> "explain should complete for runtime diagnostics:\n" + out + "\nerr:\n" + err);
+        assertEquals("", err);
+        assertTrue(out.contains("== Constant-Folded AST =="), () -> "expected folded section:\n" + out);
+        assertTrue(out.contains("== Executor Result =="), () -> "expected executor section:\n" + out);
+        assertTrue(out.contains("Success: false"), () -> "expected failed run result:\n" + out);
+        assertTrue(out.contains("[line 1] RUNTIME error: Division by zero."),
+            () -> "expected runtime diagnostic:\n" + out);
+    }
+
+    @Test
+    @DisplayName("explain 파일 읽기 실패 → 코드 66, 일반 파일 읽기 오류")
+    void dispatchExplainMissingFile_returns66CannotReadFile() {
+        int code = dispatch(new String[]{"explain", "/no/such/file.cf"}, "");
+
+        assertEquals(66, code);
+        assertTrue(err.contains("Error: cannot read file:"), () -> "expected cannot-read on err:\n" + err);
+    }
+
+    @Test
     @DisplayName("파일 없음 → 코드 66, stderr 오류")
     void dispatchMissingFile_returns66() {
         int code = dispatch(new String[]{"run", "/no/such/file.cf"}, "");
-        assertTrue(err.contains("Error: file not found:"), () -> "expected not-found on err:\n" + err);
+        assertTrue(err.contains("Error: cannot read file:"), () -> "expected cannot-read on err:\n" + err);
         assertEquals(66, code);
     }
 
@@ -106,11 +248,13 @@ class MainDispatchTest {
         int code = dispatch(new String[]{"--help"}, "");
         assertTrue(out.contains("Usage:"), () -> "expected usage:\n" + out);
         assertTrue(out.contains("factory selfhost run <file>"), () -> "expected selfhost usage:\n" + out);
+        assertTrue(out.contains("factory explain <file>"), () -> "expected explain usage:\n" + out);
         assertEquals(0, code);
 
         int codeShort = dispatch(new String[]{"-h"}, "");
         assertTrue(out.contains("Usage:"), () -> "expected usage for -h:\n" + out);
         assertTrue(out.contains("factory selfhost run <file>"), () -> "expected selfhost usage for -h:\n" + out);
+        assertTrue(out.contains("factory explain <file>"), () -> "expected explain usage for -h:\n" + out);
         assertEquals(0, codeShort);
     }
 

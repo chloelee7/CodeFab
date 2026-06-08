@@ -7,9 +7,6 @@ import codefab.core.Diagnostic;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 public final class SelfHostRunMode implements Mode {
 
@@ -26,9 +23,9 @@ public final class SelfHostRunMode implements Mode {
     public int execute(BufferedReader in, PrintStream out, PrintStream err) {
         String source;
         try {
-            source = Files.readString(Path.of(path), StandardCharsets.UTF_8);
+            source = ShellFiles.readUtf8(path);
         } catch (IOException e) {
-            err.println("Error: file not found: " + path);
+            ShellFiles.printReadError(err, path);
             return EX_NO_INPUT;
         }
 

@@ -126,8 +126,8 @@ class DebugShellTest {
         new DebugShell(in, out, err, "/no/such/file.cf").run();
         String outStr = outBytes.toString(StandardCharsets.UTF_8);
         String errStr = errBytes.toString(StandardCharsets.UTF_8);
-        assertTrue(errStr.contains("Error: file not found:"), () -> "expected on err: " + errStr);
-        assertFalse(outStr.contains("Error: file not found:"), () -> "must not be on out: " + outStr);
+        assertTrue(errStr.contains("Error: cannot read file:"), () -> "expected on err: " + errStr);
+        assertFalse(outStr.contains("Error: cannot read file:"), () -> "must not be on out: " + outStr);
     }
 
     @Test
