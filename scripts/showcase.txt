@@ -117,7 +117,7 @@ Func makeAdder(base) {
 var add10 = makeAdder(10);
 print add10(7);      // 17
 
-// ── 18. 종합: 배열을 인자로 받아 합산 ────────────────────────────────
+// ── 18. 종합: 배열을 인자로 받아 합산 (섹션 13의 nums 배열 재사용) ──────
 Func sumArray(arr, size) {
     var total = 0;
     for (var i = 0; i < size; i = i + 1) {
