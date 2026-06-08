@@ -44,37 +44,37 @@ public class ConstantFolder implements Expr.Visitor<Expr> {
 
     private Stmt foldStmt(Stmt stmt) {
         if (stmt instanceof Stmt.ExpressionStmt s) {
-            return new Stmt.ExpressionStmt(s.expression.accept(this));
+            return new Stmt.ExpressionStmt(s.expression().accept(this));
         }
         if (stmt instanceof Stmt.PrintStmt s) {
-            return new Stmt.PrintStmt(s.expression.accept(this));
+            return new Stmt.PrintStmt(s.expression().accept(this));
         }
         if (stmt instanceof Stmt.VarStmt s) {
-            return new Stmt.VarStmt(s.name, foldExpr(s.initializer));
+            return new Stmt.VarStmt(s.name(), foldExpr(s.initializer()));
         }
         if (stmt instanceof Stmt.BlockStmt s) {
-            return new Stmt.BlockStmt(foldStmts(s.statements));
+            return new Stmt.BlockStmt(foldStmts(s.statements()));
         }
         if (stmt instanceof Stmt.IfStmt s) {
-            return new Stmt.IfStmt(s.condition.accept(this),
-                foldStmt(s.thenBranch),
-                foldStmtOrNull(s.elseBranch));
+            return new Stmt.IfStmt(s.condition().accept(this),
+                foldStmt(s.thenBranch()),
+                foldStmtOrNull(s.elseBranch()));
         }
         if (stmt instanceof Stmt.WhileStmt s) {
-            return new Stmt.WhileStmt(s.condition.accept(this), foldStmt(s.body));
+            return new Stmt.WhileStmt(s.condition().accept(this), foldStmt(s.body()));
         }
         if (stmt instanceof Stmt.ForStmt s) {
             return new Stmt.ForStmt(
-                foldStmtOrNull(s.initializer),
-                foldExpr(s.condition),
-                foldExpr(s.increment),
-                foldStmt(s.body));
+                foldStmtOrNull(s.initializer()),
+                foldExpr(s.condition()),
+                foldExpr(s.increment()),
+                foldStmt(s.body()));
         }
         if (stmt instanceof Stmt.FunctionStmt s) {
-            return new Stmt.FunctionStmt(s.name, s.params, foldStmts(s.body));
+            return new Stmt.FunctionStmt(s.name(), s.params(), foldStmts(s.body()));
         }
         if (stmt instanceof Stmt.ReturnStmt s) {
-            return new Stmt.ReturnStmt(s.keyword, foldExpr(s.value));
+            return new Stmt.ReturnStmt(s.keyword(), foldExpr(s.value()));
         }
         return stmt;
     }
@@ -100,32 +100,32 @@ public class ConstantFolder implements Expr.Visitor<Expr> {
 
     @Override
     public Expr visitUnary(Unary expr) {
-        Expr right = expr.right.accept(this);
+        Expr right = expr.right().accept(this);
         if (right instanceof Literal lit) {
-            if (expr.operator.type == TokenType.MINUS && lit.value instanceof Double) {
-                return new Literal(-(Double) lit.value);
+            if (expr.operator().type == TokenType.MINUS && lit.value() instanceof Double) {
+                return new Literal(-(Double) lit.value());
             }
-            if (expr.operator.type == TokenType.PLUS && lit.value instanceof Double) {
+            if (expr.operator().type == TokenType.PLUS && lit.value() instanceof Double) {
                 return lit;
             }
         }
-        return new Unary(expr.operator, right);
+        return new Unary(expr.operator(), right);
     }
 
     @Override
     public Expr visitBinary(Binary expr) {
-        Expr left = expr.left.accept(this);
-        Expr right = expr.right.accept(this);
+        Expr left = expr.left().accept(this);
+        Expr right = expr.right().accept(this);
 
         if (left instanceof Literal l && right instanceof Literal r) {
-            if (l.value instanceof Double lv && r.value instanceof Double rv) {
-                Object result = compute(expr.operator, lv, rv);
+            if (l.value() instanceof Double lv && r.value() instanceof Double rv) {
+                Object result = compute(expr.operator(), lv, rv);
                 if (result != null) {
                     return new Literal(result);
                 }
             }
         }
-        return new Binary(left, expr.operator, right);
+        return new Binary(left, expr.operator(), right);
     }
 
     private Object compute(Token op, double lv, double rv) {
@@ -148,12 +148,12 @@ public class ConstantFolder implements Expr.Visitor<Expr> {
 
     @Override
     public Expr visitLogical(Logical expr) {
-        return new Logical(expr.left.accept(this), expr.operator, expr.right.accept(this));
+        return new Logical(expr.left().accept(this), expr.operator(), expr.right().accept(this));
     }
 
     @Override
     public Expr visitGrouping(Grouping expr) {
-        Expr inner = expr.expression.accept(this);
+        Expr inner = expr.expression().accept(this);
         if (inner instanceof Literal) {
             return inner;
         }
@@ -162,7 +162,7 @@ public class ConstantFolder implements Expr.Visitor<Expr> {
 
     @Override
     public Expr visitCall(Call expr) {
-        return new Call(expr.callee.accept(this), expr.paren, foldExprs(expr.arguments));
+        return new Call(expr.callee().accept(this), expr.paren(), foldExprs(expr.arguments()));
     }
 
     private List<Expr> foldExprs(List<Expr> exprs) {
@@ -175,12 +175,12 @@ public class ConstantFolder implements Expr.Visitor<Expr> {
 
     @Override
     public Expr visitArrayGet(ArrayGet expr) {
-        return new ArrayGet(expr.array.accept(this), expr.index.accept(this), expr.bracket);
+        return new ArrayGet(expr.array().accept(this), expr.index().accept(this), expr.bracket());
     }
 
     @Override
     public Expr visitArraySet(ArraySet expr) {
-        return new ArraySet(expr.array.accept(this), expr.index.accept(this),
-            expr.value.accept(this), expr.bracket);
+        return new ArraySet(expr.array().accept(this), expr.index().accept(this),
+            expr.value().accept(this), expr.bracket());
     }
 }

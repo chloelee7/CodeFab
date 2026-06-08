@@ -2,9 +2,9 @@ package codefab.core;
 
 import java.util.List;
 
-public abstract class Expr {
+public sealed interface Expr {
 
-    public interface Visitor<R> {
+    interface Visitor<R> {
 
         R visitLiteral(Literal expr);
 
@@ -27,26 +27,22 @@ public abstract class Expr {
         R visitArraySet(ArraySet expr);
     }
 
-    public abstract <R> R accept(Visitor<R> visitor);
+    <R> R accept(Visitor<R> visitor);
 
-    public static final class Literal extends Expr {
-
-        public final Object value;
-
-        public Literal(Object value) {
-            this.value = value;
-        }
-
+    record Literal(Object value) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitLiteral(this);
         }
     }
 
-    public static final class Variable extends Expr {
+    /**
+     * 변수 참조. {@code distance}는 Checker가 스코프 깊이를 기록하는 가변 필드라
+     * record가 아닌 클래스로 둔다 → Executor O(1) 조회 (Team C 정적 바인딩).
+     */
+    final class Variable implements Expr {
 
         public final Token name;
-        // Checker가 스코프 깊이를 기록 → Executor O(1) 조회 (Team C 정적 바인딩)
         public int distance = -1;
 
         public Variable(Token name) {
@@ -59,11 +55,13 @@ public abstract class Expr {
         }
     }
 
-    public static final class Assign extends Expr {
+    /**
+     * 대입. {@code distance}가 가변이라 record가 아닌 클래스로 둔다 (Variable 참고).
+     */
+    final class Assign implements Expr {
 
         public final Token name;
         public final Expr value;
-        // Checker가 스코프 깊이를 기록 → Executor O(1) 조회 (Team C 정적 바인딩)
         public int distance = -1;
 
         public Assign(Token name, Expr value) {
@@ -77,122 +75,52 @@ public abstract class Expr {
         }
     }
 
-    public static final class Unary extends Expr {
-
-        public final Token operator;
-        public final Expr right;
-
-        public Unary(Token operator, Expr right) {
-            this.operator = operator;
-            this.right = right;
-        }
-
+    record Unary(Token operator, Expr right) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitUnary(this);
         }
     }
 
-    public static final class Binary extends Expr {
-
-        public final Expr left;
-        public final Token operator;
-        public final Expr right;
-
-        public Binary(Expr left, Token operator, Expr right) {
-            this.left = left;
-            this.operator = operator;
-            this.right = right;
-        }
-
+    record Binary(Expr left, Token operator, Expr right) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitBinary(this);
         }
     }
 
-    public static final class Logical extends Expr {
-
-        public final Expr left;
-        public final Token operator;
-        public final Expr right;
-
-        public Logical(Expr left, Token operator, Expr right) {
-            this.left = left;
-            this.operator = operator;
-            this.right = right;
-        }
-
+    record Logical(Expr left, Token operator, Expr right) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitLogical(this);
         }
     }
 
-    public static final class Grouping extends Expr {
-
-        public final Expr expression;
-
-        public Grouping(Expr expression) {
-            this.expression = expression;
-        }
-
+    record Grouping(Expr expression) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitGrouping(this);
         }
     }
 
-    public static final class Call extends Expr {
-
-        public final Expr callee;
-        public final Token paren;          // 닫는 ')' — 런타임 오류 위치 보고용
-        public final List<Expr> arguments;
-
-        public Call(Expr callee, Token paren, List<Expr> arguments) {
-            this.callee = callee;
-            this.paren = paren;
-            this.arguments = arguments;
-        }
-
+    /** {@code paren}: 닫는 ')' — 런타임 오류 위치 보고용. */
+    record Call(Expr callee, Token paren, List<Expr> arguments) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitCall(this);
         }
     }
 
-    public static final class ArrayGet extends Expr {
-
-        public final Expr array;
-        public final Expr index;
-        public final Token bracket;        // '[' 토큰 — 런타임 오류 위치 보고용
-
-        public ArrayGet(Expr array, Expr index, Token bracket) {
-            this.array = array;
-            this.index = index;
-            this.bracket = bracket;
-        }
-
+    /** {@code bracket}: '[' 토큰 — 런타임 오류 위치 보고용. */
+    record ArrayGet(Expr array, Expr index, Token bracket) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitArrayGet(this);
         }
     }
 
-    public static final class ArraySet extends Expr {
-
-        public final Expr array;
-        public final Expr index;
-        public final Expr value;
-        public final Token bracket;        // '[' 토큰 — 런타임 오류 위치 보고용
-
-        public ArraySet(Expr array, Expr index, Expr value, Token bracket) {
-            this.array = array;
-            this.index = index;
-            this.value = value;
-            this.bracket = bracket;
-        }
-
+    /** {@code bracket}: '[' 토큰 — 런타임 오류 위치 보고용. */
+    record ArraySet(Expr array, Expr index, Expr value, Token bracket) implements Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitArraySet(this);

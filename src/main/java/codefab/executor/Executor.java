@@ -44,26 +44,26 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Void visitExpressionStmt(Stmt.ExpressionStmt stmt) {
-        evaluate(stmt.expression);
+        evaluate(stmt.expression());
         return null;
     }
 
     @Override
     public Void visitPrintStmt(Stmt.PrintStmt stmt) {
-        output.print(stringify(evaluate(stmt.expression)));
+        output.print(stringify(evaluate(stmt.expression())));
         return null;
     }
 
     @Override
     public Void visitVarStmt(Stmt.VarStmt stmt) {
-        Object value = stmt.initializer != null ? evaluate(stmt.initializer) : null;
-        environment.define(stmt.name.lexeme, value);
+        Object value = stmt.initializer() != null ? evaluate(stmt.initializer()) : null;
+        environment.define(stmt.name().lexeme, value);
         return null;
     }
 
     @Override
     public Void visitBlockStmt(Stmt.BlockStmt stmt) {
-        executeBlock(stmt.statements, new Environment(environment));
+        executeBlock(stmt.statements(), new Environment(environment));
         return null;
     }
 
@@ -81,10 +81,10 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Void visitIfStmt(Stmt.IfStmt stmt) {
-        if (isTruthy(evaluate(stmt.condition))) {
-            stmt.thenBranch.accept(this);
-        } else if (stmt.elseBranch != null) {
-            stmt.elseBranch.accept(this);
+        if (isTruthy(evaluate(stmt.condition()))) {
+            stmt.thenBranch().accept(this);
+        } else if (stmt.elseBranch() != null) {
+            stmt.elseBranch().accept(this);
         }
         return null;
     }
@@ -92,10 +92,10 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     @Override
     public Void visitForStmt(Stmt.ForStmt stmt) {
         withNewScope(() -> {
-            if (stmt.initializer != null) stmt.initializer.accept(this);
-            while (stmt.condition == null || isTruthy(evaluate(stmt.condition))) {
-                stmt.body.accept(this);
-                if (stmt.increment != null) evaluate(stmt.increment);
+            if (stmt.initializer() != null) stmt.initializer().accept(this);
+            while (stmt.condition() == null || isTruthy(evaluate(stmt.condition()))) {
+                stmt.body().accept(this);
+                if (stmt.increment() != null) evaluate(stmt.increment());
             }
         });
         return null;
@@ -103,8 +103,8 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Void visitWhileStmt(Stmt.WhileStmt stmt) {
-        while (isTruthy(evaluate(stmt.condition))) {
-            stmt.body.accept(this);
+        while (isTruthy(evaluate(stmt.condition()))) {
+            stmt.body().accept(this);
         }
         return null;
     }
@@ -112,13 +112,13 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     @Override
     public Void visitFunctionStmt(Stmt.FunctionStmt stmt) {
         CodeFabFunction function = new CodeFabFunction(stmt, environment);
-        environment.define(stmt.name.lexeme, function);
+        environment.define(stmt.name().lexeme, function);
         return null;
     }
 
     @Override
     public Void visitReturnStmt(Stmt.ReturnStmt stmt) {
-        Object value = stmt.value != null ? evaluate(stmt.value) : null;
+        Object value = stmt.value() != null ? evaluate(stmt.value()) : null;
         throw new ReturnException(value);
     }
 
@@ -126,7 +126,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Object visitLiteral(Expr.Literal expr) {
-        return expr.value;
+        return expr.value();
     }
 
     @Override
@@ -150,26 +150,26 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Object visitUnary(Expr.Unary expr) {
-        Object right = evaluate(expr.right);
-        switch (expr.operator.type) {
+        Object right = evaluate(expr.right());
+        switch (expr.operator().type) {
             case MINUS:
-                checkNumberOperand(expr.operator, right);
+                checkNumberOperand(expr.operator(), right);
                 return -(double) right;
             case PLUS:
-                checkNumberOperand(expr.operator, right);
+                checkNumberOperand(expr.operator(), right);
                 return (double) right;
             case BANG:
                 return !isTruthy(right);
             default:
-                throw new InterpreterRuntimeError(expr.operator, "Unknown unary operator.");
+                throw new InterpreterRuntimeError(expr.operator(), "Unknown unary operator.");
         }
     }
 
     @Override
     public Object visitBinary(Expr.Binary expr) {
-        Object left = evaluate(expr.left);
-        Object right = evaluate(expr.right);
-        Token op = expr.operator;
+        Object left = evaluate(expr.left());
+        Object right = evaluate(expr.right());
+        Token op = expr.operator();
         switch (op.type) {
             case PLUS:
                 if (left instanceof Double && right instanceof Double)
@@ -216,42 +216,42 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     @Override
     public Object visitLogical(Expr.Logical expr) {
-        Object left = evaluate(expr.left);
-        if (expr.operator.type == TokenType.OR) {
+        Object left = evaluate(expr.left());
+        if (expr.operator().type == TokenType.OR) {
             if (isTruthy(left)) return left;
         } else {
             if (!isTruthy(left)) return left;
         }
-        return evaluate(expr.right);
+        return evaluate(expr.right());
     }
 
     @Override
     public Object visitGrouping(Expr.Grouping expr) {
-        return evaluate(expr.expression);
+        return evaluate(expr.expression());
     }
 
     @Override
     public Object visitCall(Expr.Call expr) {
-        Object callee = evaluate(expr.callee);
+        Object callee = evaluate(expr.callee());
 
         if (!(callee instanceof CodeFabCallable)) {
-            throw new InterpreterRuntimeError(expr.paren,
+            throw new InterpreterRuntimeError(expr.paren(),
                     "Can only call functions.");
         }
 
         CodeFabCallable callable = (CodeFabCallable) callee;
 
-        if (expr.arguments.size() != callable.arity()) {
-            throw new InterpreterRuntimeError(expr.paren,
-                    "Expected " + callable.arity() + " arguments but got " + expr.arguments.size() + ".");
+        if (expr.arguments().size() != callable.arity()) {
+            throw new InterpreterRuntimeError(expr.paren(),
+                    "Expected " + callable.arity() + " arguments but got " + expr.arguments().size() + ".");
         }
 
         List<Object> args = new ArrayList<>();
-        for (Expr arg : expr.arguments) {
+        for (Expr arg : expr.arguments()) {
             args.add(evaluate(arg));
         }
 
-        return callable.call(this, expr.paren, args);
+        return callable.call(this, expr.paren(), args);
     }
 
     Object callUserFunction(CodeFabFunction function, Token token, List<Object> args) {
@@ -261,13 +261,13 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         }
 
         Environment callEnv = new Environment(function.closure);
-        for (int i = 0; i < function.declaration.params.size(); i++) {
-            callEnv.define(function.declaration.params.get(i).lexeme, args.get(i));
+        for (int i = 0; i < function.declaration.params().size(); i++) {
+            callEnv.define(function.declaration.params().get(i).lexeme, args.get(i));
         }
 
         callDepth++;
         try {
-            executeBlock(function.declaration.body, callEnv);
+            executeBlock(function.declaration.body(), callEnv);
             return null;
         } catch (ReturnException ret) {
             return ret.value;
@@ -279,27 +279,27 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     @Override
     @SuppressWarnings("unchecked")
     public Object visitArrayGet(Expr.ArrayGet expr) {
-        Object arr = evaluate(expr.array);
-        Object idx = evaluate(expr.index);
+        Object arr = evaluate(expr.array());
+        Object idx = evaluate(expr.index());
 
         if (!(arr instanceof List)) {
-            throw new InterpreterRuntimeError(expr.bracket,
+            throw new InterpreterRuntimeError(expr.bracket(),
                     "Only arrays can be indexed.");
         }
         if (!(idx instanceof Double)) {
-            throw new InterpreterRuntimeError(expr.bracket,
+            throw new InterpreterRuntimeError(expr.bracket(),
                     "Array index must be a number.");
         }
 
         List<Object> list = (List<Object>) arr;
         double idxDouble = (Double) idx;
         if (idxDouble != Math.floor(idxDouble) || Double.isInfinite(idxDouble)) {
-            throw new InterpreterRuntimeError(expr.bracket,
+            throw new InterpreterRuntimeError(expr.bracket(),
                     "Array index must be an integer.");
         }
         int i = (int) idxDouble;
         if (i < 0 || i >= list.size()) {
-            throw new InterpreterRuntimeError(expr.bracket,
+            throw new InterpreterRuntimeError(expr.bracket(),
                     "Array index " + i + " out of bounds (size " + list.size() + ").");
         }
         return list.get(i);
@@ -308,28 +308,28 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     @Override
     @SuppressWarnings("unchecked")
     public Object visitArraySet(Expr.ArraySet expr) {
-        Object arr = evaluate(expr.array);
-        Object idx = evaluate(expr.index);
-        Object val = evaluate(expr.value);
+        Object arr = evaluate(expr.array());
+        Object idx = evaluate(expr.index());
+        Object val = evaluate(expr.value());
 
         if (!(arr instanceof List)) {
-            throw new InterpreterRuntimeError(expr.bracket,
+            throw new InterpreterRuntimeError(expr.bracket(),
                     "Only arrays can be indexed.");
         }
         if (!(idx instanceof Double)) {
-            throw new InterpreterRuntimeError(expr.bracket,
+            throw new InterpreterRuntimeError(expr.bracket(),
                     "Array index must be a number.");
         }
 
         List<Object> list = (List<Object>) arr;
         double idxDouble = (Double) idx;
         if (idxDouble != Math.floor(idxDouble) || Double.isInfinite(idxDouble)) {
-            throw new InterpreterRuntimeError(expr.bracket,
+            throw new InterpreterRuntimeError(expr.bracket(),
                     "Array index must be an integer.");
         }
         int i = (int) idxDouble;
         if (i < 0 || i >= list.size()) {
-            throw new InterpreterRuntimeError(expr.bracket,
+            throw new InterpreterRuntimeError(expr.bracket(),
                     "Array index " + i + " out of bounds (size " + list.size() + ").");
         }
         list.set(i, val);

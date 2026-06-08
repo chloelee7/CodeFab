@@ -225,7 +225,7 @@ public final class Parser {
             // 배열 인덱스 대입: arr[i] = v
             if (expr instanceof Expr.ArrayGet) {
                 Expr.ArrayGet get = (Expr.ArrayGet) expr;
-                return new Expr.ArraySet(get.array, get.index, value, get.bracket);
+                return new Expr.ArraySet(get.array(), get.index(), value, get.bracket());
             }
             reportError(equals, DiagnosticMessage.ERR_INVALID_ASSIGN_TARGET);
         }

@@ -218,8 +218,8 @@ class ParserTest {
         assertEquals(1, stmts.size());
         assertInstanceOf(Stmt.FunctionStmt.class, stmts.get(0));
         Stmt.FunctionStmt fn = (Stmt.FunctionStmt) stmts.get(0);
-        assertEquals("foo", fn.name.lexeme);
-        assertEquals(0, fn.params.size());
+        assertEquals("foo", fn.name().lexeme);
+        assertEquals(0, fn.params().size());
     }
 
     @DisplayName("매개변수가 있는 함수 선언문을 파싱한다")
@@ -231,9 +231,9 @@ class ParserTest {
         assertTrue(diags.isEmpty(), () -> "unexpected diagnostics: " + diags);
         assertInstanceOf(Stmt.FunctionStmt.class, stmts.get(0));
         Stmt.FunctionStmt fn = (Stmt.FunctionStmt) stmts.get(0);
-        assertEquals(2, fn.params.size());
-        assertEquals("a", fn.params.get(0).lexeme);
-        assertEquals("b", fn.params.get(1).lexeme);
+        assertEquals(2, fn.params().size());
+        assertEquals("a", fn.params().get(0).lexeme);
+        assertEquals("b", fn.params().get(1).lexeme);
     }
 
     @DisplayName("return 문을 ReturnStmt로 파싱한다")
@@ -244,8 +244,8 @@ class ParserTest {
 
         assertTrue(diags.isEmpty(), () -> "unexpected diagnostics: " + diags);
         Stmt.FunctionStmt fn = (Stmt.FunctionStmt) stmts.get(0);
-        assertEquals(1, fn.body.size());
-        assertInstanceOf(Stmt.ReturnStmt.class, fn.body.get(0));
+        assertEquals(1, fn.body().size());
+        assertInstanceOf(Stmt.ReturnStmt.class, fn.body().get(0));
     }
 
     @DisplayName("Func 키워드 뒤에 이름이 없으면 에러를 보고한다")
@@ -278,7 +278,7 @@ class ParserTest {
         assertEquals(1, stmts.size());
         assertInstanceOf(Stmt.PrintStmt.class, stmts.get(0));
         assertInstanceOf(codefab.core.Expr.ArrayGet.class,
-            ((Stmt.PrintStmt) stmts.get(0)).expression);
+            ((Stmt.PrintStmt) stmts.get(0)).expression());
     }
 
     private static List<Token> tokensOf(String source) {
