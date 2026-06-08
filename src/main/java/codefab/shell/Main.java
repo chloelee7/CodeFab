@@ -1,84 +1,67 @@
 package codefab.shell;
 
-import codefab.CodeFab;
-import codefab.RunResult;
-import codefab.core.Diagnostic;
-
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 public final class Main {
 
-    private static final int EX_DATA_ERR = 65;
-    private static final int EX_NO_INPUT = 66;
+    private static final int EX_USAGE = 64;
 
     public static void main(String[] args) {
+        BufferedReader reader = new BufferedReader(
+                new InputStreamReader(System.in, StandardCharsets.UTF_8));
+        int code = dispatch(args, reader, System.out, System.err);
+        if (code != 0) {
+            System.exit(code);
+        }
+    }
+
+    public static int dispatch(String[] args, BufferedReader in, PrintStream out, PrintStream err) {
+        // --help/-h: 사용법을 stdout에 찍고 성공(0)으로 종료.
+        if (args.length == 1 && (args[0].equals("--help") || args[0].equals("-h"))) {
+            printUsage(out);
+            return 0;
+        }
+        Mode mode = select(args);
+        if (mode == null) {
+            // 잘못된 인자 조합: 사용법을 stderr에 찍고 EX_USAGE(64)로 종료.
+            printUsage(err);
+            return EX_USAGE;
+        }
+        return mode.execute(in, out, err);
+    }
+
+    private static Mode select(String[] args) {
         if (args.length == 0) {
-            BufferedReader reader = new BufferedReader(
-                new InputStreamReader(System.in, StandardCharsets.UTF_8));
-            new PromptShell(reader, System.out).run();
-            return;
+            return new ReplMode();
         }
 
-        if (args[0].equals("--help") || args[0].equals("-h")) {
-            printUsage();
-            return;
+        String first = args[0];
+        // run/debug는 정확히 파일 인자 1개를 요구한다. 어긋나면 하위호환 경로로
+        // 새지 않고 사용법 오류(null)로 처리한다.
+        if (first.equals("run")) {
+            return args.length == 2 ? new RunMode(args[1]) : null;
         }
-
-        if (args[0].equals("run") && args.length == 2) {
-            runFile(args[1]);
-            return;
+        if (first.equals("debug")) {
+            return args.length == 2 ? new DebugMode(args[1]) : null;
         }
-
-        if (args[0].equals("debug") && args.length == 2) {
-            BufferedReader reader = new BufferedReader(
-                new InputStreamReader(System.in, StandardCharsets.UTF_8));
-            new DebugShell(reader, System.out, args[1]).run();
-            return;
-        }
-
-        // 하위호환: 단일 인자는 파일 경로로 처리
+        // 하위호환: 서브커맨드가 아닌 단일 인자는 파일 경로로 처리.
         if (args.length == 1) {
-            runFile(args[0]);
-            return;
+            return new RunMode(first);
         }
 
-        printUsage();
+        return null;
     }
 
-    static void runFile(String path) {
-        String source;
-        try {
-            source = Files.readString(Path.of(path), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            System.err.println("Error: file not found: " + path);
-            System.exit(EX_NO_INPUT);
-            return;
-        }
-
-        RunResult result = new CodeFab().run(source);
-        for (String line : result.output()) {
-            System.out.println(line);
-        }
-        for (Diagnostic diagnostic : result.diagnostics()) {
-            System.err.println(diagnostic.render());
-        }
-        if (!result.success()) {
-            System.exit(EX_DATA_ERR);
-        }
-    }
-
-    private static void printUsage() {
-        System.out.println("CodeFab Interpreter");
-        System.out.println();
-        System.out.println("Usage:");
-        System.out.println("  factory               Start the interactive REPL");
-        System.out.println("  factory run <file>    Run a CodeFab script file");
-        System.out.println("  factory debug <file>  Debug a CodeFab script file (step/break/watch/inspect)");
-        System.out.println("  factory --help        Show this help");
+    private static void printUsage(PrintStream out) {
+        out.println("CodeFab Interpreter");
+        out.println();
+        out.println("Usage:");
+        out.println("  factory               Start the interactive REPL");
+        out.println("  factory run <file>    Run a CodeFab script file");
+        out.println("  factory debug <file>  Debug a CodeFab script file (step/break/watch/inspect)");
+        out.println("  factory --help        Show this help");
     }
 }

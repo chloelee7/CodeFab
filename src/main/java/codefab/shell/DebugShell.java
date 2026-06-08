@@ -6,9 +6,8 @@ import codefab.core.Diagnostic;
 import codefab.core.Expr;
 import codefab.core.Stmt;
 import codefab.core.Token;
-import codefab.executor.Executor;
 import codefab.executor.Environment;
-
+import codefab.executor.Executor;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -16,19 +15,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-/**
- * 단계별 실행을 지원하는 디버그 셸.
- * Stmt 단위로 커서를 이동하며 step/break/continue/watch/inspect를 제공한다.
- */
 public final class DebugShell {
 
     private final BufferedReader in;
     private final PrintStream out;
+    private final PrintStream err;
     private final String filePath;
 
     private List<Stmt> statements;
@@ -40,19 +38,66 @@ public final class DebugShell {
     private CollectingOutputSink outputSink;
     private Executor executor;
 
-    public DebugShell(BufferedReader in, PrintStream out, String filePath) {
+    private final Map<String, DebugCommand> commands = new HashMap<>();
+
+    public DebugShell(BufferedReader in, PrintStream out, PrintStream err, String filePath) {
         this.in = in;
         this.out = out;
+        this.err = err;
         this.filePath = filePath;
+        registerCommands();
+    }
+
+    private void registerCommands() {
+        commands.put("step", (s, a) -> s.doStep());
+        commands.put("next", (s, a) -> s.doStep());
+        commands.put("continue", (s, a) -> s.doContinue());
+        commands.put("break", (s, a) -> {
+            s.doBreak(a);
+            return true;
+        });
+        commands.put("breakpoints", (s, a) -> {
+            s.doListBreakpoints();
+            return true;
+        });
+        commands.put("remove", (s, a) -> {
+            s.doRemoveBreakpoint(a);
+            return true;
+        });
+        commands.put("watch", (s, a) -> {
+            if (a.isEmpty()) {
+                s.out.println("Usage: watch <variable>");
+                return true;
+            }
+            s.doWatch(a);
+            return true;
+        });
+        commands.put("unwatch", (s, a) -> {
+            if (a.isEmpty()) {
+                s.out.println("Usage: unwatch <variable>");
+                return true;
+            }
+            s.doUnwatch(a);
+            return true;
+        });
+        commands.put("watches", (s, a) -> {
+            s.doWatches();
+            return true;
+        });
+        commands.put("inspect", (s, a) -> {
+            s.doInspect();
+            return true;
+        });
+        commands.put("exit", (s, a) -> false);
+        commands.put("quit", (s, a) -> false);
     }
 
     public void run() {
-        // 파일 로드
         String source;
         try {
             source = Files.readString(Path.of(filePath), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            out.println("Error: file not found: " + filePath);
+            err.println("Error: file not found: " + filePath);
             return;
         }
 
@@ -82,9 +127,13 @@ public final class DebugShell {
                 out.print("> ");
                 out.flush();
                 String line = in.readLine();
-                if (line == null) break;
+                if (line == null) {
+                    break;
+                }
                 String cmd = line.trim();
-                if (!handleCommand(cmd)) break;
+                if (!handleCommand(cmd)) {
+                    break;
+                }
             }
         } catch (IOException e) {
             out.println("I/O error: " + e.getMessage());
@@ -94,48 +143,17 @@ public final class DebugShell {
     }
 
     private boolean handleCommand(String cmd) {
-        if (cmd.equals("step") || cmd.equals("next")) {
-            return doStep();
-        }
-        if (cmd.startsWith("break ")) {
-            doBreak(cmd.substring(6).trim());
-            return true;
-        }
-        if (cmd.equals("breakpoints")) {
-            doListBreakpoints();
-            return true;
-        }
-        if (cmd.startsWith("remove ")) {
-            doRemoveBreakpoint(cmd.substring(7).trim());
-            return true;
-        }
-        if (cmd.equals("continue")) {
-            return doContinue();
-        }
-        if (cmd.startsWith("watch ")) {
-            doWatch(cmd.substring(6).trim());
-            return true;
-        }
-        if (cmd.startsWith("unwatch ")) {
-            doUnwatch(cmd.substring(8).trim());
-            return true;
-        }
-        if (cmd.equals("watches")) {
-            doWatches();
-            return true;
-        }
-        if (cmd.equals("inspect")) {
-            doInspect();
-            return true;
-        }
-        if (cmd.equals("exit") || cmd.equals("quit")) {
-            return false;
-        }
-        out.println("Unknown command: " + cmd);
-        return true;
-    }
+        int space = cmd.indexOf(' ');
+        String name = space < 0 ? cmd : cmd.substring(0, space);
+        String arg = space < 0 ? "" : cmd.substring(space + 1).trim();
 
-    // ── stepping ───────────────────────────────────────────────────────────────
+        DebugCommand command = commands.get(name);
+        if (command == null) {
+            out.println("Unknown command: " + cmd);
+            return true;
+        }
+        return command.execute(this, arg);
+    }
 
     private boolean doStep() {
         if (cursor >= statements.size()) {
@@ -156,7 +174,8 @@ public final class DebugShell {
         while (cursor < statements.size()) {
             int line = findBreakpointLine(statements.get(cursor));
             if (!stoppedAtBreakpoint && line > 0) {
-                out.println("[DEBUG] " + line + "번째 줄에서 정지 (breakpoint) → " + stmtText(statements.get(cursor)));
+                out.println("[DEBUG] " + line + "번째 줄에서 정지 (breakpoint) → " + stmtText(
+                    statements.get(cursor)));
                 printWatches();
                 stoppedAtBreakpoint = true;
                 return true;
@@ -184,8 +203,6 @@ public final class DebugShell {
             out.println(o);
         }
     }
-
-    // ── breakpoints ────────────────────────────────────────────────────────────
 
     private void doBreak(String arg) {
         try {
@@ -218,8 +235,6 @@ public final class DebugShell {
         }
     }
 
-    // ── watch ─────────────────────────────────────────────────────────────────
-
     private void doWatch(String varName) {
         watchList.add(varName);
         out.println("[WATCH] '" + varName + "' 감시 등록");
@@ -243,7 +258,9 @@ public final class DebugShell {
     }
 
     private void printWatches() {
-        if (watchList.isEmpty()) return;
+        if (watchList.isEmpty()) {
+            return;
+        }
         Environment env = executor.getEnvironment();
         for (String name : watchList) {
             String val = lookupVar(env, name);
@@ -262,11 +279,9 @@ public final class DebugShell {
         for (Environment.VarInfo info : vars) {
             String scope = info.isLocal ? "[로컬]" : "[전역]";
             out.println(scope + " " + info.name + " = "
-                    + Executor.stringify(info.value) + " (" + info.typeName() + ")");
+                + Executor.stringify(info.value) + " (" + info.typeName() + ")");
         }
     }
-
-    // ── helpers ────────────────────────────────────────────────────────────────
 
     private void printCurrentStmt() {
         if (cursor < statements.size()) {
@@ -290,39 +305,77 @@ public final class DebugShell {
     }
 
     private int getLine(Stmt stmt) {
-        if (stmt instanceof Stmt.VarStmt s)        return s.name.line;
-        if (stmt instanceof Stmt.FunctionStmt s)   return s.name.line;
-        if (stmt instanceof Stmt.ReturnStmt s)     return s.keyword.line;
-        if (stmt instanceof Stmt.PrintStmt s)      return getExprLine(s.expression);
-        if (stmt instanceof Stmt.ExpressionStmt s) return getExprLine(s.expression);
-        if (stmt instanceof Stmt.IfStmt s)         return getExprLine(s.condition);
-        if (stmt instanceof Stmt.WhileStmt s)      return getExprLine(s.condition);
+        if (stmt instanceof Stmt.VarStmt s) {
+            return s.name.line;
+        }
+        if (stmt instanceof Stmt.FunctionStmt s) {
+            return s.name.line;
+        }
+        if (stmt instanceof Stmt.ReturnStmt s) {
+            return s.keyword.line;
+        }
+        if (stmt instanceof Stmt.PrintStmt s) {
+            return getExprLine(s.expression);
+        }
+        if (stmt instanceof Stmt.ExpressionStmt s) {
+            return getExprLine(s.expression);
+        }
+        if (stmt instanceof Stmt.IfStmt s) {
+            return getExprLine(s.condition);
+        }
+        if (stmt instanceof Stmt.WhileStmt s) {
+            return getExprLine(s.condition);
+        }
         if (stmt instanceof Stmt.ForStmt f) {
             int line = f.initializer != null ? getLine(f.initializer) : -1;
-            if (line > 0) return line;
+            if (line > 0) {
+                return line;
+            }
             line = f.condition != null ? getExprLine(f.condition) : -1;
-            if (line > 0) return line;
+            if (line > 0) {
+                return line;
+            }
             return f.increment != null ? getExprLine(f.increment) : -1;
         }
         return -1;
     }
 
     private int getExprLine(Expr expr) {
-        if (expr instanceof Expr.Variable e) return e.name.line;
-        if (expr instanceof Expr.Assign e)   return e.name.line;
-        if (expr instanceof Expr.Unary e)    return e.operator.line;
-        if (expr instanceof Expr.Binary e)   return e.operator.line;
-        if (expr instanceof Expr.Logical e)  return e.operator.line;
-        if (expr instanceof Expr.Grouping e) return getExprLine(e.expression);
-        if (expr instanceof Expr.Call e)     return e.paren.line;
-        if (expr instanceof Expr.ArrayGet e) return e.bracket.line;
-        if (expr instanceof Expr.ArraySet e) return e.bracket.line;
+        if (expr instanceof Expr.Variable e) {
+            return e.name.line;
+        }
+        if (expr instanceof Expr.Assign e) {
+            return e.name.line;
+        }
+        if (expr instanceof Expr.Unary e) {
+            return e.operator.line;
+        }
+        if (expr instanceof Expr.Binary e) {
+            return e.operator.line;
+        }
+        if (expr instanceof Expr.Logical e) {
+            return e.operator.line;
+        }
+        if (expr instanceof Expr.Grouping e) {
+            return getExprLine(e.expression);
+        }
+        if (expr instanceof Expr.Call e) {
+            return e.paren.line;
+        }
+        if (expr instanceof Expr.ArrayGet e) {
+            return e.bracket.line;
+        }
+        if (expr instanceof Expr.ArraySet e) {
+            return e.bracket.line;
+        }
         return -1;
     }
 
     private int findBreakpointLine(Stmt stmt) {
         int line = getLine(stmt);
-        if (line > 0 && breakpoints.contains(line)) return line;
+        if (line > 0 && breakpoints.contains(line)) {
+            return line;
+        }
 
         if (stmt instanceof Stmt.BlockStmt s) {
             return firstBreakpointLine(s.statements);
@@ -334,20 +387,38 @@ public final class DebugShell {
     private int firstBreakpointLine(List<Stmt> candidates) {
         for (Stmt candidate : candidates) {
             int line = findBreakpointLine(candidate);
-            if (line > 0) return line;
+            if (line > 0) {
+                return line;
+            }
         }
         return -1;
     }
 
     private String stmtText(Stmt stmt) {
-        if (stmt instanceof Stmt.VarStmt)        return "var " + ((Stmt.VarStmt) stmt).name.lexeme + " = ...;";
-        if (stmt instanceof Stmt.FunctionStmt)   return "Func " + ((Stmt.FunctionStmt) stmt).name.lexeme + "(...) { ... }";
-        if (stmt instanceof Stmt.ReturnStmt)     return "return ...;";
-        if (stmt instanceof Stmt.PrintStmt)      return "print ...;";
-        if (stmt instanceof Stmt.IfStmt)         return "if (...) { ... }";
-        if (stmt instanceof Stmt.WhileStmt)      return "while (...) { ... }";
-        if (stmt instanceof Stmt.ForStmt)        return "for (...) { ... }";
-        if (stmt instanceof Stmt.BlockStmt)      return "{ ... }";
+        if (stmt instanceof Stmt.VarStmt) {
+            return "var " + ((Stmt.VarStmt) stmt).name.lexeme + " = ...;";
+        }
+        if (stmt instanceof Stmt.FunctionStmt) {
+            return "Func " + ((Stmt.FunctionStmt) stmt).name.lexeme + "(...) { ... }";
+        }
+        if (stmt instanceof Stmt.ReturnStmt) {
+            return "return ...;";
+        }
+        if (stmt instanceof Stmt.PrintStmt) {
+            return "print ...;";
+        }
+        if (stmt instanceof Stmt.IfStmt) {
+            return "if (...) { ... }";
+        }
+        if (stmt instanceof Stmt.WhileStmt) {
+            return "while (...) { ... }";
+        }
+        if (stmt instanceof Stmt.ForStmt) {
+            return "for (...) { ... }";
+        }
+        if (stmt instanceof Stmt.BlockStmt) {
+            return "{ ... }";
+        }
         return stmt.getClass().getSimpleName();
     }
 }
