@@ -415,7 +415,8 @@ public final class DebugShell {
         }
         if (stmt instanceof Stmt.FunctionStmt s) {
             String params = String.join(", ", s.params.stream().map(t -> t.lexeme).toList());
-            return "Func " + s.name.lexeme + "(" + params + ") { ... }";
+            String body = s.body.stream().map(this::stmtText).collect(java.util.stream.Collectors.joining(" "));
+            return "Func " + s.name.lexeme + "(" + params + ") { " + body + " }";
         }
         if (stmt instanceof Stmt.BlockStmt s)      return bodyText(s);
         return stmt.getClass().getSimpleName();
