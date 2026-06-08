@@ -11,9 +11,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * 파일 모드: 스크립트를 한 번 실행한다. 파일 없음 → 66, 실행 진단 발생 → 65.
- */
 public final class RunMode implements Mode {
 
     private static final int EX_DATA_ERR = 65;

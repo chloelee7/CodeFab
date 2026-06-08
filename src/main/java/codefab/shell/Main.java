@@ -5,22 +5,8 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 
-/**
- * 명령행 진입점 — 모드 디스패처(GoF Strategy). 첫 인자로 {@link Mode}를 고른다:
- * <ul>
- *   <li>인자 없음        → {@link ReplMode} (대화형 {@link PromptShell})</li>
- *   <li>{@code run <f>}   → {@link RunMode} (파일 모드)</li>
- *   <li>{@code debug <f>} → {@link DebugMode} (대화형 {@link DebugShell})</li>
- *   <li>{@code --help}/{@code -h} → 사용법</li>
- *   <li>단일 인자(파일 경로) → {@code run <f>}와 동일(하위호환)</li>
- * </ul>
- *
- * <p>{@link #dispatch}는 모드를 골라 실행하고 {@code System.exit} 없이 종료 코드를
- * 반환하므로 단위 테스트가 가능하다. {@link #main}이 그 코드를 프로세스 종료로 매핑한다.
- */
 public final class Main {
 
-    /** POSIX EX_USAGE: 잘못된 명령행 인자 조합. */
     private static final int EX_USAGE = 64;
 
     public static void main(String[] args) {
@@ -32,9 +18,6 @@ public final class Main {
         }
     }
 
-    /**
-     * {@code args}에 맞는 모드를 골라 실행하고 종료 코드를 반환한다(프로세스에 대해 순수).
-     */
     public static int dispatch(String[] args, BufferedReader in, PrintStream out, PrintStream err) {
         // --help/-h: 사용법을 stdout에 찍고 성공(0)으로 종료.
         if (args.length == 1 && (args[0].equals("--help") || args[0].equals("-h"))) {

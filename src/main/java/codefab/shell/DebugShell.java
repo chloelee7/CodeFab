@@ -22,10 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * 단계별 실행을 지원하는 디버그 셸.
- * Stmt 단위로 커서를 이동하며 step/break/continue/watch/inspect를 제공한다.
- */
 public final class DebugShell {
 
     private final BufferedReader in;
@@ -41,7 +37,6 @@ public final class DebugShell {
     private CollectingOutputSink outputSink;
     private Executor executor;
 
-    /** 명령 이름 → 명령(GoF Command). 첫 토큰으로 디스패치. */
     private final Map<String, DebugCommand> commands = new HashMap<>();
 
     public DebugShell(BufferedReader in, PrintStream out, PrintStream err, String filePath) {
