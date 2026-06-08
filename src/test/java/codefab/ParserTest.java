@@ -185,6 +185,20 @@ class ParserTest {
             diags.stream().anyMatch(d -> d.message.contains(ERR_RIGHT_PAREN_AFTER_CONDITION)));
     }
 
+    @DisplayName("에러 복구가 while을 동기화 지점으로 인식해 뒤따르는 while문을 복구한다")
+    @Test
+    void recoveryResynchronizesOnWhileStatement() {
+        // 'print *' 에서 ERR_EXPECT_EXPRESSION 발생 → recoverToNextStatement가
+        // case WHILE 덕분에 while 토큰에서 멈추고, while문을 정상 복구한다.
+        // case WHILE 가 없으면 while/(/true/) 를 모두 건너뛰어 WhileStmt가 유실된다.
+        List<Token> tokens = tokensOf("print * while ( true ) print 1 ;");
+        List<Stmt> stmts = new Parser(tokens, diags).parse();
+
+        assertTrue(diags.stream().anyMatch(d -> d.message.contains(ERR_EXPECT_EXPRESSION)));
+        assertEquals(1, stmts.size());
+        assertInstanceOf(Stmt.WhileStmt.class, stmts.get(0));
+    }
+
     @DisplayName("블록 끝에 닫는 중괄호가 없으면 에러를 보고한다")
     @Test
     void missingClosingBraceAfterBlockReportsError() {
