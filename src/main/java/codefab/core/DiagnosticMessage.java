@@ -36,4 +36,6 @@ public class DiagnosticMessage {
     // 배열
     public static final String ERR_RIGHT_BRACKET_AFTER_INDEX = "Expected ']' after index";
     public static final String ERR_RIGHT_PAREN_AFTER_ARGS = "Expected ')' after arguments";
+    public static final String ERR_LEN_ARITY = "len() takes exactly 1 argument.";
+    public static final String ERR_LEN_NOT_ARRAY = "len() expects an array.";
 }

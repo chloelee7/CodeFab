@@ -1,6 +1,7 @@
 package codefab.executor;
 
 import codefab.core.Expr;
+import codefab.core.DiagnosticMessage;
 import codefab.core.InterpreterRuntimeError;
 import codefab.core.OutputSink;
 import codefab.core.Stmt;
@@ -17,6 +18,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     // Array() 내장 함수 식별용 sentinel
     private static final Object ARRAY_BUILTIN = new Object();
+    private static final Object LEN_BUILTIN = new Object();
 
     private static final int MAX_CALL_DEPTH = 500;
     private int callDepth = 0;
@@ -24,6 +26,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     public Executor(OutputSink output, Environment globals) {
         this.output = output;
         this.environment = globals;
+        globals.define("len", LEN_BUILTIN);
     }
 
     public void execute(List<Stmt> statements) {
@@ -257,6 +260,19 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             return new ArrayList<>(Collections.nCopies(size, null));
         }
 
+        if (callee == LEN_BUILTIN) {
+            if (expr.arguments.size() != 1) {
+                throw new InterpreterRuntimeError(expr.paren,
+                        DiagnosticMessage.ERR_LEN_ARITY);
+            }
+            Object value = evaluate(expr.arguments.get(0));
+            if (!(value instanceof List)) {
+                throw new InterpreterRuntimeError(expr.paren,
+                        DiagnosticMessage.ERR_LEN_NOT_ARRAY);
+            }
+            return (double) ((List<?>) value).size();
+        }
+
         if (!(callee instanceof CodeFabFunction)) {
             throw new InterpreterRuntimeError(expr.paren,
                     "Can only call functions.");
@@ -399,6 +415,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     public static String stringify(Object value) {
         if (value == null) return "nil";
         if (value == ARRAY_BUILTIN) return "<Array builtin>";
+        if (value == LEN_BUILTIN) return "<native fn len>";
         if (value instanceof Double) {
             double d = (Double) value;
             if (d == Math.floor(d) && !Double.isInfinite(d) && !Double.isNaN(d)) {
