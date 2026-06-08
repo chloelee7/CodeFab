@@ -1,0 +1,9 @@
+var x = 1;
+var y = 2;
+
+Func add(a, b) {
+    return a + b;
+}
+
+var total = add(x, y);
+print total;
