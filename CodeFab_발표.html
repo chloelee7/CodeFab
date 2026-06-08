@@ -561,98 +561,17 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
     </div>
   </div>
 
-  <!-- 5단계 파이프라인 -->
-  <div style="margin-bottom:18px">
-    <div style="font-size:.7rem;font-weight:700;color:var(--gray2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px">컴파일 파이프라인</div>
-    <div style="display:flex;align-items:stretch;gap:5px">
-      <div style="flex:1;padding:12px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:8px;text-align:center">
-        <div style="font-family:Consolas,monospace;font-size:.8rem;font-weight:700;color:#A5B4FC;margin-bottom:4px">Scanner</div>
-        <div style="font-size:.69rem;color:var(--gray)">문자 → Token</div>
-        <div style="font-size:.65rem;color:#64748B;margin-top:2px">키워드 · 리터럴</div>
-      </div>
-      <div style="display:flex;align-items:center;color:var(--cyan);font-size:1rem;flex-shrink:0;padding:0 2px">→</div>
-      <div style="flex:1;padding:12px;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3);border-radius:8px;text-align:center">
-        <div style="font-family:Consolas,monospace;font-size:.8rem;font-weight:700;color:var(--cyan2);margin-bottom:4px">Parser</div>
-        <div style="font-size:.69rem;color:var(--gray)">Token → AST</div>
-        <div style="font-size:.65rem;color:#64748B;margin-top:2px">재귀 하강</div>
-      </div>
-      <div style="display:flex;align-items:center;color:var(--cyan);font-size:1rem;flex-shrink:0;padding:0 2px">→</div>
-      <div style="flex:1;padding:12px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;text-align:center">
-        <div style="font-family:Consolas,monospace;font-size:.8rem;font-weight:700;color:var(--amber2);margin-bottom:4px">Checker</div>
-        <div style="font-size:.69rem;color:var(--gray)">정적 검증</div>
-        <div style="font-size:.65rem;color:#64748B;margin-top:2px">오류 누적</div>
-      </div>
-      <div style="display:flex;align-items:center;color:var(--cyan);font-size:1rem;flex-shrink:0;padding:0 2px">→</div>
-      <div style="flex:1;padding:12px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:8px;text-align:center">
-        <div style="font-family:Consolas,monospace;font-size:.8rem;font-weight:700;color:var(--blue2);margin-bottom:4px">ConstantFolder</div>
-        <div style="font-size:.69rem;color:var(--gray)">상수 폴딩</div>
-        <div style="font-size:.65rem;color:#64748B;margin-top:2px">3+4 → 7</div>
-      </div>
-      <div style="display:flex;align-items:center;color:var(--cyan);font-size:1rem;flex-shrink:0;padding:0 2px">→</div>
-      <div style="flex:1;padding:12px;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);border-radius:8px;text-align:center">
-        <div style="font-family:Consolas,monospace;font-size:.8rem;font-weight:700;color:var(--red2);margin-bottom:4px">Executor</div>
-        <div style="font-size:.69rem;color:var(--gray)">런타임 실행</div>
-        <div style="font-size:.65rem;color:#64748B;margin-top:2px">트리워킹</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 주요 기능 & 실행 모드 요약 -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
-    <div class="card">
-      <h3 style="margin-bottom:10px;font-size:.86rem">주요 언어 기능</h3>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
-        <span class="tag">var 변수 선언</span>
-        <span class="tag">if / else</span>
-        <span class="tag">for / while</span>
-        <span class="tag tag-g">Func 함수</span>
-        <span class="tag tag-g">클로저</span>
-        <span class="tag tag-g">재귀 · 깊이 500</span>
-        <span class="tag tag-a">Array(n) 정적 배열</span>
-        <span class="tag tag-a">len() 내장</span>
-        <span class="tag tag-p">상수 폴딩</span>
-        <span class="tag tag-p">O(1) 정적 바인딩</span>
-        <span class="tag tag-r">nil · 진리값</span>
-      </div>
-    </div>
-    <div class="card">
-      <h3 style="margin-bottom:10px;font-size:.86rem">실행 모드 &amp; 도구</h3>
-      <div style="display:flex;flex-direction:column;gap:7px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="tag" style="min-width:52px;text-align:center;flex-shrink:0">REPL</span>
-          <span style="font-size:.78rem;color:#94A3B8">대화형 인터프리터 · 멀티라인 지원</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="tag tag-g" style="min-width:52px;text-align:center;flex-shrink:0">파일</span>
-          <span style="font-size:.78rem;color:#94A3B8">스크립트 일괄 실행 · 줄 번호 오류</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="tag tag-a" style="min-width:52px;text-align:center;flex-shrink:0">디버그</span>
-          <span style="font-size:.78rem;color:#94A3B8">step · break · watch · inspect</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="tag tag-p" style="min-width:52px;text-align:center;flex-shrink:0">웹</span>
-          <span style="font-size:.78rem;color:#94A3B8">브라우저 실행 환경</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══ S5: ARCHITECTURE ══ -->
-<section class="slide">
-  <div class="lbl">03 — Architecture</div>
-  <h2>5단계 컴파일 파이프라인</h2>
+  <div style="font-size:.7rem;font-weight:700;color:var(--gray2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px">컴파일 파이프라인</div>
   <div class="pipe">
-    <div class="pipe-step"><div class="pipe-box">Scanner</div><div class="pipe-lbl">소스 문자열</div></div>
+    <div class="pipe-step"><div class="pipe-box">Scanner<div class="pipe-lbl" style="margin-top:4px">소스 문자열</div></div></div>
     <div class="pipe-arrow">→</div>
-    <div class="pipe-step"><div class="pipe-box">Parser</div><div class="pipe-lbl">Token 리스트</div></div>
+    <div class="pipe-step"><div class="pipe-box">Parser<div class="pipe-lbl" style="margin-top:4px">Token 리스트</div></div></div>
     <div class="pipe-arrow">→</div>
-    <div class="pipe-step"><div class="pipe-box">Checker</div><div class="pipe-lbl">AST</div></div>
+    <div class="pipe-step"><div class="pipe-box">Checker<div class="pipe-lbl" style="margin-top:4px">AST</div></div></div>
     <div class="pipe-arrow">→</div>
-    <div class="pipe-step"><div class="pipe-box">ConstantFolder</div><div class="pipe-lbl">검증된 AST</div></div>
+    <div class="pipe-step"><div class="pipe-box">ConstantFolder<div class="pipe-lbl" style="margin-top:4px">검증된 AST</div></div></div>
     <div class="pipe-arrow">→</div>
-    <div class="pipe-step"><div class="pipe-box">Executor</div><div class="pipe-lbl">최적화 AST</div></div>
+    <div class="pipe-step"><div class="pipe-box">Executor<div class="pipe-lbl" style="margin-top:4px">최적화 AST</div></div></div>
   </div>
   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;flex:1">
     <div class="card"><div class="pat-name" style="color:#A5B4FC;font-size:.78rem;margin-bottom:5px">Scanner</div>
