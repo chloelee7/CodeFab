@@ -22,8 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 불가하므로 테스트하지 않는다. 테스트 환경은 {@code System.console()==null}이라고 가정한다 —
  * 어떤 단언도 실제 터미널/JLine 경로를 활성화하면 안 된다.
  *
- * <p>아직 미구현인 신규 타입({@code LineSource}, {@code BufferedLineSource},
- * {@code LineSources})에 대한 red 테스트다. 구현은 shell-integrator가 한다.
+ * <p>{@code LineSource}, {@code BufferedLineSource}, {@code LineSources}를
+ * TDD red → green 사이클로 고정한 테스트다.
  */
 @DisplayName("LineSource 추상화 (JLine 통합)")
 class LineSourceTest {
