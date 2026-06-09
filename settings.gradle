@@ -1,1 +1,7 @@
+plugins {
+    // JDK 17이 설치돼 있지 않은 머신에서도 toolchain이 자동으로 JDK를 프로비저닝하도록
+    // foojay 리졸버를 둔다. JDK 17이 이미 있으면 네트워크를 타지 않고 그것을 선택한다.
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
 rootProject.name = 'codefab'

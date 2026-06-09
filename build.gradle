@@ -17,6 +17,9 @@ java {
 }
 
 tasks.withType(JavaCompile).configureEach {
+    // toolchain이 17이면 중복이지만, 추후 toolchain을 상향(예: 21)하더라도 18~21 전용
+    // API(SequencedCollection 등) 오용을 컴파일 단계에서 막아 JDK 17 런타임 안전을 보장한다.
+    options.release = 17
     options.encoding = 'UTF-8'
 }
 
