@@ -147,9 +147,10 @@ public final class Parser {
     }
 
     private Stmt printStatement() {
+        int line = previousToken().line; // 'print' 키워드 줄
         Expr value = expression();
         expectAndConsume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE);
-        return new Stmt.PrintStmt(value);
+        return new Stmt.PrintStmt(value, line);
     }
 
     private Stmt ifStatement() {
@@ -205,9 +206,10 @@ public final class Parser {
     }
 
     private Stmt expressionStatement() {
+        int line = currentToken().line; // 식 첫 토큰 줄
         Expr expr = expression();
         expectAndConsume(SEMICOLON, DiagnosticMessage.ERR_SEMICOLON_AFTER_VALUE);
-        return new Stmt.ExpressionStmt(expr);
+        return new Stmt.ExpressionStmt(expr, line);
     }
 
     private Expr expression() {

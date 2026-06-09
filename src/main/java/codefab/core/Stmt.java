@@ -27,14 +27,24 @@ public sealed interface Stmt {
 
     <R> R accept(Visitor<R> visitor);
 
-    record ExpressionStmt(Expr expression) implements Stmt {
+    /** {@code line}: 디버거 breakpoint/step 위치 보고용 (1-기반, 미상이면 -1). */
+    record ExpressionStmt(Expr expression, int line) implements Stmt {
+        public ExpressionStmt(Expr expression) {
+            this(expression, -1);
+        }
+
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitExpressionStmt(this);
         }
     }
 
-    record PrintStmt(Expr expression) implements Stmt {
+    /** {@code line}: 디버거 breakpoint/step 위치 보고용 (1-기반, 미상이면 -1). */
+    record PrintStmt(Expr expression, int line) implements Stmt {
+        public PrintStmt(Expr expression) {
+            this(expression, -1);
+        }
+
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitPrintStmt(this);

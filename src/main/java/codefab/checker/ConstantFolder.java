@@ -44,10 +44,10 @@ public class ConstantFolder implements Expr.Visitor<Expr> {
 
     private Stmt foldStmt(Stmt stmt) {
         if (stmt instanceof Stmt.ExpressionStmt s) {
-            return new Stmt.ExpressionStmt(s.expression().accept(this));
+            return new Stmt.ExpressionStmt(s.expression().accept(this), s.line());
         }
         if (stmt instanceof Stmt.PrintStmt s) {
-            return new Stmt.PrintStmt(s.expression().accept(this));
+            return new Stmt.PrintStmt(s.expression().accept(this), s.line());
         }
         if (stmt instanceof Stmt.VarStmt s) {
             return new Stmt.VarStmt(s.name(), foldExpr(s.initializer()));

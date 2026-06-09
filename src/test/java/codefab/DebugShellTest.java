@@ -116,6 +116,52 @@ class DebugShellTest {
     }
 
     @Test
+    @DisplayName("continue는 함수 본문 내부 breakpoint에서 멈춘다")
+    void continueStopsAtBreakpointInsideFunctionBody() throws IOException {
+        String source = String.join("\n",
+                "Func f() {",
+                "  print 99;",
+                "}",
+                "f();",
+                "");
+
+        String output = drive(source, "break 2\ncontinue\nexit\n");
+
+        assertTrue(output.contains("2번째 줄에서 정지 (breakpoint)"), () -> output);
+        assertFalse(containsOutputLine(output, "99"), () -> output);
+    }
+
+    @Test
+    @DisplayName("continue는 for 본문 내부 breakpoint에서 멈춘다")
+    void continueStopsAtBreakpointInsideForBody() throws IOException {
+        String source = String.join("\n",
+                "for (var i = 0; i < 3; i = i + 1) {",
+                "  print i;",
+                "}",
+                "");
+
+        String output = drive(source, "break 2\ncontinue\nexit\n");
+
+        assertTrue(output.contains("2번째 줄에서 정지 (breakpoint)"), () -> output);
+        assertFalse(containsOutputLine(output, "0"), () -> output);
+    }
+
+    @Test
+    @DisplayName("step은 함수 본문 내부로 진입한다")
+    void stepDescendsIntoFunctionBody() throws IOException {
+        String source = String.join("\n",
+                "Func f() {",
+                "  print 99;",
+                "}",
+                "f();",
+                "");
+
+        String output = drive(source, "step\nstep\nstep\nexit\n");
+
+        assertTrue(output.contains("2번째 줄에서 정지"), () -> output);
+    }
+
+    @Test
     @DisplayName("파일 없음 오류는 stdout이 아닌 stderr로 출력된다")
     void missingFileErrorGoesToStderrNotStdout() throws Exception {
         BufferedReader in = new BufferedReader(new StringReader(""));
