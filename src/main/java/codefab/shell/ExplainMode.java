@@ -98,7 +98,7 @@ public final class ExplainMode implements Mode {
     private static RunResult executeFolded(List<Stmt> folded) {
         List<Diagnostic> diagnostics = new ArrayList<>();
         CollectingOutputSink output = new CollectingOutputSink();
-        Executor executor = new Executor(output, new Environment());
+        Executor executor = new Executor(output, Executor.newGlobalScope());
         try {
             executor.execute(folded);
         } catch (InterpreterRuntimeError error) {

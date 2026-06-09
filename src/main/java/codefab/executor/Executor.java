@@ -27,7 +27,17 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         this.output = output;
         this.environment = globals;
         this.maxCallDepth = maxCallDepth;
-        defineNativeFunctions(globals);
+        // 네이티브 함수는 newGlobalScope() 팩토리 경로에서만 builtin 스코프에 등록된다 (계약 §8-0).
+    }
+
+    /**
+     * 네이티브 함수를 담은 builtin 스코프를 만들고, 그 위에 빈 globals 스코프를 얹어 반환한다.
+     * 체인: builtin ← globals. 모든 진입점은 이 팩토리로 globals를 생성한다 (계약 §8-0).
+     */
+    public static Environment newGlobalScope() {
+        Environment builtin = Environment.newBuiltinScope();
+        defineNativeFunctions(builtin);
+        return new Environment(builtin);
     }
 
     public void execute(List<Stmt> statements) {
@@ -376,8 +386,8 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         throw new InterpreterRuntimeError(operator, "Operands must be numbers.");
     }
 
-    private void defineNativeFunctions(Environment globals) {
-        globals.define("Array", new NativeFunction("Array", 1) {
+    private static void defineNativeFunctions(Environment builtin) {
+        builtin.define("Array", new NativeFunction("Array", 1) {
             @Override
             public Object call(Executor executor, Token token, List<Object> arguments) {
                 Object sizeObj = arguments.get(0);
@@ -392,7 +402,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             }
         });
 
-        globals.define("len", new NativeFunction("len", 1) {
+        builtin.define("len", new NativeFunction("len", 1) {
             @Override
             public Object call(Executor executor, Token token, List<Object> arguments) {
                 Object value = arguments.get(0);
@@ -406,7 +416,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             }
         });
 
-        globals.define("charAt", new NativeFunction("charAt", 2) {
+        builtin.define("charAt", new NativeFunction("charAt", 2) {
             @Override
             public Object call(Executor executor, Token token, List<Object> arguments) {
                 Object sourceObj = arguments.get(0);
@@ -422,7 +432,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             }
         });
 
-        globals.define("slice", new NativeFunction("slice", 3) {
+        builtin.define("slice", new NativeFunction("slice", 3) {
             @Override
             public Object call(Executor executor, Token token, List<Object> arguments) {
                 Object sourceObj = arguments.get(0);
@@ -439,7 +449,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             }
         });
 
-        globals.define("push", new NativeFunction("push", 2) {
+        builtin.define("push", new NativeFunction("push", 2) {
             @Override
             @SuppressWarnings("unchecked")
             public Object call(Executor executor, Token token, List<Object> arguments) {
@@ -453,7 +463,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             }
         });
 
-        globals.define("chr", new NativeFunction("chr", 1) {
+        builtin.define("chr", new NativeFunction("chr", 1) {
             @Override
             public Object call(Executor executor, Token token, List<Object> arguments) {
                 int code = requireInteger(token, arguments.get(0),
@@ -466,7 +476,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             }
         });
 
-        globals.define("num", new NativeFunction("num", 1) {
+        builtin.define("num", new NativeFunction("num", 1) {
             @Override
             public Object call(Executor executor, Token token, List<Object> arguments) {
                 Object value = arguments.get(0);
@@ -481,7 +491,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             }
         });
 
-        globals.define("ord", new NativeFunction("ord", 1) {
+        builtin.define("ord", new NativeFunction("ord", 1) {
             @Override
             public Object call(Executor executor, Token token, List<Object> arguments) {
                 Object value = arguments.get(0);
@@ -492,7 +502,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             }
         });
 
-        globals.define("typeOf", new NativeFunction("typeOf", 1) {
+        builtin.define("typeOf", new NativeFunction("typeOf", 1) {
             @Override
             public Object call(Executor executor, Token token, List<Object> arguments) {
                 Object value = arguments.get(0);
@@ -518,7 +528,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
             }
         });
 
-        globals.define("valueText", new NativeFunction("valueText", 1) {
+        builtin.define("valueText", new NativeFunction("valueText", 1) {
             @Override
             public Object call(Executor executor, Token token, List<Object> arguments) {
                 return stringify(arguments.get(0));

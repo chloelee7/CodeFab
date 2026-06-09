@@ -4,6 +4,7 @@ import codefab.core.InterpreterRuntimeError;
 import codefab.core.Token;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,13 +12,32 @@ import java.util.Map;
 public final class Environment {
     final Environment enclosing;
     private final Map<String, Object> values = new HashMap<>();
+    /** builtin 스코프(네이티브 함수 전용)인지 여부. 기본 false. (계약 §8-0) */
+    private final boolean builtin;
 
     public Environment() {
         this.enclosing = null;
+        this.builtin = false;
     }
 
     public Environment(Environment enclosing) {
         this.enclosing = enclosing;
+        this.builtin = false;
+    }
+
+    private Environment(Environment enclosing, boolean builtin) {
+        this.enclosing = enclosing;
+        this.builtin = builtin;
+    }
+
+    /** builtin 스코프(네이티브 함수 전용)를 생성한다. (계약 §8-0) */
+    public static Environment newBuiltinScope() {
+        return new Environment(null, true);
+    }
+
+    /** 이 환경이 builtin 스코프(네이티브 함수 전용)인지. (계약 §8-0) */
+    public boolean isBuiltin() {
+        return builtin;
     }
 
     public void define(String name, Object value) {
@@ -77,12 +97,28 @@ public final class Environment {
     }
 
     private void collectVars(Environment env, boolean isLocal, List<VarInfo> result) {
+        // builtin 스코프(네이티브 함수)는 inspect/덤프에서 제외하고 재귀를 멈춘다 (계약 §8-0).
+        if (env.builtin) {
+            return;
+        }
         for (Map.Entry<String, Object> entry : env.values.entrySet()) {
             result.add(new VarInfo(entry.getKey(), entry.getValue(), isLocal));
         }
         if (env.enclosing != null) {
             collectVars(env.enclosing, false, result);
         }
+    }
+
+    // ── 디버거 조회 API (계약 §10-1) ─────────────────────────────────────────────
+
+    /** 현 스코프의 읽기전용 바인딩 스냅샷. */
+    public Map<String, Object> bindings() {
+        return Collections.unmodifiableMap(new HashMap<>(values));
+    }
+
+    /** 상위(enclosing) 스코프. 없으면 null. */
+    public Environment enclosing() {
+        return enclosing;
     }
 
     public static final class VarInfo {

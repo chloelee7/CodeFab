@@ -16,7 +16,7 @@ import java.util.List;
 
 public final class CodeFabSession {
 
-    private final Environment globals = new Environment();
+    private final Environment globals = Executor.newGlobalScope();
     private final CollectingOutputSink output = new CollectingOutputSink();
     private final Executor executor;
 
