@@ -1033,16 +1033,16 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
         <rect x="137" y="172" width="390" height="58" rx="4" fill="#0F172A" stroke="#334155" stroke-width="1.5"/>
         <line x1="137" y1="192" x2="527" y2="192" stroke="#334155"/>
         <text x="332" y="186" text-anchor="middle" font-family="Consolas,monospace" font-size="10" fill="#475569">Pipeline (내부 처리 단계 순서)</text>
-        <!-- pipeline stages -->
-        <text x="161" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#A5B4FC">Scan</text>
-        <text x="202" y="216" font-family="Consolas,monospace" font-size="12" fill="#475569">→</text>
-        <text x="213" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#22D3EE">Parse</text>
-        <text x="261" y="216" font-family="Consolas,monospace" font-size="12" fill="#475569">→</text>
-        <text x="272" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#FCD34D">Check</text>
-        <text x="325" y="216" font-family="Consolas,monospace" font-size="12" fill="#475569">→</text>
-        <text x="336" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#93C5FD">Fold</text>
-        <text x="375" y="216" font-family="Consolas,monospace" font-size="12" fill="#475569">→</text>
-        <text x="386" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#FDA4AF">Exec</text>
+        <!-- pipeline stages (중앙 정렬: 컨테이너 center x=332 기준) -->
+        <text x="204" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#A5B4FC">Scan</text>
+        <text x="245" y="216" font-family="Consolas,monospace" font-size="12" fill="#475569">→</text>
+        <text x="256" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#22D3EE">Parse</text>
+        <text x="304" y="216" font-family="Consolas,monospace" font-size="12" fill="#475569">→</text>
+        <text x="315" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#FCD34D">Check</text>
+        <text x="368" y="216" font-family="Consolas,monospace" font-size="12" fill="#475569">→</text>
+        <text x="379" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#93C5FD">Fold</text>
+        <text x="418" y="216" font-family="Consolas,monospace" font-size="12" fill="#475569">→</text>
+        <text x="429" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#FDA4AF">Exec</text>
       </svg>
     </div>
 
@@ -1055,7 +1055,7 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
 <!-- ══ S10b: DESIGN PATTERNS 2 ══ -->
 <section class="slide">
   <div class="lbl">04 — 개발 과정</div>
-  <h2>핵심 디자인 패턴 (계속)</h2>
+  <h2>핵심 디자인 패턴</h2>
   <div class="pattern-grid">
 
     <!-- ③ Strategy (OutputSink) -->
@@ -1167,13 +1167,13 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
 <!-- ══ S11: PR19 PATTERNS ══ -->
 <section class="slide">
   <div class="lbl">04 — 개발 과정</div>
-  <h2>Shell 리팩토링 — Strategy &amp; Command 패턴</h2>
+  <h2>핵심 디자인 패턴</h2>
   <div class="pr-badge">🔀 PR #19 · refactor(shell): Mode Strategy + Debugger Command 패턴 적용 · 행위 보존 · 145개 테스트 통과</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;flex:1;align-items:start">
 
     <!-- Strategy (Mode) -->
-    <div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span class="tag">Strategy</span><span style="font-size:.84rem;font-weight:700;color:var(--white)">셸 실행 모드 분리 — OCP 적용</span></div>
+    <div class="pat-card">
+      <div class="pat-head"><span class="pat-name">Strategy — 셸 실행 모드 분리</span><span class="tag pat-tag">OCP 적용</span></div>
 
       <!-- UML Diagram: Strategy (Mode) -->
       <svg viewBox="0 0 480 185" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:10px;width:100%;height:auto;overflow:hidden">
@@ -1227,8 +1227,8 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
     </div>
 
     <!-- Command -->
-    <div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span class="tag tag-a">Command</span><span style="font-size:.84rem;font-weight:700;color:var(--white)">디버거 명령 레지스트리</span></div>
+    <div class="pat-card">
+      <div class="pat-head"><span class="pat-name">Command — 디버거 명령 레지스트리</span><span class="tag tag-a pat-tag">레지스트리 패턴</span></div>
 
       <!-- UML Diagram: Command Pattern -->
       <svg viewBox="0 0 480 185" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:10px;width:100%;height:auto;overflow:hidden">
@@ -1262,13 +1262,13 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
         <line x1="412" y1="138" x2="412" y2="157" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
         <!-- λ StepCmd -->
         <rect x="22" y="157" width="136" height="24" rx="4" fill="#1E293B" stroke="#10B981" stroke-opacity=".4" stroke-width="1.5"/>
-        <text x="90" y="173" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" font-weight="bold" fill="#34D399">λ StepCmd</text>
+        <text x="90" y="173" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" font-weight="bold" fill="#34D399">StepCmd</text>
         <!-- λ BreakCmd -->
         <rect x="195" y="157" width="136" height="24" rx="4" fill="#1E293B" stroke="#F59E0B" stroke-opacity=".4" stroke-width="1.5"/>
-        <text x="263" y="173" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" font-weight="bold" fill="#FCD34D">λ BreakCmd</text>
+        <text x="263" y="173" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" font-weight="bold" fill="#FCD34D">BreakCmd</text>
         <!-- λ WatchCmd -->
         <rect x="352" y="157" width="120" height="24" rx="4" fill="#1E293B" stroke="#A78BFA" stroke-opacity=".4" stroke-width="1.5"/>
-        <text x="412" y="173" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" font-weight="bold" fill="#C4B5FD">λ WatchCmd</text>
+        <text x="412" y="173" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" font-weight="bold" fill="#C4B5FD">WatchCmd</text>
       </svg>
 
       <!-- Before / After -->
