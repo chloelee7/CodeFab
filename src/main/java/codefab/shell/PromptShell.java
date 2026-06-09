@@ -14,12 +14,17 @@ public final class PromptShell {
     private static final String CONTINUATION_PROMPT = "....... > ";
     private static final String BANNER = "CodeFab REPL. Type 'exit' to quit.";
 
-    private final BufferedReader in;
+    private final LineSource lineSource;
     private final PrintStream out;
     private final CodeFabSession session = new CodeFabSession();
 
+    /** 기존 생성자 — BufferedReader 경로로 위임(테스트 무변경). */
     public PromptShell(BufferedReader in, PrintStream out) {
-        this.in = in;
+        this(new BufferedLineSource(in, out), out);
+    }
+
+    public PromptShell(LineSource lineSource, PrintStream out) {
+        this.lineSource = lineSource;
         this.out = out;
     }
 
@@ -29,10 +34,8 @@ public final class PromptShell {
         boolean pendingElse = false;
         try {
             while (true) {
-                out.print(buffer.isEmpty() && !pendingElse ? PRIMARY_PROMPT : CONTINUATION_PROMPT);
-                out.flush();
-
-                String line = in.readLine();
+                String prompt = buffer.isEmpty() && !pendingElse ? PRIMARY_PROMPT : CONTINUATION_PROMPT;
+                String line = lineSource.readLine(prompt);
                 if (line == null) {
                     // EOF: pendingElse 상태라면 완성된 if 블록 실행 후 종료
                     if (pendingElse && buffer.length() > 0) {
