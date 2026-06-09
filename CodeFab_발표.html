@@ -323,6 +323,7 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
   border-radius:99px;font-size:.74rem;font-family:Consolas,monospace;color:var(--green)}
 .tch2::before{content:'✓';font-weight:800}
 .qa{font-size:1.3rem;font-weight:800;color:var(--cyan);letter-spacing:.1em}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 </style>
 </head>
 <body>
@@ -339,7 +340,7 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
       <span style="font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan)">C조 · Team Project</span>
     </div>
     <h1 style="font-size:clamp(2.4rem,5vw,4.2rem);font-weight:800;line-height:1.1;margin-bottom:10px">
-      Clean Code Crew<br><span style="color:var(--cyan)">(CCC)</span>
+      <span id="typewriter-text">Clean Code Crew</span><span id="typewriter-cursor" style="display:inline-block;width:3px;background:var(--cyan);margin-left:4px;border-radius:2px;animation:blink .7s step-end infinite;vertical-align:baseline;height:.9em;position:relative;top:.05em"></span><br>
     </h1>
     <div style="font-size:1.1rem;color:#94A3B8;margin-bottom:36px;letter-spacing:.02em">
       CodeFab Interpreter 프로젝트
@@ -1754,6 +1755,63 @@ function toggleFS(){
   if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(function(){});
   else document.exitFullscreen();
 }
+
+// === 타이핑 애니메이션: Clean Code Crew → CCC ===
+(function(){
+  var el = document.getElementById('typewriter-text');
+  var cursor = document.getElementById('typewriter-cursor');
+  var full = 'Clean Code Crew';
+  var short = 'Team CCC';
+  var DELAY_BEFORE_DELETE = 1400; // 첫 등장 후 잠시 대기
+  var TYPING_SPEED = 80;          // 타이핑 속도 (ms/글자)
+  var DELETE_SPEED = 50;          // 지우기 속도 (ms/글자)
+  var DELAY_BEFORE_RETYPE = 300;  // 다 지운 후 잠시 대기
+  var DELAY_SHOW_SHORT = 1400;    // Team CCC 표시 후 대기
+  var DELAY_BEFORE_RESET = 300;   // 다 지운 후 리셋 타이핑 전 대기
+
+  function sleep(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
+
+  async function run(){
+    // 초기 텍스트 표시
+    el.textContent = full;
+    await sleep(DELAY_BEFORE_DELETE);
+
+    // 한 글자씩 지우기
+    while(el.textContent.length > 0){
+      el.textContent = el.textContent.slice(0, -1);
+      await sleep(DELETE_SPEED);
+    }
+    await sleep(DELAY_BEFORE_RETYPE);
+
+    // Team CCC 한 글자씩 타이핑 (cyan 색상)
+    el.style.color = 'var(--cyan)';
+    for(var i = 0; i < short.length; i++){
+      el.textContent += short[i];
+      await sleep(TYPING_SPEED);
+    }
+    await sleep(DELAY_SHOW_SHORT);
+
+    // 다시 한 글자씩 지우기
+    while(el.textContent.length > 0){
+      el.textContent = el.textContent.slice(0, -1);
+      await sleep(DELETE_SPEED);
+    }
+    await sleep(DELAY_BEFORE_RESET);
+
+    // Clean Code Crew 다시 타이핑 (기본 색상 복원)
+    el.style.color = '';
+    for(var j = 0; j < full.length; j++){
+      el.textContent += full[j];
+      await sleep(TYPING_SPEED);
+    }
+
+    // 반복
+    await sleep(DELAY_BEFORE_DELETE);
+    run();
+  }
+
+  run();
+})();
 </script>
 </body>
 </html>
