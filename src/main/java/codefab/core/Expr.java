@@ -5,9 +5,14 @@ import java.util.List;
 /**
  * AST 식 노드의 닫힌 계층(sealed). 대부분 record라 {@code equals}/{@code hashCode}가
  * 구조적(structural)으로 생성된다 — 이름·위치가 같은 두 노드는 서로 같다고 판정된다.
- * 현재 노드를 {@code HashMap} 키 등으로 쓰는 코드는 없어 의도된 트레이드오프이며,
- * identity 동등성이 필요해지면 해당 노드는 {@link Variable}/{@link Assign}처럼 class로
- * 두어 기본 identity 비교를 유지하면 된다.
+ * 현재 노드를 {@code HashMap} 키 등으로 쓰는 코드는 없어 의도된 트레이드오프다.
+ *
+ * <p><b>equals 정책</b>: AST 노드를 맵/셋의 키로 쓰지 말 것. 구조적 동등성은
+ * {@link Token}의 {@code line}까지 비교에 포함하므로 줄 위치에 의존한다 — 같은 식이라도
+ * 줄이 다르면 다른 노드로, 우연히 같은 줄이면 충돌로 취급된다. 또 {@link Variable}/
+ * {@link Assign}은 class라 identity 비교가 섞여 일관성도 깨진다. 향후 옵티마이저가
+ * 공통 부분식 제거(CSE)·메모이제이션 등으로 노드를 키로 써야 하면
+ * {@link java.util.IdentityHashMap}을 쓰거나 해당 노드를 class로 유지하라.
  */
 public sealed interface Expr {
 
