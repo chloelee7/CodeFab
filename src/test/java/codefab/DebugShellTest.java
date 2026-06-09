@@ -190,4 +190,102 @@ class DebugShellTest {
         assertTrue(out.contains("1번째 줄 breakpoint 해제"), () -> out);
         assertTrue(out.contains("설정된 breakpoint 없음"), () -> out);
     }
+
+    // ── 방안 B: 블록 내부 step/break 검증 ──────────────────────────────────
+
+    @Test
+    @DisplayName("for 루프 body 내부 breakpoint에서 continue가 정지한다")
+    void continueStopsAtBreakpointInsideForBody() throws IOException {
+        // 3번째 줄: print i; (for body 내부)
+        String source = String.join("\n",
+                "var i = 0;",
+                "for (i = 0; i < 3; i = i + 1) {",
+                "  print i;",
+                "}",
+                "print 99;",
+                "");
+
+        String output = drive(source, "break 3\ncontinue\nexit\n");
+
+        assertTrue(output.contains("3번째 줄에서 정지 (breakpoint)"), () -> output);
+        // breakpoint에서 멈췄으므로 print i; 아직 미실행 → 0, 1, 2 없음
+        assertFalse(containsOutputLine(output, "0"), () -> output);
+        assertFalse(containsOutputLine(output, "99"), () -> output);
+    }
+
+    @Test
+    @DisplayName("if thenBranch 내부 breakpoint에서 continue가 정지한다")
+    void continueStopsAtBreakpointInsideIfThenBranch() throws IOException {
+        String source = String.join("\n",
+                "var x = 1;",
+                "if (true) {",
+                "  print x;",
+                "}",
+                "print 99;",
+                "");
+
+        String output = drive(source, "break 3\ncontinue\nexit\n");
+
+        assertTrue(output.contains("3번째 줄에서 정지 (breakpoint)"), () -> output);
+        assertFalse(containsOutputLine(output, "1"), () -> output);
+        assertFalse(containsOutputLine(output, "99"), () -> output);
+    }
+
+    @Test
+    @DisplayName("while body 내부 breakpoint에서 continue가 정지한다")
+    void continueStopsAtBreakpointInsideWhileBody() throws IOException {
+        String source = String.join("\n",
+                "var x = 0;",
+                "while (x < 3) {",
+                "  print x;",
+                "  x = x + 1;",
+                "}",
+                "print 99;",
+                "");
+
+        String output = drive(source, "break 3\ncontinue\nexit\n");
+
+        assertTrue(output.contains("3번째 줄에서 정지 (breakpoint)"), () -> output);
+        assertFalse(containsOutputLine(output, "0"), () -> output);
+        assertFalse(containsOutputLine(output, "99"), () -> output);
+    }
+
+    @Test
+    @DisplayName("step은 for 루프 내부로 진입해 구문 단위로 실행한다")
+    void stepEntersForBodyOneStatementAtATime() throws IOException {
+        // for 루프 body 안 구문이 step으로 개별 실행되어야 함
+        String source = String.join("\n",
+                "var i = 0;",
+                "for (i = 0; i < 2; i = i + 1) {",
+                "  print i;",
+                "}",
+                "");
+
+        // step × 1: for 선언 줄 실행 → step × 1: body(print i) 실행 → 0 출력 후 정지
+        // (이후 exit으로 종료)
+        String output = drive(source, "step\nstep\nexit\n");
+
+        assertTrue(output.contains("[DEBUG] 소스코드 로딩:"), () -> output);
+        // 두 번째 step에서 print i; 실행 → 0 출력
+        assertTrue(output.contains("0"), () -> output);
+    }
+
+    @Test
+    @DisplayName("step은 if thenBranch 내부로 진입해 구문 단위로 실행한다")
+    void stepEntersIfThenBranchOneStatementAtATime() throws IOException {
+        String source = String.join("\n",
+                "var x = 42;",
+                "if (true) {",
+                "  print x;",
+                "}",
+                "print 99;",
+                "");
+
+        // step: var x=42 실행 → step: IfStmt(if true) 진입 → step: print x; 실행(42 출력) → exit
+        String output = drive(source, "step\nstep\nstep\nexit\n");
+
+        assertTrue(output.contains("42"), () -> output);
+        // 세 번째 step까지만 실행 → print 99; 는 미실행
+        assertFalse(containsOutputLine(output, "99"), () -> output);
+    }
 }

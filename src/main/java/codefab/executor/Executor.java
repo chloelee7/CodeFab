@@ -12,12 +12,24 @@ import java.util.Collections;
 import java.util.List;
 
 public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
+
+    /** 각 구문 실행 직전에 호출되는 훅 — 디버그 셸에서 주입, 일반 실행 시 null */
+    @FunctionalInterface
+    public interface StepHook {
+        void beforeStatement(Stmt stmt);
+    }
+
     private final OutputSink output;
     private Environment environment;
+    private StepHook stepHook = null;
 
     public static final int DEFAULT_MAX_CALL_DEPTH = 500;
     private final int maxCallDepth;
     private int callDepth = 0;
+
+    public void setStepHook(StepHook hook) {
+        this.stepHook = hook;
+    }
 
     public Executor(OutputSink output, Environment globals) {
         this(output, globals, DEFAULT_MAX_CALL_DEPTH);
@@ -32,8 +44,13 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     public void execute(List<Stmt> statements) {
         for (Stmt statement : statements) {
-            statement.accept(this);
+            executeStatement(statement);
         }
+    }
+
+    private void executeStatement(Stmt stmt) {
+        if (stepHook != null) stepHook.beforeStatement(stmt);
+        stmt.accept(this);
     }
 
     public Environment getEnvironment() {
@@ -72,7 +89,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         try {
             this.environment = env;
             for (Stmt s : statements) {
-                s.accept(this);
+                executeStatement(s);
             }
         } finally {
             this.environment = previous;
@@ -82,9 +99,9 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     @Override
     public Void visitIfStmt(Stmt.IfStmt stmt) {
         if (isTruthy(evaluate(stmt.condition()))) {
-            stmt.thenBranch().accept(this);
+            executeStatement(stmt.thenBranch());
         } else if (stmt.elseBranch() != null) {
-            stmt.elseBranch().accept(this);
+            executeStatement(stmt.elseBranch());
         }
         return null;
     }
@@ -94,7 +111,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         withNewScope(() -> {
             if (stmt.initializer() != null) stmt.initializer().accept(this);
             while (stmt.condition() == null || isTruthy(evaluate(stmt.condition()))) {
-                stmt.body().accept(this);
+                executeStatement(stmt.body());
                 if (stmt.increment() != null) evaluate(stmt.increment());
             }
         });
@@ -104,7 +121,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     @Override
     public Void visitWhileStmt(Stmt.WhileStmt stmt) {
         while (isTruthy(evaluate(stmt.condition()))) {
-            stmt.body().accept(this);
+            executeStatement(stmt.body());
         }
         return null;
     }
