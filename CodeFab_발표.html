@@ -436,7 +436,7 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
     <div style="display:flex;gap:18px;align-items:center;padding:14px 20px;background:var(--navy2);border-radius:10px;border:1px solid var(--navy3);border-left:3px solid var(--green)">
       <div style="font-size:1.4rem;font-weight:800;color:var(--green);min-width:34px;flex-shrink:0">02</div>
       <div>
-        <div style="font-size:.94rem;font-weight:700;color:var(--white)">실행 모드 4가지</div>
+        <div style="font-size:.94rem;font-weight:700;color:var(--white)">실행 모드 3+1가지</div>
         <div style="font-size:.77rem;color:var(--gray);margin-top:3px">REPL · 파일 실행 · 디버그 · 웹 실행(NEW)</div>
       </div>
     </div>
@@ -461,6 +461,15 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
       <div>
         <div style="font-size:.94rem;font-weight:700;color:var(--white)">다른 언어와의 차이점</div>
         <div style="font-size:.77rem;color:var(--gray);margin-top:3px">진리값 · nil · 숫자 포맷 · 배열 · 클로저</div>
+      </div>
+    </div>
+
+    <!-- 05 셀프 호스팅 -->
+    <div style="display:flex;gap:18px;align-items:center;padding:14px 20px;background:var(--navy2);border-radius:10px;border:1px solid var(--navy3);border-left:3px solid var(--red)">
+      <div style="font-size:1.4rem;font-weight:800;color:var(--red);min-width:34px;flex-shrink:0">05</div>
+      <div>
+        <div style="font-size:.94rem;font-weight:700;color:var(--white)">셀프 호스팅</div>
+        <div style="font-size:.77rem;color:var(--gray);margin-top:3px">CodeFab 로 만든 CodeFab</div>
       </div>
     </div>
 
@@ -628,7 +637,7 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
 <!-- ══ S6: EXECUTION MODES ══ -->
 <section class="slide">
   <div class="lbl">02 — 실행 모드 3+1가지</div>
-  <h2>실행 모드 4가지</h2>
+  <h2>실행 모드 3+1가지</h2>
   <div class="modes-grid">
     <!-- Mode 1: REPL -->
     <div class="mode-card">
@@ -1712,6 +1721,136 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
       </div>
       <p style="font-size:.71rem;color:var(--gray);margin-top:6px">참조 vs 값 동등성 개념을 명확히 구분 — 구조적 비교 의존 버그 차단</p>
     </div>
+  </div>
+</section>
+
+<!-- ══ S4b: SELF-HOSTING ══ -->
+<section class="slide">
+  <div class="lbl">05 — 셀프 호스팅</div>
+  <h2>셀프 호스팅 — CodeFab 로 만든 CodeFab</h2>
+
+  <!-- 한 줄 정의 -->
+  <div class="card" style="padding:13px 20px;margin-bottom:14px;border-color:rgba(6,182,212,.3);background:rgba(6,182,212,.06)">
+    <p style="font-size:.96rem;color:var(--white);line-height:1.55">
+      인터프리터(Scanner~Executor)를 <strong style="color:var(--cyan2)">CodeFab 언어로 다시 작성</strong>하고,
+      그것을 <strong style="color:var(--cyan2)">Java 버전 CodeFab 위에서 실행</strong> — 언어가 스스로를 돌립니다.
+    </p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1">
+
+    <!-- LEFT: 동작 흐름 + 실행 방법 (시각적으로 오른쪽 배치) -->
+    <div style="display:flex;flex-direction:column;gap:13px;order:2">
+
+      <!-- fibonacci.cfab → RunResult 경로 추적 -->
+      <div class="card" style="padding:14px 18px">
+        <div style="font-size:.84rem;color:var(--cyan2);font-weight:700;letter-spacing:.06em;margin-bottom:9px">⚙️ Selfhost 모드 실행 예시</div>
+
+        <!-- 입력 -->
+        <div style="padding:7px 12px;background:#0D1117;border-radius:6px;font-family:Consolas,monospace;font-size:.8rem;color:#CBD5E1;margin-bottom:8px">
+          <span style="color:var(--gray)">입력 ▸</span> <span style="color:#FF79C6">Func</span> fibonacci(n){...} fibonacci(<span style="color:#F1FA8C">10</span>);
+        </div>
+
+        <!-- A. Java 호스트 준비 -->
+        <div style="border-left:3px solid #A5B4FC;padding:6px 0 6px 11px;margin-bottom:5px">
+          <div style="font-size:.8rem;color:#CBD5E1;line-height:1.55">
+            <span style="color:#A5B4FC;font-weight:700">Ⓐ</span> <code style="color:#A5B4FC">Main</code> → <code style="color:#A5B4FC">SelfHostRunMode</code> → <code style="color:#A5B4FC">SelfHostCodeFab</code><br>
+            <span style="color:var(--gray);font-size:.74rem">5개 .cfab(~1,900줄) + <code style="color:#A5B4FC">run(소스)</code> 한 줄 조립</span>
+          </div>
+        </div>
+        <div style="text-align:center;color:var(--cyan);font-size:.82rem;line-height:1;margin:1px 0 5px">▼</div>
+
+        <!-- B. Java 인터프리터가 .cfab 인터프리터를 실행 -->
+        <div style="border:1px dashed rgba(165,180,252,.5);border-radius:7px;padding:9px 11px;background:rgba(99,102,241,.05);margin-bottom:5px">
+          <div style="font-size:.78rem;color:#CBD5E1;line-height:1.5">
+            <span style="color:#A5B4FC;font-weight:700">Ⓑ</span> <code style="color:#A5B4FC">CodeFabSession</code> <span style="color:var(--gray)">— Scanner·Parser·Checker·<strong style="color:#A5B4FC">Executor.java</strong> 가</span> <strong style="color:var(--white)">.cfab 인터프리터</strong>를 실행 → <code style="color:#A5B4FC">run()</code> 진입
+          </div>
+
+          <!-- C. .cfab 인터프리터가 fibonacci를 해석 (B 안에서 동작) -->
+          <div style="border:1px solid rgba(6,182,212,.45);border-radius:6px;padding:9px 11px;background:rgba(6,182,212,.07);margin-top:7px">
+            <div style="font-size:.76rem;font-weight:700;color:var(--cyan2);margin-bottom:7px"><span style="color:var(--cyan2)">Ⓒ</span> .cfab 인터프리터가 fibonacci 해석 <span style="color:var(--gray);font-weight:400;font-size:.7rem">· runner.cfab run()</span></div>
+            <div style="display:flex;flex-direction:column;gap:5px;font-family:Consolas,monospace;font-size:.74rem">
+              <div style="display:flex;align-items:center;gap:7px"><span style="padding:2px 7px;background:var(--navy);color:#A5B4FC;border-radius:4px;font-weight:700;min-width:60px;text-align:center">scan</span><span style="color:var(--gray)">←</span><span style="color:#94A3B8">scanner.cfab · 글자→토큰</span></div>
+              <div style="display:flex;align-items:center;gap:7px"><span style="padding:2px 7px;background:var(--navy);color:var(--cyan2);border-radius:4px;font-weight:700;min-width:60px;text-align:center">parse</span><span style="color:var(--gray)">←</span><span style="color:#94A3B8">parser.cfab · 토큰→구문트리</span></div>
+              <div style="display:flex;align-items:center;gap:7px"><span style="padding:2px 7px;background:var(--navy);color:var(--amber2);border-radius:4px;font-weight:700;min-width:60px;text-align:center">check</span><span style="color:var(--gray)">←</span><span style="color:#94A3B8">checker.cfab · 변수·오류 검사</span></div>
+              <div style="display:flex;align-items:center;gap:7px"><span style="padding:2px 7px;background:var(--navy);color:var(--green2);border-radius:4px;font-weight:700;min-width:60px;text-align:center">execute</span><span style="color:var(--gray)">←</span><span style="color:#94A3B8">executor.cfab · fib 계산 → [true, 출력, …]</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:center;color:var(--cyan);font-size:.82rem;line-height:1;margin:1px 0 5px">▼</div>
+
+        <!-- D. RunResult 환원 -->
+        <div style="border-left:3px solid var(--green2);padding:6px 0 6px 11px">
+          <div style="font-size:.8rem;color:#CBD5E1;line-height:1.55">
+            <span style="color:var(--green2);font-weight:700">Ⓓ</span> <code style="color:#A5B4FC">parseSelfHostResult()</code> → <strong style="color:var(--green2)">RunResult</strong>(success, output, diagnostics)
+          </div>
+          <div style="font-family:Consolas,monospace;font-size:.78rem;color:var(--green2);margin-top:4px">▶ 0 1 1 2 3 5 8 13 21 34</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: 5개 모듈 + 검증(parity)+의의 (시각적으로 왼쪽 배치) -->
+    <div style="display:flex;flex-direction:column;gap:13px;order:1">
+
+      <!-- 5개 모듈 + 예시 코드 -->
+      <div class="card" style="padding:14px 18px">
+        <div style="font-size:.84rem;color:var(--cyan2);font-weight:700;letter-spacing:.06em;margin-bottom:10px">📦 CodeFab으로 작성한 인터프리터 (5개 모듈)</div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:13px;align-items:start">
+          <!-- 좌: 5개 모듈 세로 2열 배열 -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:center">
+            <div style="padding:7px 11px;background:var(--navy);border-radius:6px"><div style="font-size:.82rem;font-weight:700;color:#A5B4FC">scanner</div><div style="font-size:.7rem;color:var(--gray)">241줄</div></div>
+            <div style="padding:7px 11px;background:var(--navy);border-radius:6px"><div style="font-size:.82rem;font-weight:700;color:var(--cyan2)">parser</div><div style="font-size:.7rem;color:var(--gray)">498줄</div></div>
+            <div style="padding:7px 11px;background:var(--navy);border-radius:6px"><div style="font-size:.82rem;font-weight:700;color:var(--amber2)">checker</div><div style="font-size:.7rem;color:var(--gray)">212줄</div></div>
+            <div style="padding:7px 11px;background:var(--navy);border-radius:6px"><div style="font-size:.82rem;font-weight:700;color:var(--green2)">executor</div><div style="font-size:.7rem;color:var(--gray)">873줄</div></div>
+            <div style="padding:7px 11px;background:var(--navy);border-radius:6px;grid-column:1 / -1"><div style="font-size:.82rem;font-weight:700;color:var(--red2)">runner</div><div style="font-size:.7rem;color:var(--gray)">86줄</div></div>
+          </div>
+          <!-- 우: scanner.cfab 예시 코드 -->
+          <div style="background:#0D1117;border:1px solid var(--navy3);border-radius:7px;overflow:hidden">
+            <div style="padding:5px 11px;border-bottom:1px solid var(--navy3);font-family:Consolas,monospace;font-size:.72rem;color:var(--gray)">📄 selfhost/scanner.cfab</div>
+            <div style="padding:8px 11px;font-family:Consolas,monospace;font-size:.76rem;line-height:1.55;color:#CBD5E1">
+              <span style="color:#FF79C6">Func</span> token(type, lexeme, literal, line) {<br>
+              &nbsp;&nbsp;<span style="color:#FF79C6">var</span> t = <span style="color:#8BE9FD">Array</span>(4);<br>
+              &nbsp;&nbsp;t[0] = type; t[1] = lexeme;<br>
+              &nbsp;&nbsp;t[2] = literal; t[3] = line;<br>
+              &nbsp;&nbsp;<span style="color:#FF79C6">return</span> t;<br>
+              }<br>
+              <span style="color:var(--gray)">...</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:9px;font-size:.78rem;color:var(--gray)">Java 원본과 <strong style="color:var(--white)">동일한 5단계 파이프라인</strong> · 총 ~1,900줄을 CodeFab 문법으로 구현</div>
+      </div>
+
+      <!-- Parity 테스트 + Self Hosting 의의 (동등 레벨) -->
+      <div class="card" style="padding:14px 18px;flex:1;border-color:rgba(16,185,129,.3)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+          <!-- 좌: 정확성 증명 -->
+          <div>
+            <h3 style="font-size:.86rem;color:var(--green2);margin-bottom:10px">✅ 정확성 증명 — Parity 테스트</h3>
+            <p style="font-size:.8rem;color:#94A3B8;line-height:1.6;margin-bottom:9px">
+              같은 코드를 <strong style="color:#A5B4FC">Java</strong> · <strong style="color:var(--cyan2)">셀프호스트</strong> 양쪽에 실행 → 결과 일치 검증
+            </p>
+            <div style="padding:9px 12px;background:#0D1117;border-radius:7px;font-family:Consolas,monospace;font-size:.78rem;line-height:1.65;color:#CBD5E1">
+              <span style="color:var(--gray)">// SelfHostParityTest</span><br>
+              assertEquals(<br>
+              &nbsp;&nbsp;<span style="color:#A5B4FC">java</span>.output(),<br>
+              &nbsp;&nbsp;<span style="color:var(--cyan2)">selfhost</span>.output()) <span style="color:var(--green2)">✓</span>
+            </div>
+            <div style="margin-top:8px;font-size:.78rem;color:var(--green2)">success · output · diagnostics 모두 동일</div>
+          </div>
+          <!-- 우: Self Hosting의 의의 -->
+          <div>
+            <h3 style="font-size:.86rem;color:var(--cyan2);margin-bottom:10px">💡 Self Hosting의 의의</h3>
+            <div style="font-size:.8rem;color:#94A3B8;line-height:1.8">
+              <div style="margin-bottom:6px">• 언어가 <strong style="color:var(--white)">자기 자신을 표현</strong>할 만큼의 완성도 입증</div>
+              <div style="margin-bottom:6px">• 함수·재귀·배열·문자열이 <strong style="color:var(--white)">충분히 완성</strong></div>
+              <div>• <code style="color:var(--cyan2)">selfhost run</code> 정식 실행 모드로 동작</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </section>
 
