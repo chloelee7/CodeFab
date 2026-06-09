@@ -13,15 +13,20 @@ import java.util.List;
 
 public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
-    /** 디버거가 statement 실행 직전에 끼어들 수 있는 훅. */
+    /**
+     * 디버거가 statement 실행 직전에 끼어들 수 있는 훅.
+     * {@code depth}는 현재 statement의 중첩 깊이(top-level=0, 블록·함수 본문·루프 본문 진입 시 +1)로,
+     * step-over(next) 구현에 쓰인다 — 정지 시점 depth 이하로 복귀할 때까지 통지를 무시하면 된다.
+     */
     @FunctionalInterface
     public interface DebugHook {
-        void beforeStatement(Stmt stmt);
+        void beforeStatement(Stmt stmt, int depth);
     }
 
     private final OutputSink output;
     private Environment environment;
     private DebugHook debugHook;
+    private int stmtDepth = 0;
 
     public static final int DEFAULT_MAX_CALL_DEPTH = 500;
     private final int maxCallDepth;
@@ -83,9 +88,14 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
      */
     private void exec(Stmt stmt) {
         if (debugHook != null) {
-            debugHook.beforeStatement(stmt);
+            debugHook.beforeStatement(stmt, stmtDepth);
         }
-        stmt.accept(this);
+        stmtDepth++;
+        try {
+            stmt.accept(this);
+        } finally {
+            stmtDepth--;
+        }
     }
 
     public Environment getEnvironment() {

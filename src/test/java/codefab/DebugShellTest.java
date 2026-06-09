@@ -153,6 +153,44 @@ class DebugShellTest {
     }
 
     @Test
+    @DisplayName("next는 함수 호출을 step-over한다 (본문 내부로 진입하지 않음)")
+    void nextStepsOverFunctionCall() throws IOException {
+        String source = String.join("\n",
+                "Func f() {",
+                "  print 99;",
+                "}",
+                "f();",
+                "print 1;",
+                "");
+
+        // 1줄(Func 정의)에서 정지 → next로 정의 실행 → 4줄(f();)에서 정지 →
+        // next로 f() 호출을 step-over(본문 진입 X, 99 출력) → 5줄(print 1)에서 정지
+        String output = drive(source, "next\nnext\nnext\nexit\n");
+
+        assertTrue(output.contains("4번째 줄에서 정지"), () -> output);
+        assertTrue(output.contains("5번째 줄에서 정지"), () -> output);
+        assertTrue(containsOutputLine(output, "99"), () -> output);   // 본문은 실행됨
+        assertFalse(output.contains("2번째 줄에서 정지"), () -> output); // 본문 내부엔 정지 안 함
+    }
+
+    @Test
+    @DisplayName("step은 함수 호출 시 본문 내부로 진입한다 (step-into)")
+    void stepStepsIntoFunctionCall() throws IOException {
+        String source = String.join("\n",
+                "Func f() {",
+                "  print 99;",
+                "}",
+                "f();",
+                "print 1;",
+                "");
+
+        // 1줄 정지 → step(정의) → 4줄 f() 정지 → step → 본문 2줄 print 99에서 정지
+        String output = drive(source, "step\nstep\nstep\nexit\n");
+
+        assertTrue(output.contains("2번째 줄에서 정지"), () -> output); // 본문 진입
+    }
+
+    @Test
     @DisplayName("함수 본문 내부에서 멈춰 파라미터·지역변수를 inspect로 확인한다")
     void inspectShowsFunctionLocalsWhenStoppedInsideBody() throws IOException {
         String source = String.join("\n",

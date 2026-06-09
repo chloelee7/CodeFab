@@ -35,8 +35,17 @@ public final class DebugShell {
     private final Set<Integer> breakpoints = new HashSet<>();
     private final Set<String> watchList = new LinkedHashSet<>();
 
-    // true이면 다음에 실행되는 statement 직전에 멈춘다 (step). false이면 breakpoint까지 진행.
-    private boolean stepping = true;
+    /**
+     * STEP_INTO(step): 다음에 실행되는 statement에서 정지 (블록 내부 진입).
+     * STEP_OVER(next): 현재 statement를 끝까지 실행하되 내부로 진입하지 않고
+     *                  같은/상위 레벨(정지 시점 depth 이하)의 다음 statement에서 정지.
+     * CONTINUE: 다음 breakpoint까지 진행.
+     */
+    private enum Mode { STEP_INTO, STEP_OVER, CONTINUE }
+
+    private Mode mode = Mode.STEP_INTO;   // 초기: 첫 statement에서 정지
+    private int stepOverDepth = -1;       // STEP_OVER 기준 깊이
+    private int currentDepth = 0;         // 현재 정지한 statement의 깊이
 
     private CollectingOutputSink outputSink;
     private Executor executor;
@@ -97,7 +106,7 @@ public final class DebugShell {
     }
 
     /** Executor가 각 statement 실행 직전에 호출. 멈춰야 하면 대화형 명령 루프로 진입한다. */
-    private void onStatement(Stmt stmt) {
+    private void onStatement(Stmt stmt, int depth) {
         // BlockStmt 자체는 줄번호가 없고(정지 메시지가 줄 미상이 됨) breakpoint 대상도 아니다.
         // 통과시키면 내부 각 statement에서 정상적으로 멈추므로 블록 노드 이중 정지를 피한다.
         if (stmt instanceof Stmt.BlockStmt) {
@@ -105,9 +114,14 @@ public final class DebugShell {
         }
         int line = getLine(stmt);
         boolean atBreakpoint = line > 0 && breakpoints.contains(line);
-        if (!stepping && !atBreakpoint) {
+        // breakpoint는 모드와 무관하게 항상 정지 (step-over 중 함수 본문 내부 breakpoint 포함).
+        boolean pause = atBreakpoint
+                || mode == Mode.STEP_INTO
+                || (mode == Mode.STEP_OVER && depth <= stepOverDepth);
+        if (!pause) {
             return;
         }
+        currentDepth = depth;
 
         // 직전까지 실행된 statement들이 만든 출력을 먼저 비운다.
         drainOutput();
@@ -144,11 +158,14 @@ public final class DebugShell {
 
             switch (name) {
                 case "step":
+                    mode = Mode.STEP_INTO;
+                    return;
                 case "next":
-                    stepping = true;
+                    mode = Mode.STEP_OVER;
+                    stepOverDepth = currentDepth; // 현재 깊이 이하로 복귀할 때 정지
                     return;
                 case "continue":
-                    stepping = false;
+                    mode = Mode.CONTINUE;
                     return;
                 case "break":
                     doBreak(arg);
