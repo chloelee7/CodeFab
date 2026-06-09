@@ -1308,7 +1308,7 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
               <div class="gh-body">양쪽 피연산자가 모두 <code style="color:var(--cyan2)">Literal(Number)</code>이면 컴파일 타임에 계산해서 <code style="color:var(--cyan2)">Literal(7)</code>로 치환할 수 있어요! Executor의 <code style="color:var(--cyan2)">visitBinary</code> 호출을 완전히 제거할 수 있습니다~</div>
             </div>
           </div>
-          <div class="gh-reply">jinsub-O: <code>return new Expr.Literal(left.value + right.value);</code> 로 수정 완료 — <strong>visitBinary N회 → 0회</strong> ✅</div>
+          <div class="gh-reply">totoseel: <code>return new Expr.Literal(left.value + right.value);</code> 로 수정 완료 — <strong>visitBinary N회 → 0회</strong> ✅</div>
         </div>
         <!-- Thread 2: 0나눗셈 처리 -->
         <div class="gh-thread">
@@ -1354,7 +1354,7 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
           <div class="gh-comment">
             <div class="gh-avatar">j</div>
             <div style="flex:1">
-              <div class="gh-meta"><span class="gh-user">jinsub-O</span><span class="gh-time">Jun 7, 2026</span></div>
+              <div class="gh-meta"><span class="gh-user">totoseel</span><span class="gh-time">Jun 7, 2026</span></div>
               <div class="gh-body">Checker가 분석 시점에 스코프 <code style="color:var(--cyan2)">depth</code>를 AST 노드에 기록해두면, Executor는 <code style="color:var(--green2)">getAt(depth, name)</code>으로 체인 탐색 없이 <strong>O(1)</strong> 직접 접근할 수 있습니다.</div>
             </div>
           </div>
@@ -1369,7 +1369,7 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
 <!-- ══ S14: GITHUB CODE REVIEW ══ -->
 <section class="slide">
   <div class="lbl">04 — 개발 과정</div>
-  <h2>실제 GitHub 코드 리뷰 활동</h2>
+  <h2>코드 리뷰 활동</h2>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
 
     <!-- 사례 1: 변수 선언 순서 -->
@@ -1460,7 +1460,7 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
 <!-- ══ S14b: GITHUB CODE REVIEW 2 ══ -->
 <section class="slide">
   <div class="lbl">08 — Code Review Activity</div>
-  <h2>실제 GitHub 코드 리뷰 활동</h2>
+  <h2>코드 리뷰 활동</h2>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
 
     <!-- 사례 3: mockScanner Scanner 의존 제거 -->
@@ -1502,27 +1502,26 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
       </div>
     </div>
 
-    <!-- 사례 3 설명 패널 -->
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="card" style="padding:14px 16px">
-        <h3 style="font-size:.8rem;color:var(--amber2);margin-bottom:8px">왜 문제였나?</h3>
-        <div style="font-size:.76rem;color:#94A3B8;line-height:1.7">
-          <div style="margin-bottom:4px">• <code style="color:var(--cyan2)">scan()</code> 반환값을 무시하고 <code style="color:var(--cyan2)">getTokens()</code>를 별도 호출</div>
-          <div style="margin-bottom:4px">• 테스트 헬퍼가 Scanner 내부 구현에 불필요하게 종속</div>
-          <div>• Scanner 내부 변경 시 테스트도 함께 깨질 위험</div>
+    <!-- 사례 4: ReturnException package-private -->
+    <div>
+      <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 4 — 제어 흐름 예외의 외부 노출 방지</h3>
+      <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
+        <div class="gh-header">
+          <span class="gh-title">PR #19 · refactor(shell): Mode Strategy + Command 패턴</span>
+          <span class="gh-state gh-merged">merged</span>
         </div>
-      </div>
-      <div class="card" style="padding:14px 16px">
-        <h3 style="font-size:.8rem;color:var(--green2);margin-bottom:8px">개선 효과</h3>
-        <div style="font-size:.76rem;color:#94A3B8;line-height:1.7">
-          <div style="margin-bottom:4px">• Scanner 인스턴스를 로컬에만 사용 → 결합도 감소</div>
-          <div style="margin-bottom:4px">• 코드 3줄 → 2줄, 의도가 더 명확하게 드러남</div>
-          <div>• 테스트는 파서 동작만 검증 — 단일 책임 원칙 준수</div>
+        <div class="gh-file">📄 ReturnException.java</div>
+        <div class="gh-line"><span style="color:#FF79C6">public</span> <span style="color:#FF79C6">class</span> <span style="color:#50FA7B">ReturnException</span> <span style="color:#FF79C6">extends</span> RuntimeException {</div>
+        <div class="gh-thread" style="margin:0;border-radius:0;border-left:none;border-right:none">
+          <div class="gh-comment">
+            <div class="gh-avatar">j</div>
+            <div style="flex:1">
+              <div class="gh-meta"><span class="gh-user">mylhb9</span><span class="gh-time">Jun 8, 2026</span></div>
+              <div class="gh-body">제어 흐름용 예외는 <code style="color:var(--cyan2)">codefab.executor</code> 내부에서만 catch해야 합니다. public으로 노출되면 외부 패키지에서 남용될 수 있어요.</div>
+            </div>
+          </div>
+          <div class="gh-reply" style="background:rgba(16,185,129,.08);border-left:2px solid var(--green);color:var(--green2)"><code>class ReturnException</code> (package-private)으로 변경 — 외부 catch 차단 완료 ✅</div>
         </div>
-      </div>
-      <div class="card" style="padding:10px 16px;background:rgba(6,182,212,.06);border-color:rgba(6,182,212,.2)">
-        <div style="font-size:.73rem;color:var(--cyan2)">💡 코드 리뷰 인사이트</div>
-        <div style="font-size:.72rem;color:#94A3B8;margin-top:4px">작은 헬퍼 메서드도 의존 관계를 점검 — 테스트 코드도 프로덕션 코드만큼 품질 관리</div>
       </div>
     </div>
 
@@ -1532,15 +1531,15 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
 <!-- ══ S15: REVIEW HIGHLIGHTS ══ -->
 <section class="slide">
   <div class="lbl">04 — 개발 과정</div>
-  <h2>핵심 코드 리뷰 포인트</h2>
+  <h2>코드 리뷰 활동</h2>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
 
     <!-- LEFT COLUMN: Case 1 + Case 2 -->
     <div style="display:flex;flex-direction:column;gap:12px">
 
-      <!-- 사례 1: Parser.reportError() throw 누락 -->
+      <!-- 사례 5: Parser.reportError() throw 누락 -->
       <div>
-        <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 1 — throw 누락: 파싱 흐름이 계속됨</h3>
+        <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 5 — throw 누락: 파싱 흐름이 계속됨</h3>
         <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
           <div class="gh-header">
             <span class="gh-title">PR #8 · Parser 재귀 하강 구현</span>
@@ -1561,9 +1560,9 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
         </div>
       </div>
 
-      <!-- 사례 2: ConstantFolder 0나눗셈 진단 금지 -->
+      <!-- 사례 6: ConstantFolder 0나눗셈 진단 금지 -->
       <div>
-        <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 2 — 최적화 패스에서 진단 발생 금지</h3>
+        <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 6 — 최적화 패스에서 진단 발생 금지</h3>
         <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
           <div class="gh-header">
             <span class="gh-title">PR #18 · feat(optimizer): ConstantFolder 상수 폴딩 구현</span>
@@ -1586,35 +1585,12 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
 
     </div>
 
-    <!-- RIGHT COLUMN: Case 3 + Case 4 -->
+    <!-- RIGHT COLUMN: Case 7 -->
     <div style="display:flex;flex-direction:column;gap:12px">
 
-      <!-- 사례 3: ReturnException package-private -->
+      <!-- 사례 7: Checker REPL 모드 분리 -->
       <div>
-        <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 3 — 제어 흐름 예외의 외부 노출 방지</h3>
-        <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
-          <div class="gh-header">
-            <span class="gh-title">PR #19 · refactor(shell): Mode Strategy + Command 패턴</span>
-            <span class="gh-state gh-merged">merged</span>
-          </div>
-          <div class="gh-file">📄 ReturnException.java</div>
-          <div class="gh-line"><span style="color:#FF79C6">public</span> <span style="color:#FF79C6">class</span> <span style="color:#50FA7B">ReturnException</span> <span style="color:#FF79C6">extends</span> RuntimeException {</div>
-          <div class="gh-thread" style="margin:0;border-radius:0;border-left:none;border-right:none">
-            <div class="gh-comment">
-              <div class="gh-avatar">j</div>
-              <div style="flex:1">
-                <div class="gh-meta"><span class="gh-user">jinsub-O</span><span class="gh-time">Jun 8, 2026</span></div>
-                <div class="gh-body">제어 흐름용 예외는 <code style="color:var(--cyan2)">codefab.executor</code> 내부에서만 catch해야 합니다. public으로 노출되면 외부 패키지에서 남용될 수 있어요.</div>
-              </div>
-            </div>
-            <div class="gh-reply" style="background:rgba(16,185,129,.08);border-left:2px solid var(--green);color:var(--green2)"><code>class ReturnException</code> (package-private)으로 변경 — 외부 catch 차단 완료 ✅</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 사례 4: Checker REPL 모드 분리 -->
-      <div>
-        <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 4 — REPL과 정적 분석 모드 분리</h3>
+        <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 7 — REPL과 정적 분석 모드 분리</h3>
         <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
           <div class="gh-header">
             <span class="gh-title">PR #8 · Checker 정적 분석 구현</span>
@@ -1626,7 +1602,7 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
             <div class="gh-comment">
               <div class="gh-avatar">j</div>
               <div style="flex:1">
-                <div class="gh-meta"><span class="gh-user">jinsub-O</span><span class="gh-time">Jun 4, 2026</span></div>
+                <div class="gh-meta"><span class="gh-user">chloelee7</span><span class="gh-time">Jun 4, 2026</span></div>
                 <div class="gh-body">REPL에서 이전 입력에서 선언한 변수를 참조하면 '미선언 변수'로 잡힙니다. <code style="color:var(--cyan2)">replMode</code> 플래그로 전역 미선언 검사를 분기해야 해요.</div>
               </div>
             </div>
