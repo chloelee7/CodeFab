@@ -4,7 +4,6 @@ import codefab.core.InterpreterRuntimeError;
 import codefab.core.Token;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +34,11 @@ public final class Environment {
         return new Environment(null, true);
     }
 
-    /** 이 환경이 builtin 스코프(네이티브 함수 전용)인지. (계약 §8-0) */
-    public boolean isBuiltin() {
+    /**
+     * 이 환경이 builtin 스코프(네이티브 함수 전용)인지.
+     * package-private: 같은 codefab.executor 패키지(예: Executor 생성자 검증)에서만 쓰인다. (계약 §8-0)
+     */
+    boolean isBuiltinScope() {
         return builtin;
     }
 
@@ -55,7 +57,11 @@ public final class Environment {
     }
 
     public void assign(Token name, Object value) {
-        if (values.containsKey(name.lexeme)) {
+        // builtin 스코프(네이티브 함수)는 사용자 대입의 대상이 될 수 없다 (계약 §8-0).
+        // 쓰기는 builtin 경계에서 멈추고(values 갱신 안 함), builtin은 체인 끝이므로
+        // 미선언 이름이면 결과적으로 Undefined variable 오류가 난다. 읽기(get)는 비대칭으로
+        // builtin까지 그대로 허용해 네이티브 호출을 보존한다.
+        if (!builtin && values.containsKey(name.lexeme)) {
             values.put(name.lexeme, value);
             return;
         }
@@ -97,28 +103,17 @@ public final class Environment {
     }
 
     private void collectVars(Environment env, boolean isLocal, List<VarInfo> result) {
-        // builtin 스코프(네이티브 함수)는 inspect/덤프에서 제외하고 재귀를 멈춘다 (계약 §8-0).
-        if (env.builtin) {
-            return;
-        }
-        for (Map.Entry<String, Object> entry : env.values.entrySet()) {
-            result.add(new VarInfo(entry.getKey(), entry.getValue(), isLocal));
+        // builtin 스코프(네이티브 함수)의 바인딩은 inspect/덤프에서 제외하되,
+        // 위에 일반 스코프가 더 있을 수 있으므로 재귀는 멈추지 않는다 (계약 §8-0).
+        // 현재 체인(builtin=끝)에선 동작 동일, 미래에 builtin 위 스코프가 생겨도 누락 없음.
+        if (!env.builtin) {
+            for (Map.Entry<String, Object> entry : env.values.entrySet()) {
+                result.add(new VarInfo(entry.getKey(), entry.getValue(), isLocal));
+            }
         }
         if (env.enclosing != null) {
             collectVars(env.enclosing, false, result);
         }
-    }
-
-    // ── 디버거 조회 API (계약 §10-1) ─────────────────────────────────────────────
-
-    /** 현 스코프의 읽기전용 바인딩 스냅샷. */
-    public Map<String, Object> bindings() {
-        return Collections.unmodifiableMap(new HashMap<>(values));
-    }
-
-    /** 상위(enclosing) 스코프. 없으면 null. */
-    public Environment enclosing() {
-        return enclosing;
     }
 
     public static final class VarInfo {

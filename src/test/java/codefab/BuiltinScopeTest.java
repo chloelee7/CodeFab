@@ -1,17 +1,10 @@
 package codefab;
 
-import codefab.shell.DebugShell;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
-import java.io.StringReader;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -23,9 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * builtin 스코프 분리 (스펙 06): 네이티브 함수는 globals 바깥의 builtin 스코프에 등록되며,
  * 디버그 inspect/덤프는 builtin 경계에서 멈춰 네이티브 함수를 노출하지 않는다(shared-contracts §8-0, §10).
  *
- * <p>구현 전이므로 이 테스트들은 실패(현재 네이티브 함수가 globals에 등록되어 inspect에 노출됨)가 정상이다.
- * 검증은 모두 <b>사용자 관찰 가능한 디버그 출력</b>으로만 한다 — Executor.newGlobalScope 같은
- * 내부 API에 직접 의존하지 않는다.
+ * <p>builtin 스코프 분리 후 동작을 고정한다: 네이티브 함수는 더 이상 globals에 노출되지 않으며
+ * 디버그 inspect는 builtin 경계에서 멈춘다. 검증은 모두 <b>사용자 관찰 가능한 디버그 출력</b>으로만
+ * 한다 — Executor.newGlobalScope 같은 내부 API에 직접 의존하지 않는다.
  */
 @DisplayName("builtin 스코프 분리")
 class BuiltinScopeTest {
@@ -38,20 +31,9 @@ class BuiltinScopeTest {
     @TempDir
     Path tempDir;
 
-    /**
-     * DebugShellTest와 동일한 구동 방식: 소스를 임시 파일에 쓰고, 디버그 명령 라인을
-     * stdin으로 주입한 뒤 stdout을 캡처해 문자열로 돌려준다.
-     */
+    /** DebugShellTestSupport.drive로 위임한다(DebugShellTest와 공용 헬퍼 공유). */
     private String drive(String source, String commands) throws IOException {
-        Path script = tempDir.resolve("program.cfab");
-        Files.writeString(script, source, StandardCharsets.UTF_8);
-
-        BufferedReader in = new BufferedReader(new StringReader(commands));
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        PrintStream out = new PrintStream(bytes, true, StandardCharsets.UTF_8);
-        PrintStream err = new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8);
-        new DebugShell(in, out, err, script.toString()).run();
-        return bytes.toString(StandardCharsets.UTF_8);
+        return DebugShellTestSupport.drive(tempDir, source, commands);
     }
 
     /** inspect 출력 영역에서 "<scope> <name> = ..." 형태로 노출된 변수명을 찾는다. */

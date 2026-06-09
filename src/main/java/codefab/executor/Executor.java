@@ -19,11 +19,28 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     private final int maxCallDepth;
     private int callDepth = 0;
 
+    /**
+     * globals는 반드시 {@link #newGlobalScope()}로 생성해야 한다. 그렇지 않으면
+     * 네이티브 함수(Array, len, chr 등)가 누락된 채 조용히 실행된다.
+     * 생성자는 globals의 enclosing이 builtin 스코프인지 검증하여 잘못된 주입을 막는다 (계약 §8-0).
+     */
     public Executor(OutputSink output, Environment globals) {
         this(output, globals, DEFAULT_MAX_CALL_DEPTH);
     }
 
+    /**
+     * globals는 반드시 {@link #newGlobalScope()}로 생성해야 한다. 그렇지 않으면
+     * 네이티브 함수(Array, len, chr 등)가 누락된 채 조용히 실행된다.
+     * 생성자는 globals의 enclosing이 builtin 스코프인지 검증하여 잘못된 주입을 막는다 (계약 §8-0).
+     */
     public Executor(OutputSink output, Environment globals, int maxCallDepth) {
+        // newGlobalScope()는 builtin ← globals 체인을 만든다. globals의 enclosing이
+        // builtin 스코프가 아니면 네이티브 함수가 누락된 잘못된 globals이므로 즉시 거부한다.
+        Environment enclosing = globals.enclosing;
+        if (enclosing == null || !enclosing.isBuiltinScope()) {
+            throw new IllegalArgumentException(
+                    "globals must be created via Executor.newGlobalScope()");
+        }
         this.output = output;
         this.environment = globals;
         this.maxCallDepth = maxCallDepth;
