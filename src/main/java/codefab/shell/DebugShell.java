@@ -390,7 +390,7 @@ public final class DebugShell {
     }
 
     private String bodyText(Stmt body) {
-        if (body instanceof Stmt.BlockStmt) return "{ ... }";
+        if (body instanceof Stmt.BlockStmt) return "{";
         return stmtText(body);
     }
 
