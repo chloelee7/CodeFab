@@ -37,12 +37,13 @@ class CompareModeTest {
 
         String stdout = outBytes.toString(StandardCharsets.UTF_8);
         String stderr = errBytes.toString(StandardCharsets.UTF_8);
+        String nl = System.lineSeparator();
         assertEquals(65, code);
         assertEquals("", stderr);
         assertTrue(stdout.contains("Success: identical"), () -> stdout);
         assertTrue(stdout.contains("Output: different"), () -> stdout);
         assertTrue(stdout.contains("Diagnostics: identical"), () -> stdout);
-        assertTrue(stdout.contains("Java output:\njava"), () -> stdout);
-        assertTrue(stdout.contains("Selfhost output:\nselfhost"), () -> stdout);
+        assertTrue(stdout.contains("Java output:" + nl + "java"), () -> stdout);
+        assertTrue(stdout.contains("Selfhost output:" + nl + "selfhost"), () -> stdout);
     }
 }
