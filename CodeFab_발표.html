@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeFab Interpreter — 팀 발표</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0F172A;--navy2:#1E293B;--navy3:#334155;--navy4:#475569;
+  --cyan:#06B6D4;--cyan2:#22D3EE;--green:#10B981;--green2:#34D399;
+  --amber:#F59E0B;--amber2:#FCD34D;--red:#F43F5E;--red2:#FDA4AF;
+  --purple:#A78BFA;--purple2:#C4B5FD;--blue:#3B82F6;--blue2:#93C5FD;
+  --white:#F8FAFC;--gray:#94A3B8;--gray2:#64748B;--gray3:#475569;
+}
+html,body{width:100%;height:100%;background:var(--navy);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;
+  color:var(--white);overflow:hidden}
+#pres{position:relative;width:100vw;height:100vh;overflow:hidden}
+.slide{position:absolute;inset:0;width:100%;height:100%;
+  padding:48px 68px 76px;display:flex;flex-direction:column;
+  opacity:0;transform:translateX(50px);
+  transition:opacity .35s ease,transform .35s ease;
+  pointer-events:none;overflow:hidden}
+.slide.active{opacity:1;transform:translateX(0);pointer-events:all}
+.slide.prev{opacity:0;transform:translateX(-50px)}
+#pbar{position:fixed;bottom:0;left:0;width:100%;height:3px;background:var(--navy3);z-index:100}
+#pfill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--purple));transition:width .35s ease}
+#sctr{position:fixed;bottom:10px;right:18px;font-size:11px;color:var(--gray2);z-index:100;letter-spacing:.05em}
+#hint{position:fixed;bottom:10px;left:18px;font-size:10px;color:var(--gray3);z-index:100}
+
+/* Typography */
+.lbl{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px}
+h1{font-size:clamp(2.2rem,4.5vw,3.8rem);font-weight:800;line-height:1.1}
+h2{font-size:clamp(1.4rem,2.6vw,2rem);font-weight:700;line-height:1.2;margin-bottom:26px}
+h3{font-size:.92rem;font-weight:700;color:var(--cyan2);margin-bottom:8px}
+p,li{font-size:.88rem;line-height:1.7;color:#CBD5E1}
+ul{padding-left:1.1em}
+li{margin-bottom:3px}
+strong{color:var(--white);font-weight:600}
+.acc{color:var(--cyan)}
+.muted{color:var(--gray);font-size:.8rem}
+.divider{width:40px;height:3px;background:var(--cyan);border-radius:2px;margin-bottom:22px}
+code{font-family:'JetBrains Mono','Fira Code',Consolas,monospace;font-size:.82em;color:var(--cyan2);background:rgba(6,182,212,.1);padding:1px 5px;border-radius:3px}
+
+/* Card */
+.card{background:var(--navy2);border:1px solid var(--navy3);border-radius:10px;padding:16px 20px}
+.card-c{border-color:var(--cyan)}
+.card-g{border-color:var(--green)}
+.card-a{border-color:var(--amber)}
+.tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.04em;background:rgba(6,182,212,.15);color:var(--cyan);border:1px solid rgba(6,182,212,.3)}
+.tag-g{background:rgba(16,185,129,.15);color:var(--green);border-color:rgba(16,185,129,.3)}
+.tag-a{background:rgba(245,158,11,.15);color:var(--amber);border-color:rgba(245,158,11,.3)}
+.tag-p{background:rgba(167,139,250,.15);color:var(--purple);border-color:rgba(167,139,250,.3)}
+.tag-r{background:rgba(244,63,94,.15);color:var(--red);border-color:rgba(244,63,94,.3)}
+.tag-b{background:rgba(59,130,246,.15);color:var(--blue2);border-color:rgba(59,130,246,.3)}
+pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padding:14px 18px;
+  font-family:'JetBrains Mono','Fira Code',Consolas,monospace;font-size:.77rem;
+  line-height:1.65;overflow-x:auto;color:#E2E8F0}
+.kw{color:#FF79C6}.cls{color:#8BE9FD}.fn{color:#50FA7B}.str{color:#F1FA8C}
+.cm{color:#6272A4;font-style:italic}.num{color:#BD93F9}.op{color:#FF79C6}
+.mt{margin-top:10px}.mt2{margin-top:18px}.mt3{margin-top:26px}
+.row{display:flex;align-items:center;gap:12px}
+.col{display:flex;flex-direction:column}
+.g8{gap:8px}.g12{gap:12px}.g16{gap:16px}
+
+/* ── Slide 1: Title ── */
+#s1{background:radial-gradient(ellipse 90% 70% at 110% 40%,rgba(6,182,212,.13) 0%,transparent 55%),
+    radial-gradient(ellipse 60% 80% at -5% 80%,rgba(99,102,241,.09) 0%,transparent 55%),var(--navy);
+  justify-content:center;padding:72px 10%}
+#s1 .pre{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);margin-bottom:18px}
+#s1 h1{font-size:clamp(3rem,6vw,5rem);margin-bottom:20px}
+#s1 .sub{font-size:1rem;color:#94A3B8;max-width:520px;line-height:1.65;margin-bottom:36px}
+.badge-row{display:flex;gap:8px;flex-wrap:wrap}
+.badge{padding:4px 12px;border-radius:99px;font-size:11px;font-weight:600;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#CBD5E1}
+.deco{position:absolute;right:6%;top:50%;transform:translateY(-50%);
+  width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,rgba(6,182,212,.15) 0%,transparent 70%);pointer-events:none}
+
+/* ── Slide 2: Agenda Timeline ── */
+.agenda-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 40px;position:relative}
+.agenda-grid::before{content:'';position:absolute;top:0;bottom:0;left:50%;width:2px;
+  background:linear-gradient(to bottom,var(--cyan),var(--purple));transform:translateX(-50%)}
+.ag-item{display:flex;gap:12px;align-items:flex-start;padding:10px 0}
+.ag-left{text-align:right;padding-right:28px}
+.ag-right{padding-left:28px}
+.ag-dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--cyan);
+  border:2px solid var(--navy);left:50%;transform:translateX(-50%);top:50%}
+.ag-num{font-size:11px;font-weight:800;color:var(--cyan);letter-spacing:.06em;margin-bottom:3px}
+.ag-title{font-size:.86rem;font-weight:700;color:var(--white)}
+.ag-sub{font-size:.75rem;color:var(--gray);margin-top:2px}
+.ag-time{display:inline-block;padding:2px 8px;background:rgba(6,182,212,.12);
+  border:1px solid rgba(6,182,212,.25);border-radius:99px;font-size:10px;font-weight:700;color:var(--cyan);margin-bottom:4px}
+
+/* ── Slide 3: Overview ── */
+.ov-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ov-item{display:flex;gap:14px;padding:14px 16px;background:var(--navy2);
+  border-radius:9px;border:1px solid var(--navy3)}
+.ov-ico{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;
+  justify-content:center;font-size:15px;flex-shrink:0}
+.ic-c{background:rgba(6,182,212,.15)}.ic-g{background:rgba(16,185,129,.15)}
+.ic-a{background:rgba(245,158,11,.15)}.ic-p{background:rgba(167,139,250,.15)}
+.ov-lbl{font-size:.72rem;color:var(--gray);margin-bottom:3px}
+.ov-val{font-size:.88rem;font-weight:700;color:var(--white)}
+.ov-desc{font-size:.76rem;color:var(--gray)}
+
+/* ── Slide: Language Diff ── */
+.lang-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;flex:1}
+.lang-card{padding:14px 16px;background:var(--navy2);border-radius:9px;border:1px solid var(--navy3)}
+.lang-card h3{font-size:.82rem;margin-bottom:6px}
+.lang-diff{display:flex;flex-direction:column;gap:4px}
+.ld-row{display:flex;align-items:center;gap:6px;font-size:.75rem}
+.ld-before{padding:2px 8px;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.2);
+  border-radius:4px;color:var(--red2);font-family:Consolas,monospace}
+.ld-after{padding:2px 8px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);
+  border-radius:4px;color:var(--green2);font-family:Consolas,monospace}
+.ld-arrow{color:var(--cyan);font-size:.9rem}
+
+/* ── Pipeline ── */
+.pipe{display:flex;align-items:center;gap:0;margin:16px 0 20px;overflow-x:auto}
+.pipe-step{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1}
+.pipe-box{width:100%;padding:9px 6px;border-radius:8px;text-align:center;
+  font-size:.82rem;font-weight:700;border:2px solid transparent;white-space:nowrap}
+.pipe-step:nth-child(1) .pipe-box{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.5);color:#A5B4FC}
+.pipe-step:nth-child(3) .pipe-box{background:rgba(6,182,212,.15);border-color:rgba(6,182,212,.5);color:var(--cyan2)}
+.pipe-step:nth-child(5) .pipe-box{background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.5);color:var(--amber2)}
+.pipe-step:nth-child(7) .pipe-box{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.5);color:var(--green2)}
+.pipe-step:nth-child(9) .pipe-box{background:rgba(244,63,94,.15);border-color:rgba(244,63,94,.5);color:var(--red2)}
+.pipe-arrow{font-size:1.1rem;color:var(--navy3);flex-shrink:0;padding:0 2px;margin-bottom:22px}
+.pipe-lbl{font-size:.68rem;color:var(--gray);text-align:center}
+
+/* ── Execution Modes ── */
+.modes-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex:1}
+.mode-card{padding:14px 16px;background:var(--navy2);border-radius:10px;
+  border:1px solid var(--navy3);display:flex;flex-direction:column}
+.mode-card:nth-child(4){border-color:var(--cyan)}
+.mode-num{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:800;margin-bottom:10px;flex-shrink:0}
+.mode-card:nth-child(1) .mode-num{background:rgba(99,102,241,.2);color:#A5B4FC}
+.mode-card:nth-child(2) .mode-num{background:rgba(6,182,212,.2);color:var(--cyan2)}
+.mode-card:nth-child(3) .mode-num{background:rgba(245,158,11,.2);color:var(--amber2)}
+.mode-card:nth-child(4) .mode-num{background:rgba(16,185,129,.2);color:var(--green2)}
+.mode-name{font-size:.82rem;font-weight:700;color:var(--white);margin-bottom:6px}
+.mode-cmd{font-size:.72rem;font-family:Consolas,monospace;color:var(--cyan2);
+  background:#0D1117;padding:5px 9px;border-radius:5px;margin-bottom:8px;word-break:break-all}
+.mode-list{list-style:none;padding:0;flex:1}
+.mode-list li{font-size:.82rem;color:#94A3B8;padding:2px 0;padding-left:12px;position:relative}
+.mode-list li::before{content:'›';position:absolute;left:0;color:var(--cyan)}
+
+/* terminal mock */
+.terminal{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;overflow:hidden}
+.term-bar{background:#1E293B;padding:7px 12px;display:flex;align-items:center;gap:5px}
+.term-dot{width:9px;height:9px;border-radius:50%}
+.term-body{padding:12px 16px;font-family:Consolas,monospace;font-size:.76rem;line-height:1.7}
+.t-prompt{color:var(--green2)}.t-cmd{color:var(--white)}.t-out{color:#94A3B8}
+.t-err{color:var(--red2)}.t-debug{color:var(--amber)}.t-cyan{color:var(--cyan)}
+
+/* web mock */
+.web-mock{background:#1a1a2e;border:1px solid var(--navy3);border-radius:10px;overflow:hidden}
+.web-bar{background:#16213e;padding:8px 16px;display:flex;align-items:center;gap:10px}
+.web-url{background:#0f3460;border-radius:99px;padding:3px 12px;font-size:.72rem;
+  color:#94A3B8;font-family:Consolas,monospace;flex:1}
+.web-body{padding:16px;display:flex;gap:12px}
+.web-editor{flex:1;background:#0D1117;border-radius:7px;padding:10px 14px;
+  font-family:Consolas,monospace;font-size:.74rem;color:var(--white);line-height:1.6}
+.web-output{width:180px;background:#0D1117;border-radius:7px;padding:10px 14px;
+  font-family:Consolas,monospace;font-size:.74rem;color:var(--green2);line-height:1.6}
+.run-btn{background:linear-gradient(135deg,var(--cyan),var(--purple));
+  padding:5px 14px;border-radius:6px;font-size:.72rem;font-weight:700;color:var(--white)}
+
+/* ── Convention ── */
+.conv-split{display:grid;grid-template-columns:1fr 1fr;gap:18px;flex:1}
+.conv-item{display:flex;gap:10px;padding:9px 12px;background:var(--navy2);
+  border-radius:7px;border:1px solid var(--navy3)}
+.ci-label{font-size:.68rem;font-weight:700;color:var(--cyan);min-width:90px}
+.ci-value{font-size:.8rem;color:#CBD5E1;font-family:Consolas,monospace}
+.conv-test{background:#0D1117;border-radius:8px;padding:12px 16px}
+
+/* ── TDD ── */
+.tdd-flow{display:flex;align-items:center;gap:0;margin:10px 0}
+.tdd-step{flex:1;padding:16px 14px;border-radius:10px;text-align:center}
+.tdd-step.red{background:rgba(244,63,94,.12);border:2px solid rgba(244,63,94,.4)}
+.tdd-step.green{background:rgba(16,185,129,.12);border:2px solid rgba(16,185,129,.4)}
+.tdd-step.blue{background:rgba(59,130,246,.12);border:2px solid rgba(59,130,246,.4)}
+.tdd-step .tdd-label{font-size:1.1rem;font-weight:800;margin-bottom:5px}
+.tdd-step.red .tdd-label{color:var(--red)}
+.tdd-step.green .tdd-label{color:var(--green)}
+.tdd-step.blue .tdd-label{color:var(--blue2)}
+.tdd-step p{font-size:.78rem;color:#94A3B8;line-height:1.5}
+.tdd-arrow{font-size:1.4rem;color:var(--navy4);padding:0 6px;flex-shrink:0}
+.tdd-cases{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.tc{padding:8px 12px;background:var(--navy2);border-radius:7px;border:1px solid var(--navy3)}
+.tc-title{font-size:.72rem;font-weight:700;color:var(--white);margin-bottom:4px}
+.tc-desc{font-size:.7rem;color:var(--gray);line-height:1.45}
+
+/* ── Team ── */
+.team-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:12px;flex:1}
+.tc-card{padding:16px 18px;border-radius:10px;border:1px solid var(--navy3);background:var(--navy2);position:relative;overflow:hidden}
+.tc-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:10px 10px 0 0}
+.tc-card.a::before{background:linear-gradient(90deg,var(--cyan),var(--cyan2))}
+.tc-card.b::before{background:linear-gradient(90deg,var(--green),var(--green2))}
+.tc-card.c::before{background:linear-gradient(90deg,var(--amber),var(--amber2))}
+.tc-card.d::before{background:linear-gradient(90deg,var(--purple),var(--purple2))}
+.tch{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.tc-badge{padding:2px 9px;border-radius:5px;font-size:10px;font-weight:800;letter-spacing:.04em}
+.tc-card.a .tc-badge{background:rgba(6,182,212,.2);color:var(--cyan2)}
+.tc-card.b .tc-badge{background:rgba(16,185,129,.2);color:var(--green2)}
+.tc-card.c .tc-badge{background:rgba(245,158,11,.2);color:var(--amber2)}
+.tc-card.d .tc-badge{background:rgba(167,139,250,.2);color:var(--purple2)}
+.tc-title2{font-size:.86rem;font-weight:700;color:var(--white)}
+.tl{list-style:none;padding:0}
+.tl li{font-size:.76rem;color:#94A3B8;padding:2px 0;padding-left:12px;position:relative;line-height:1.45}
+.tl li::before{content:'›';position:absolute;left:0;color:var(--cyan)}
+.tc-card.b .tl li::before{color:var(--green)}
+.tc-card.c .tl li::before{color:var(--amber)}
+.tc-card.d .tl li::before{color:var(--purple)}
+
+/* ── Patterns ── */
+.pattern-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1}
+.pat-card{padding:15px 18px;background:var(--navy2);border-radius:9px;border:1px solid var(--navy3);overflow:hidden}
+.pat-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.pat-icon{font-size:1rem}
+.pat-name{font-size:.84rem;font-weight:700;color:var(--white)}
+.pat-tag{margin-left:auto}
+.pat-body{font-size:.76rem;color:#94A3B8;line-height:1.6}
+.pat-code{margin-top:8px;padding:6px 10px;background:#0D1117;border-radius:5px;
+  font-family:Consolas,monospace;font-size:.72rem;color:#CBD5E1;border-left:2px solid var(--cyan);line-height:1.5}
+
+/* ── PR19 ── */
+.pr-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(6,182,212,.1);
+  border:1px solid rgba(6,182,212,.3);border-radius:99px;padding:3px 11px;
+  font-size:10px;font-weight:700;color:var(--cyan);margin-bottom:14px;letter-spacing:.04em}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ba-b{padding:10px 14px;background:rgba(244,63,94,.07);border:1px solid rgba(244,63,94,.22);border-radius:7px}
+.ba-a{padding:10px 14px;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.22);border-radius:7px}
+.ba-lbl{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.ba-b .ba-lbl{color:var(--red)}.ba-a .ba-lbl{color:var(--green)}
+.ba-c{font-size:.74rem;color:#CBD5E1;line-height:1.6;font-family:Consolas,monospace}
+
+/* ── Refactoring ── */
+.ref-split{display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1;align-items:start}
+.rs-hdr{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:7px;
+  font-size:.78rem;font-weight:700;margin-bottom:8px}
+.rs-hdr.b{background:rgba(244,63,94,.1);color:var(--red);border:1px solid rgba(244,63,94,.22)}
+.rs-hdr.a{background:rgba(16,185,129,.1);color:var(--green);border:1px solid rgba(16,185,129,.22)}
+.rs-item{display:flex;gap:8px;padding:9px 12px;background:var(--navy2);border-radius:7px;
+  border:1px solid var(--navy3);font-size:.77rem;color:#94A3B8;line-height:1.45}
+.rs-dot{width:5px;height:5px;border-radius:50%;margin-top:7px;flex-shrink:0}
+.b .rs-dot{background:var(--red)}.a .rs-dot{background:var(--green)}
+.ref-note{padding:10px 16px;background:rgba(6,182,212,.07);border:1px solid rgba(6,182,212,.22);
+  border-radius:9px;font-size:.78rem;color:#CBD5E1;line-height:1.6}
+
+/* ── Code Review Activity (GitHub mock) ── */
+.gh-mock{background:#0D1117;border:1px solid #30363d;border-radius:10px;overflow:hidden}
+.gh-header{background:#161b22;padding:10px 16px;border-bottom:1px solid #30363d;
+  display:flex;align-items:center;gap:8px}
+.gh-title{font-size:.82rem;font-weight:600;color:#E6EDF3}
+.gh-state{padding:2px 9px;border-radius:99px;font-size:10px;font-weight:700}
+.gh-open{background:rgba(46,160,67,.2);color:#3fb950;border:1px solid rgba(46,160,67,.3)}
+.gh-merged{background:rgba(163,113,247,.2);color:#bc8cff;border:1px solid rgba(163,113,247,.3)}
+.gh-thread{margin:8px;background:#0D1117;border:1px solid #30363d;border-radius:7px;overflow:hidden}
+.gh-file{background:#161b22;padding:6px 12px;border-bottom:1px solid #30363d;
+  font-size:.72rem;font-family:Consolas,monospace;color:#8B949E}
+.gh-line{background:rgba(187,128,9,.08);border-left:3px solid var(--amber);
+  padding:5px 12px;font-family:Consolas,monospace;font-size:.75rem;color:#E6EDF3}
+.gh-comment{padding:10px 14px;display:flex;gap:10px}
+.gh-avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--purple));
+  display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;
+  color:var(--white);flex-shrink:0}
+.gh-meta{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.gh-user{font-size:.78rem;font-weight:700;color:#E6EDF3}
+.gh-time{font-size:.72rem;color:#8B949E}
+.gh-body{font-size:.78rem;color:#C9D1D9;line-height:1.6}
+.gh-reply{background:#161b22;margin-left:36px;margin:0 14px 10px 50px;
+  padding:8px 12px;border-radius:7px;font-size:.75rem;color:#C9D1D9;line-height:1.5;
+  border-left:2px solid var(--green)}
+
+/* ── AST Transform ── */
+.ast-transform{display:flex;align-items:center;gap:14px;padding:16px 20px;
+  background:var(--navy2);border-radius:9px;border:1px solid var(--navy3);margin-bottom:14px}
+.ast-node{padding:7px 14px;border-radius:7px;font-family:Consolas,monospace;
+  font-size:.78rem;font-weight:600;text-align:center}
+.an-b{background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.35);color:var(--red2)}
+.an-l{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.35);color:var(--green2)}
+.ast-arr{font-size:1.3rem;color:var(--cyan)}
+.metric-row{display:flex;gap:12px}
+.metric{flex:1;padding:12px 16px;background:var(--navy2);border-radius:9px;text-align:center;border:1px solid var(--navy3)}
+.m-b{font-size:1.5rem;font-weight:800;color:var(--red)}
+.m-a{font-size:1.5rem;font-weight:800;color:var(--green)}
+.m-lbl{font-size:.72rem;color:var(--gray);margin-top:3px}
+
+/* ── Code Review Highlights ── */
+.rv-list{display:flex;flex-direction:column;gap:10px;flex:1}
+.rv-item{display:flex;gap:14px;padding:12px 16px;background:var(--navy2);border-radius:9px;
+  border-left:3px solid var(--cyan);border-top:1px solid var(--navy3);
+  border-right:1px solid var(--navy3);border-bottom:1px solid var(--navy3)}
+.rv-item:nth-child(2){border-left-color:var(--amber)}
+.rv-item:nth-child(3){border-left-color:var(--purple)}
+.rv-item:nth-child(4){border-left-color:var(--green)}
+.rv-num{font-size:1.1rem;font-weight:800;color:var(--cyan);min-width:24px;padding-top:2px}
+.rv-item:nth-child(2) .rv-num{color:var(--amber)}
+.rv-item:nth-child(3) .rv-num{color:var(--purple)}
+.rv-item:nth-child(4) .rv-num{color:var(--green)}
+.rv-title{font-size:.84rem;font-weight:700;color:var(--white);margin-bottom:5px}
+.rv-diff{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.rv-bf{font-size:.72rem;font-family:Consolas,monospace;padding:2px 8px;border-radius:4px;
+  background:rgba(244,63,94,.1);color:var(--red2);border:1px solid rgba(244,63,94,.18)}
+.rv-af{font-size:.72rem;font-family:Consolas,monospace;padding:2px 8px;border-radius:4px;
+  background:rgba(16,185,129,.1);color:var(--green2);border:1px solid rgba(16,185,129,.18)}
+.rv-arrow{color:var(--cyan);font-size:.85rem;align-self:center}
+.rv-desc{font-size:.75rem;color:var(--gray);line-height:1.5}
+
+/* ── Closing ── */
+#s-closing{background:radial-gradient(ellipse 70% 80% at 50% 120%,rgba(6,182,212,.1) 0%,transparent 55%),var(--navy);
+  align-items:center;text-align:center}
+#s-closing h1{font-size:clamp(1.8rem,3.5vw,2.8rem);margin-bottom:12px}
+.feat-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:18px 0}
+.feat{padding:6px 14px;background:var(--navy2);border:1px solid var(--navy3);border-radius:99px;font-size:.76rem;color:#CBD5E1}
+.test-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
+.tch2{display:flex;align-items:center;gap:5px;padding:4px 12px;
+  background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.28);
+  border-radius:99px;font-size:.74rem;font-family:Consolas,monospace;color:var(--green)}
+.tch2::before{content:'✓';font-weight:800}
+.qa{font-size:1.3rem;font-weight:800;color:var(--cyan);letter-spacing:.1em}
+</style>
+</head>
+<body>
+<div id="pres">
+
+<!-- ══ S0: TEAM COVER ══ -->
+<section class="slide active" style="background:radial-gradient(ellipse 80% 60% at 15% 30%,rgba(6,182,212,.12) 0%,transparent 55%),radial-gradient(ellipse 70% 80% at 110% 80%,rgba(167,139,250,.09) 0%,transparent 55%),var(--navy);justify-content:center;align-items:center;text-align:center;padding:72px 12%">
+  <div style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;overflow:hidden">
+    <div style="position:absolute;top:18%;left:8%;width:180px;height:180px;border-radius:50%;border:1px solid rgba(6,182,212,.1)"></div>
+    <div style="position:absolute;bottom:20%;right:6%;width:260px;height:260px;border-radius:50%;border:1px solid rgba(167,139,250,.08)"></div>
+  </div>
+  <div style="position:relative;z-index:1">
+    <div style="display:inline-flex;align-items:center;gap:10px;padding:5px 18px;border-radius:99px;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.25);margin-bottom:28px">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan)">C조 · Team Project</span>
+    </div>
+    <h1 style="font-size:clamp(2.4rem,5vw,4.2rem);font-weight:800;line-height:1.1;margin-bottom:10px">
+      Clean Code Crew<br><span style="color:var(--cyan)">(CCC)</span>
+    </h1>
+    <div style="font-size:1.1rem;color:#94A3B8;margin-bottom:36px;letter-spacing:.02em">
+      CodeFab Interpreter 프로젝트
+    </div>
+    <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-bottom:44px">
+      <div style="padding:14px 22px;background:var(--navy2);border:1px solid var(--navy3);border-radius:10px;min-width:100px">
+        <div style="font-size:.68rem;font-weight:700;letter-spacing:.1em;color:var(--cyan);margin-bottom:5px">팀장</div>
+        <div style="font-size:.96rem;font-weight:700;color:var(--white)">오진섭</div>
+      </div>
+      <div style="padding:14px 22px;background:var(--navy2);border:1px solid var(--navy3);border-radius:10px;min-width:100px">
+        <div style="font-size:.68rem;font-weight:700;letter-spacing:.1em;color:var(--purple);margin-bottom:5px">팀원</div>
+        <div style="font-size:.96rem;font-weight:700;color:var(--white)">이현범</div>
+      </div>
+      <div style="padding:14px 22px;background:var(--navy2);border:1px solid var(--navy3);border-radius:10px;min-width:100px">
+        <div style="font-size:.68rem;font-weight:700;letter-spacing:.1em;color:var(--green);margin-bottom:5px">팀원</div>
+        <div style="font-size:.96rem;font-weight:700;color:var(--white)">이재환</div>
+      </div>
+      <div style="padding:14px 22px;background:var(--navy2);border:1px solid var(--navy3);border-radius:10px;min-width:100px">
+        <div style="font-size:.68rem;font-weight:700;letter-spacing:.1em;color:var(--amber);margin-bottom:5px">팀원</div>
+        <div style="font-size:.96rem;font-weight:700;color:var(--white)">이희경</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+      <span class="badge">Java 17</span>
+      <span class="badge">JUnit 5 · TDD</span>
+      <span class="badge">GoF Patterns</span>
+      <span class="badge">233 Tests GREEN</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S2: AGENDA ══ -->
+<section class="slide" id="s-agenda">
+  <div class="lbl">Agenda</div>
+  <h2>발표 목차</h2>
+  <div style="display:flex;flex-direction:column;gap:10px;padding:4px 40px;flex:1;justify-content:center">
+
+    <!-- 01 프로젝트 개요 -->
+    <div style="display:flex;gap:18px;align-items:center;padding:14px 20px;background:var(--navy2);border-radius:10px;border:1px solid var(--navy3);border-left:3px solid var(--cyan)">
+      <div style="font-size:1.4rem;font-weight:800;color:var(--cyan);min-width:34px;flex-shrink:0">01</div>
+      <div>
+        <div style="font-size:.94rem;font-weight:700;color:var(--white)">프로젝트 개요</div>
+        <div style="font-size:.77rem;color:var(--gray);margin-top:3px">CodeFab란? · 팀 구성 · 구현 역할</div>
+      </div>
+    </div>
+
+    <!-- 02 실행 모드 -->
+    <div style="display:flex;gap:18px;align-items:center;padding:14px 20px;background:var(--navy2);border-radius:10px;border:1px solid var(--navy3);border-left:3px solid var(--green)">
+      <div style="font-size:1.4rem;font-weight:800;color:var(--green);min-width:34px;flex-shrink:0">02</div>
+      <div>
+        <div style="font-size:.94rem;font-weight:700;color:var(--white)">실행 모드 4가지</div>
+        <div style="font-size:.77rem;color:var(--gray);margin-top:3px">REPL · 파일 실행 · 디버그 · 웹 실행(NEW)</div>
+      </div>
+    </div>
+
+    <!-- 03 개발 과정 -->
+    <div style="display:flex;gap:18px;align-items:center;padding:14px 20px;background:var(--navy2);border-radius:10px;border:1px solid var(--navy3);border-left:3px solid var(--amber)">
+      <div style="font-size:1.4rem;font-weight:800;color:var(--amber);min-width:34px;flex-shrink:0">03</div>
+      <div style="flex:1">
+        <div style="font-size:.94rem;font-weight:700;color:var(--white)">개발 과정</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <span style="padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700;background:rgba(251,191,36,.12);color:var(--amber2);border:1px solid rgba(251,191,36,.3)">CCC's Coding Style</span>
+          <span style="padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700;background:rgba(251,191,36,.12);color:var(--amber2);border:1px solid rgba(251,191,36,.3)">TDD 적용</span>
+          <span style="padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700;background:rgba(251,191,36,.12);color:var(--amber2);border:1px solid rgba(251,191,36,.3)">Design Patterns</span>
+          <span style="padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700;background:rgba(251,191,36,.12);color:var(--amber2);border:1px solid rgba(251,191,36,.3)">Code Review</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 다른 언어와의 차이점 -->
+    <div style="display:flex;gap:18px;align-items:center;padding:14px 20px;background:var(--navy2);border-radius:10px;border:1px solid var(--navy3);border-left:3px solid var(--purple)">
+      <div style="font-size:1.4rem;font-weight:800;color:var(--purple);min-width:34px;flex-shrink:0">04</div>
+      <div>
+        <div style="font-size:.94rem;font-weight:700;color:var(--white)">다른 언어와의 차이점</div>
+        <div style="font-size:.77rem;color:var(--gray);margin-top:3px">진리값 · nil · 숫자 포맷 · 배열 · 클로저</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ S3b: TEAM INTRO ══ -->
+<section class="slide">
+  <div class="lbl">01 — 프로젝트 개요</div>
+  <h2>팀원 소개 &amp; 구현 역할</h2>
+
+  <!-- 팀원 카드 4열 -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex:1">
+
+    <!-- 팀원 A: 오진섭 · Checker -->
+    <div style="padding:14px 16px;background:var(--navy2);border-radius:10px;border:1px solid var(--navy3);border-top:3px solid var(--cyan);display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+        <div style="padding:2px 8px;border-radius:5px;font-size:13px;font-weight:800;background:rgba(6,182,212,.2);color:var(--cyan2)">A</div>
+        <div>
+          <div style="font-size:1rem;font-weight:700;color:var(--white)">오진섭</div>
+          <div style="font-size:.68rem;color:var(--cyan);font-weight:600">팀장</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:.9rem;font-weight:700;color:var(--cyan2);margin-bottom:5px">Checker 구현</div>
+        <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:3px">
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--cyan)">›</span>미선언 변수 · 중복 선언 검사</li>
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--cyan)">›</span>함수 외 <code style="font-size:.68rem">return</code> 금지 검사</li>
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--cyan)">›</span>REPL 모드 분리 (<code style="font-size:.68rem">replMode</code>)</li>
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--cyan)">›</span>Visitor로 AST 두 번 순회</li>
+        </ul>
+      </div>
+      <div style="margin-top:auto;padding:8px 10px;background:rgba(6,182,212,.07);border-left:2px solid var(--cyan);border-radius:0 5px 5px 0;font-size:.9rem;color:#94A3B8;line-height:1.7;font-style:italic">
+        "클로드를 활용해보니, AI의 발전 속도를 몸소 체감할 수 있었습니다. <br> 단순히 신기하다는 차원을 넘어, AI를 어떻게 적절히 활용해야 업무 생산성을 높일 수 있을지 깊이 고민해봐야겠다는 다짐을 하게 된 계기였습니다."
+      </div>
+    </div>
+
+    <!-- 팀원 B: 이현범 · Executor -->
+    <div style="padding:14px 16px;background:var(--navy2);border-radius:10px;border:1px solid var(--navy3);border-top:3px solid var(--green);display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+        <div style="padding:2px 8px;border-radius:5px;font-size:13px;font-weight:800;background:rgba(16,185,129,.2);color:var(--green2)">B</div>
+        <div>
+          <div style="font-size:1rem;font-weight:700;color:var(--white)">이현범</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:.9rem;font-weight:700;color:var(--green2);margin-bottom:5px">Executor 구현</div>
+        <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:3px">
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--green)">›</span>트리워킹 인터프리터</li>
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--green)">›</span>Environment 체인 · 클로저</li>
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--green)">›</span><code style="font-size:.68rem">ReturnException</code> 제어 흐름</li>
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--green)">›</span>런타임 오류 · 호출 깊이 제한</li>
+        </ul>
+      </div>
+      <div style="margin-top:auto;padding:8px 10px;background:rgba(16,185,129,.07);border-left:2px solid var(--green);border-radius:0 5px 5px 0;font-size:.9rem;color:#94A3B8;line-height:1.7;font-style:italic">
+        "혼자 짜는 코드가 아니라 함께 읽고 합의하는 코드라는 걸 배웠습니다. <br>  PR을 올리고 리뷰를 기다리고 충돌을 맞추는 과정이 번거롭게 느껴지기도 했지만, 결국 그 과정이 코드 품질을 끌어올린다는 걸 알게 됐습니다."
+      </div>
+    </div>
+
+    <!-- 팀원 C: 이재환 · Scanner -->
+    <div style="padding:14px 16px;background:var(--navy2);border-radius:10px;border:1px solid var(--navy3);border-top:3px solid var(--amber);display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+        <div style="padding:2px 8px;border-radius:5px;font-size:13px;font-weight:800;background:rgba(245,158,11,.2);color:var(--amber2)">C</div>
+        <div>
+          <div style="font-size:1rem;font-weight:700;color:var(--white)">이재환</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:.9rem;font-weight:700;color:var(--amber2);margin-bottom:5px">Scanner 구현</div>
+        <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:3px">
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--amber)">›</span>소스 문자열 → 토큰 리스트</li>
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--amber)">›</span>키워드 판별 · 리터럴 처리</li>
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--amber)">›</span>오류 누적 후 계속 진행</li>
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--amber)">›</span>줄 번호 · 위치 정보 추적</li>
+        </ul>
+      </div>
+      <div style="margin-top:auto;padding:8px 10px;background:rgba(245,158,11,.07);border-left:2px solid var(--amber);border-radius:0 5px 5px 0;font-size:.9rem;color:#94A3B8;line-height:1.7;font-style:italic">
+        "평소 그저 가져다 쓰기만 하던 인터프리터를 직접 만들어보는 과정이 무엇보다 흥미로웠습니다. <br>코드 한 줄이 실행되기까지의 흐름을 직접 구현하면서 추상적으로만 알던 개념이 눈앞에서 돌아가는 모습을 보는 건 색다른 즐거움이었습니다."
+      </div>
+    </div>
+
+    <!-- 팀원 D: 이희경 · Parser -->
+    <div style="padding:14px 16px;background:var(--navy2);border-radius:10px;border:1px solid var(--navy3);border-top:3px solid var(--purple);display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+        <div style="padding:2px 8px;border-radius:5px;font-size:13px;font-weight:800;background:rgba(167,139,250,.2);color:var(--purple2)">D</div>
+        <div>
+          <div style="font-size:1rem;font-weight:700;color:var(--white)">이희경</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:.9rem;font-weight:700;color:var(--purple2);margin-bottom:5px">Parser 구현</div>
+        <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:3px">
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--purple)">›</span>재귀 하강 파싱</li>
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--purple)">›</span>연산자 우선순위 · AST 생성</li>
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--purple)">›</span>오류 복구 <code style="font-size:.68rem">recoverToNextStatement</code></li>
+          <li style="font-size:.9rem;color:#94A3B8;padding-left:10px;position:relative"><span style="position:absolute;left:0;color:var(--purple)">›</span><code style="font-size:.68rem">DiagnosticMessage</code> 상수 관리</li>
+        </ul>
+      </div>
+      <div style="margin-top:auto;padding:8px 10px;background:rgba(167,139,250,.07);border-left:2px solid var(--purple);border-radius:0 5px 5px 0;font-size:.9rem;color:#94A3B8;line-height:1.7;font-style:italic">
+        "레거시에 발목 잡히지 않고 처음부터 새로 짜다 보니, 클린코드와 리뷰, 더 나은 설계 그 자체에만 온전히 집중할 수 있었던 값진 시간이었습니다. <br>코드리뷰를 주고받으며 내 코드를 남의 눈으로 다시 보는 법을 배웠습니다."
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ S3: OVERVIEW ══ -->
+<section class="slide">
+  <div class="lbl">01 — 프로젝트 개요</div>
+  <h2>프로젝트 개요</h2>
+
+  <!-- 핵심 요약 4칸 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px">
+    <div class="ov-item">
+      <div class="ov-ico ic-c">⚙️</div>
+      <div><div class="ov-lbl">프로젝트</div><div class="ov-val">CodeFab</div>
+        <div class="ov-desc">Java 17 · 표준 라이브러리만</div></div>
+    </div>
+    <div class="ov-item">
+      <div class="ov-ico ic-g">✅</div>
+      <div><div class="ov-lbl">개발 방식</div><div class="ov-val">TDD</div>
+        <div class="ov-desc">233개 테스트 전체 GREEN</div></div>
+    </div>
+    <div class="ov-item">
+      <div class="ov-ico ic-a">🗣️</div>
+      <div><div class="ov-lbl">지원 기능</div><div class="ov-val">변수·조건·반복·함수·배열</div>
+        <div class="ov-desc">클로저 · 재귀 · 상수 폴딩</div></div>
+    </div>
+    <div class="ov-item">
+      <div class="ov-ico ic-p">👥</div>
+      <div><div class="ov-lbl">팀 구성</div><div class="ov-val">CCC · 4인</div>
+        <div class="ov-desc">Scanner · Parser · Checker · Executor</div></div>
+    </div>
+  </div>
+
+  <div style="font-size:.7rem;font-weight:700;color:var(--gray2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px">컴파일 파이프라인</div>
+  <div class="pipe">
+    <div class="pipe-step"><div class="pipe-box">Scanner<div class="pipe-lbl" style="margin-top:4px">소스 문자열</div></div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="pipe-box">Parser<div class="pipe-lbl" style="margin-top:4px">Token 리스트</div></div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="pipe-box">Checker<div class="pipe-lbl" style="margin-top:4px">AST</div></div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="pipe-box">ConstantFolder<div class="pipe-lbl" style="margin-top:4px">검증된 AST</div></div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="pipe-box">Executor<div class="pipe-lbl" style="margin-top:4px">최적화 AST</div></div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;flex:1">
+    <div class="card"><div class="pat-name" style="color:#A5B4FC;font-size:.78rem;margin-bottom:5px">Scanner</div>
+      <div style="font-size:.73rem;color:#94A3B8;line-height:1.5">문자→Token<br>키워드 판별<br>오류 누적 후 계속</div></div>
+    <div class="card"><div class="pat-name" style="color:var(--cyan2);font-size:.78rem;margin-bottom:5px">Parser</div>
+      <div style="font-size:.73rem;color:#94A3B8;line-height:1.5">재귀 하강<br>연산자 우선순위<br>오류 복구(recover)</div></div>
+    <div class="card"><div class="pat-name" style="color:var(--amber2);font-size:.78rem;margin-bottom:5px">Checker</div>
+      <div style="font-size:.73rem;color:#94A3B8;line-height:1.5">미선언 변수<br>중복 선언<br>함수 외 return</div></div>
+    <div class="card"><div class="pat-name" style="color:var(--green2);font-size:.78rem;margin-bottom:5px">ConstantFolder</div>
+      <div style="font-size:.73rem;color:#94A3B8;line-height:1.5">3+4→Literal(7)<br>0나눗셈 생략<br>진단 발생 금지</div></div>
+    <div class="card"><div class="pat-name" style="color:var(--red2);font-size:.78rem;margin-bottom:5px">Executor</div>
+      <div style="font-size:.73rem;color:#94A3B8;line-height:1.5">트리워킹 실행<br>Environment 체인<br>InterpreterRuntimeError</div></div>
+  </div>
+  <div class="card mt" style="padding:9px 16px">
+    <p style="font-size:.76rem;color:#94A3B8"><strong style="color:var(--white)">오류 흐름:</strong> 공유 <code>diagnostics</code> 리스트 → 단계 완료 후 비어있지 않으면 즉시 <span style="color:var(--red)">failure()</span> → <code>RunResult(success=false)</code></p>
+  </div>
+</section>
+
+<!-- ══ S6: EXECUTION MODES ══ -->
+<section class="slide">
+  <div class="lbl">02 — 실행 모드 3+1가지</div>
+  <h2>실행 모드 4가지</h2>
+  <div class="modes-grid">
+    <!-- Mode 1: REPL -->
+    <div class="mode-card">
+      <div class="mode-num">1</div>
+      <div class="mode-name">REPL 모드</div>
+      <div class="mode-cmd">./factory</div>
+      <ul class="mode-list">
+        <li>대화형 인터프리터</li>
+        <li>멀티라인 입력 지원</li>
+        <li>이전 입력 상태 유지</li>
+        <li>isComplete / isPendingElse</li>
+      </ul>
+      <div class="terminal mt" style="margin-top:auto;display:flex;flex-direction:column;height:310px">
+        <div class="term-bar"><div class="term-dot" style="background:#ff5f57"></div><div class="term-dot" style="background:#febc2e"></div><div class="term-dot" style="background:#28c840"></div></div>
+        <div class="term-body" style="flex:1;padding:0;overflow:hidden;background:#0D1117;border-radius:0 0 6px 6px">
+          <img src="docs/demo-repl.gif" style="width:220%;height:auto;max-width:none;display:block;vertical-align:top">
+        </div>
+      </div>
+    </div>
+    <!-- Mode 2: File -->
+    <div class="mode-card">
+      <div class="mode-num">2</div>
+      <div class="mode-name">파일 실행 모드</div>
+      <div class="mode-cmd">./factory run &lt;file&gt;</div>
+      <ul class="mode-list">
+        <li>스크립트 파일 일괄 실행</li>
+        <li>stdout / stderr 분리</li>
+        <li>오류 시 줄 번호 출력</li>
+        <li>종료 코드: 0 / 65 / 66</li>
+      </ul>
+      <div class="terminal mt" style="margin-top:auto;display:flex;flex-direction:column;height:310px">
+        <div class="term-bar"><div class="term-dot" style="background:#ff5f57"></div><div class="term-dot" style="background:#febc2e"></div><div class="term-dot" style="background:#28c840"></div></div>
+        <div class="term-body" style="flex:1;padding:0;overflow:hidden;background:#0D1117;border-radius:0 0 6px 6px">
+          <img src="docs/demo-file.gif" style="width:220%;height:auto;max-width:none;display:block;vertical-align:top">
+        </div>
+      </div>
+    </div>
+    <!-- Mode 3: Debug -->
+    <div class="mode-card">
+      <div class="mode-num">3</div>
+      <div class="mode-name">디버그 모드</div>
+      <div class="mode-cmd">./factory debug &lt;file&gt;</div>
+      <ul class="mode-list">
+        <li>step / next / continue</li>
+        <li>break &lt;line&gt; / breakpoints</li>
+        <li>watch &lt;var&gt; / inspect</li>
+        <li>Command 패턴 레지스트리</li>
+      </ul>
+      <div class="terminal mt" style="margin-top:auto;display:flex;flex-direction:column;height:310px">
+        <div class="term-bar"><div class="term-dot" style="background:#ff5f57"></div><div class="term-dot" style="background:#febc2e"></div><div class="term-dot" style="background:#28c840"></div></div>
+        <div class="term-body" style="flex:1;padding:0;overflow:hidden;background:#0D1117;border-radius:0 0 6px 6px">
+          <img src="docs/demo-debug.gif" style="width:190%;height:auto;max-width:none;display:block;vertical-align:top">
+        </div>
+      </div>
+    </div>
+    <!-- Mode 4: Web -->
+    <div class="mode-card" style="border-color:var(--cyan)">
+      <div class="mode-num" style="background:rgba(6,182,212,.2);color:var(--cyan2)">🌐</div>
+      <div class="mode-name">웹 실행 모드 <span class="tag" style="font-size:9px;margin-left:4px">NEW</span></div>
+      <div class="mode-cmd" style="font-size:.68rem"><a href="http://158.179.194.73/" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:none">CCC 웹사이트 ↗</a></div>
+      <ul class="mode-list">
+        <li>브라우저에서 바로 체험</li>
+        <li>로컬 설치 불필요</li>
+        <li>FirstCCCProject 호스팅</li>
+        <li>Playwright E2E 검증</li>
+      </ul>
+      <div class="web-mock mt" style="margin-top:auto;height:310px;overflow:hidden">
+        <div class="web-bar">
+          <div style="display:flex;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:#ff5f57"></div><div style="width:8px;height:8px;border-radius:50%;background:#febc2e"></div><div style="width:8px;height:8px;border-radius:50%;background:#28c840"></div></div>
+          <div class="web-url"><a href="http://158.179.194.73/" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">CCC 웹사이트</a></div>
+          <div class="run-btn">▶ Run</div>
+        </div>
+        <div class="web-body" style="padding:10px 12px;gap:6px;flex-direction:column">
+          <div class="web-editor" style="font-size:.68rem;padding:7px 10px">
+            <div style="color:var(--gray);margin-bottom:4px;font-size:.64rem">✏ Code</div>
+            <span style="color:#FF79C6">Func</span> fib(n) {<br>
+            &nbsp;&nbsp;<span style="color:#FF79C6">if</span> (n &lt;= 1) <span style="color:#FF79C6">return</span> n;<br>
+            &nbsp;&nbsp;<span style="color:#FF79C6">return</span> fib(n-1) + fib(n-2);<br>
+            }<br>
+            <span style="color:#FF79C6">print</span> fib(10);
+          </div>
+          <div class="web-output" style="font-size:.68rem;padding:7px 10px;width:auto">
+            <div style="color:var(--gray);margin-bottom:4px;font-size:.64rem">▶ Output</div>
+            55
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S7: CONVENTION ══ -->
+<section class="slide">
+  <div class="lbl">03 — 개발 과정</div>
+  <h2>CCC's 코드 컨벤션</h2>
+  <div class="conv-split">
+    <!-- LEFT: Google Style -->
+    <div>
+      <h3 class="mb">Google Coding Style Guide 기반 커스텀</h3>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="conv-item"><span class="ci-label">들여쓰기</span><span class="ci-value">4칸 (Google 기본 2 → 팀 커스텀)</span></div>
+        <div class="conv-item"><span class="ci-label">우측 여백</span><span class="ci-value">100자 (RIGHT_MARGIN = 100)</span></div>
+        <div class="conv-item"><span class="ci-label">탭 사용</span><span class="ci-value">false — 스페이스 사용</span></div>
+        <div class="conv-item"><span class="ci-label">중괄호 강제</span><span class="ci-value">if/while/for 항상 중괄호 (FORCE = 3)</span></div>
+        <div class="conv-item"><span class="ci-label">Import 순서</span><span class="ci-value">static → (빈줄) → non-static</span></div>
+        <div class="conv-item"><span class="ci-label">이항 연산 줄바꿈</span><span class="ci-value">다음 줄 첫번째로 (SIGN_ON_NEXT_LINE)</span></div>
+      </div>
+      <h3 style="margin-top:10px;margin-bottom:6px">IntelliJ Action on Save</h3>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="conv-item"><span class="ci-label">Reformat Code</span><span class="ci-value">저장 시 자동 코드 포맷팅 적용</span></div>
+        <div class="conv-item"><span class="ci-label">Optimize imports</span><span class="ci-value">미사용 import 자동 제거 및 정렬</span></div>
+        <div class="conv-item"><span class="ci-label">Run code cleanup</span><span class="ci-value">코드 스타일 규칙 자동 정리</span></div>
+      </div>
+    </div>
+    <!-- RIGHT: Test Convention -->
+    <div>
+      <h3 class="mb">테스트 메서드 네이밍 규칙</h3>
+      <div class="ref-note" style="font-size:.76rem;margin-bottom:10px">
+        📌 PR #11 — <strong>팀 내 Test 메서드 Naming Rule 적용</strong><br>
+        빌드 안정성을 위해 메서드명은 영어, 의도 설명은 <code>@DisplayName</code> 한글로 분리
+      </div>
+      <div class="card" style="margin-bottom:10px;padding:10px 14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span class="tag-r tag" style="font-size:9px">Before</span>
+          <span style="font-size:.74rem;color:var(--gray)">한글 메서드명 → 빌드 불안정</span>
+        </div>
+        <pre class="code" style="padding:8px 12px;font-size:.72rem"><span class="kw">@Test</span>
+<span class="kw">void</span> <span class="fn">정수형숫자출력</span>() { ... }</pre>
+      </div>
+      <div class="card card-g" style="margin-bottom:10px;padding:10px 14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span class="tag-g tag" style="font-size:9px">After</span>
+          <span style="font-size:.74rem;color:var(--gray)">영문 메서드 + 한글 DisplayName — ExecutorTest.java</span>
+        </div>
+        <pre class="code" style="padding:8px 12px;font-size:.72rem"><span class="kw">@DisplayName</span>(<span class="str">"정수형 숫자 출력"</span>)
+<span class="kw">@Test</span>
+<span class="kw">void</span> <span class="fn">printsIntegralNumberWithoutDecimalPoint</span>() {
+  run(print(lit(<span class="num">42.0</span>)));
+  verify(output).print(<span class="str">"42"</span>);
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S8: TDD ══ -->
+<section class="slide">
+  <div class="lbl">03 — 개발 과정</div>
+  <h2 style="margin-bottom:13px">TDD : Red → Green → Refactor Cycle</h2>
+  <div class="tdd-flow">
+    <div class="tdd-step red">
+      <div class="tdd-label">🔴 RED</div>
+      <p>테스트 먼저 작성<br>구현 없이 실패 확인</p>
+    </div>
+    <div class="tdd-arrow">→</div>
+    <div class="tdd-step green">
+      <div class="tdd-label">🟢 GREEN</div>
+      <p>테스트 통과하는<br>최소 구현 작성</p>
+    </div>
+    <div class="tdd-arrow">→</div>
+    <div class="tdd-step blue">
+      <div class="tdd-label">🔵 REFACTOR</div>
+      <p>동작 보존하며<br>코드 품질 개선</p>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1;margin-top:12px;align-items:start">
+    <!-- Left: PR #8 Commit History — TDD Cycle 증거 -->
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <h3 style="font-size:.82rem;margin-bottom:0">PR #8 — Commit History</h3>
+        <span style="padding:2px 8px;border-radius:99px;font-size:9px;font-weight:700;background:rgba(6,182,212,.15);color:var(--cyan2);border:1px solid rgba(6,182,212,.3)">26 commits</span>
+      </div>
+      <div style="font-size:.67rem;color:var(--gray);padding:4px 9px;background:rgba(244,63,94,.07);border-left:2px solid var(--red2);border-radius:0 4px 4px 0;margin-bottom:7px">
+        🔴 RED: 로컬에서 실패 확인 → 별도 커밋 없이 GREEN 진행
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 9px;background:rgba(16,185,129,.08);border-left:2px solid var(--green);border-radius:0 4px 4px 0">
+          <span style="font-size:.63rem;font-weight:700;color:var(--green2);flex-shrink:0;width:70px">[Cycle 1]</span>
+          <span style="font-size:.66rem;color:#CBD5E1;flex:1"><code style="font-size:.58rem;color:var(--gray3);background:none;padding:0">4f0d97d</code> Checker.check() 에러 없음 검증</span>
+          <span style="font-size:.6rem;background:rgba(16,185,129,.2);color:var(--green2);padding:1px 6px;border-radius:99px;font-weight:700;flex-shrink:0">🟢 GREEN</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 9px;background:rgba(59,130,246,.08);border-left:2px solid var(--blue);border-radius:0 4px 4px 0">
+          <span style="font-size:.63rem;font-weight:700;color:var(--blue2);flex-shrink:0;width:70px">[Cycle 1]</span>
+          <span style="font-size:.66rem;color:#CBD5E1;flex:1"><code style="font-size:.58rem;color:var(--gray3);background:none;padding:0">303831f</code> errors 중복 초기화 제거</span>
+          <span style="font-size:.6rem;background:rgba(59,130,246,.2);color:var(--blue2);padding:1px 6px;border-radius:99px;font-weight:700;flex-shrink:0">🔵 REFACTOR</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 9px;background:rgba(16,185,129,.08);border-left:2px solid var(--green);border-radius:0 4px 4px 0">
+          <span style="font-size:.63rem;font-weight:700;color:var(--green2);flex-shrink:0;width:70px">[Cycle 2]</span>
+          <span style="font-size:.66rem;color:#CBD5E1;flex:1"><code style="font-size:.58rem;color:var(--gray3);background:none;padding:0">3447ed2</code> GREEN 완료</span>
+          <span style="font-size:.6rem;background:rgba(16,185,129,.2);color:var(--green2);padding:1px 6px;border-radius:99px;font-weight:700;flex-shrink:0">🟢 GREEN</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 9px;background:rgba(59,130,246,.08);border-left:2px solid var(--blue);border-radius:0 4px 4px 0">
+          <span style="font-size:.63rem;font-weight:700;color:var(--blue2);flex-shrink:0;width:70px">[Cycle 2]</span>
+          <span style="font-size:.66rem;color:#CBD5E1;flex:1"><code style="font-size:.58rem;color:var(--gray3);background:none;padding:0">e1352c5</code> REFACTOR 완료</span>
+          <span style="font-size:.6rem;background:rgba(59,130,246,.2);color:var(--blue2);padding:1px 6px;border-radius:99px;font-weight:700;flex-shrink:0">🔵 REFACTOR</span>
+        </div>
+        <div style="text-align:center;padding:2px 0;color:var(--gray2);font-size:.8rem;letter-spacing:.2em">···</div>
+        <div style="padding:4px 10px;background:var(--navy2);border-radius:4px;border:1px solid var(--navy3);font-size:.64rem;color:var(--gray);text-align:center">Cycle 3 ~ 9 &nbsp;·&nbsp; GREEN → REFACTOR × 7 반복</div>
+        <div style="text-align:center;padding:2px 0;color:var(--gray2);font-size:.8rem;letter-spacing:.2em">···</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 9px;background:rgba(16,185,129,.06);border-left:2px solid var(--amber);border-radius:0 4px 4px 0">
+          <span style="font-size:.63rem;font-weight:700;color:var(--amber2);flex-shrink:0;width:70px">[Cycle 10]</span>
+          <span style="font-size:.66rem;color:#CBD5E1;flex:1"><code style="font-size:.58rem;color:var(--gray3);background:none;padding:0">c917d33</code> 통합 시나리오 — RED 없이 직행</span>
+          <span style="font-size:.6rem;background:rgba(16,185,129,.2);color:var(--green2);padding:1px 6px;border-radius:99px;font-weight:700;flex-shrink:0">🟢 GREEN</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 9px;background:rgba(16,185,129,.08);border-left:2px solid var(--green);border-radius:0 4px 4px 0">
+          <span style="font-size:.63rem;font-weight:700;color:var(--green2);flex-shrink:0;width:70px">[Cycle 11]</span>
+          <span style="font-size:.66rem;color:#CBD5E1;flex:1"><code style="font-size:.58rem;color:var(--gray3);background:none;padding:0">b5da3f7</code> GREEN 완료</span>
+          <span style="font-size:.6rem;background:rgba(16,185,129,.2);color:var(--green2);padding:1px 6px;border-radius:99px;font-weight:700;flex-shrink:0">🟢 GREEN</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 9px;background:rgba(59,130,246,.08);border-left:2px solid var(--blue);border-radius:0 4px 4px 0">
+          <span style="font-size:.63rem;font-weight:700;color:var(--blue2);flex-shrink:0;width:70px">[Cycle 11]</span>
+          <span style="font-size:.66rem;color:#CBD5E1;flex:1"><code style="font-size:.58rem;color:var(--gray3);background:none;padding:0">fe83dac</code> REFACTOR 완료</span>
+          <span style="font-size:.6rem;background:rgba(59,130,246,.2);color:var(--blue2);padding:1px 6px;border-radius:99px;font-weight:700;flex-shrink:0">🔵 REFACTOR</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 9px;background:rgba(59,130,246,.08);border-left:2px solid var(--blue);border-radius:0 4px 4px 0">
+          <span style="font-size:.63rem;font-weight:700;color:var(--blue2);flex-shrink:0;width:70px">[Cycle 12]</span>
+          <span style="font-size:.66rem;color:#CBD5E1;flex:1"><code style="font-size:.58rem;color:var(--gray3);background:none;padding:0">414bce9</code> REFACTOR 완료 · 순수 정리</span>
+          <span style="font-size:.6rem;background:rgba(59,130,246,.2);color:var(--blue2);padding:1px 6px;border-radius:99px;font-weight:700;flex-shrink:0">🔵 REFACTOR</span>
+        </div>
+      </div>
+    </div>
+    <!-- Right: Cycle 7 GREEN → REFACTOR 코드 비교 -->
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <h3 style="font-size:.82rem;margin-bottom:0">Cycle 7 — REFACTOR 실제 예시</h3>
+        <code style="font-size:.67rem;color:var(--gray);background:none;padding:0">Checker.java</code>
+      </div>
+      <!-- GREEN: before -->
+      <div style="margin-bottom:5px">
+        <div style="font-size:.68rem;font-weight:700;color:var(--green2);margin-bottom:3px">🟢 GREEN — push/pop 보일러플레이트 중복</div>
+        <pre class="code" style="font-size:.62rem;padding:7px 12px;border-left:2px solid var(--green);border-radius:0 6px 6px 0"><span class="fn">visitBlockStmt</span>(BlockStmt stmt) {
+  scopes.push(<span class="kw">new</span> HashSet&lt;&gt;()); <span class="cm">// ① 중복</span>
+  stmt.statements.forEach(s -&gt; s.accept(<span class="kw">this</span>));
+  scopes.pop();
+}
+<span class="fn">visitForStmt</span>(ForStmt stmt) {
+  scopes.push(<span class="kw">new</span> HashSet&lt;&gt;()); <span class="cm">// ② 중복</span>
+  stmt.body.forEach(s -&gt; s.accept(<span class="kw">this</span>));
+  scopes.pop();
+}</pre>
+      </div>
+      <div>
+        <div style="font-size:.68rem;font-weight:700;color:var(--blue2);margin-bottom:3px">🔵 REFACTOR — withNewScope() 헬퍼로 분리</div>
+        <pre class="code" style="font-size:.62rem;padding:7px 12px;border-left:2px solid var(--blue);border-radius:0 6px 6px 0"><span class="kw">private void</span> <span class="fn">withNewScope</span>(Runnable body) {
+  scopes.push(<span class="kw">new</span> HashSet&lt;&gt;()); <span class="cm">// 한 곳에서만 관리</span>
+  body.run();
+  scopes.pop();
+}
+<span class="fn">visitBlockStmt</span>(BlockStmt stmt) {
+  <span class="fn">withNewScope</span>(() -&gt;
+    stmt.statements.forEach(s -&gt; s.accept(<span class="kw">this</span>)));
+}
+<span class="fn">visitForStmt</span>(ForStmt stmt) {
+  <span class="fn">withNewScope</span>(() -&gt;
+    stmt.body.forEach(s -&gt; s.accept(<span class="kw">this</span>)));
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S8b: TDD CORNER CASES ══ -->
+<section class="slide">
+  <div class="lbl">03 — 개발 과정</div>
+  <h2>⚠️ 코너 케이스 테스트</h2>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;flex:1;align-items:start;margin-top:4px">
+    <!-- ① for loop variable scope -->
+    <div>
+      <div style="font-size:.76rem;font-weight:700;color:var(--amber);margin-bottom:6px">① 스코프 — for 루프 변수는 <strong style="color:var(--white)">외부로 누설 안됨</strong></div>
+      <pre class="code" style="font-size:.71rem;padding:10px 14px"><span class="kw">@DisplayName</span>(<span class="str">"for 루프 - 변수 누설 방지"</span>)
+<span class="kw">@Test</span>
+<span class="kw">void</span> <span class="fn">forLoopVariableDoesNotLeak</span>() {
+  RunResult r = run(
+    <span class="str">"for (var j=0; j&lt;1; j=j+1)"</span>
+    + <span class="str">" { print j; }\nprint j;"</span>);
+  assertFalse(r.success());
+  assertTrue(r.diagnostics().stream()
+    .anyMatch(d -&gt; d.message.contains(
+      <span class="str">"Undefined variable 'j'."</span>)));
+}</pre>
+    </div>
+    <!-- ② 0으로 나누기 -->
+    <div>
+      <div style="font-size:.76rem;font-weight:700;color:var(--amber);margin-bottom:6px">② 최적화 — 0 나눗셈은 <strong style="color:var(--white)">런타임에 위임</strong></div>
+      <pre class="code" style="font-size:.71rem;padding:10px 14px"><span class="kw">@DisplayName</span>(<span class="str">"0으로 나누기"</span>)
+<span class="kw">@Test</span>
+<span class="kw">void</span> <span class="fn">divisionByZero</span>() {
+  <span class="cm">// 상수 폴딩은 0 나눗셈 시 폴딩 생략</span>
+  <span class="cm">// → 런타임에 위임</span>
+  assertFailsAtStage(
+    <span class="str">"print 3 / 0;"</span>,
+    Diagnostic.Stage.<span class="cls">RUNTIME</span>,
+    <span class="str">"Division by zero."</span>);
+}</pre>
+    </div>
+    <!-- ③ 재귀 함수 -->
+    <div>
+      <div style="font-size:.76rem;font-weight:700;color:var(--amber);margin-bottom:6px">③ 재귀 — fact(5) = <strong style="color:var(--white)">120</strong> 정상 종료</div>
+      <pre class="code" style="font-size:.71rem;padding:10px 14px"><span class="kw">@DisplayName</span>(<span class="str">"재귀 함수가 동작한다"</span>)
+<span class="kw">@Test</span>
+<span class="kw">void</span> <span class="fn">recursiveFunctionWorks</span>() {
+  String src = <span class="str">"""
+    Func fact(n) {
+      if (n &lt;= 1) { return 1; }
+      return n * fact(n - 1);
+    }
+    print fact(5);"""</span>;
+  assertEquals(List.of(<span class="str">"120"</span>), out(src));
+}</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S10: DESIGN PATTERNS 1 ══ -->
+<section class="slide">
+  <div class="lbl">03 — 개발 과정</div>
+  <h2>핵심 디자인 패턴</h2>
+  <div class="pattern-grid">
+
+    <!-- ① Visitor -->
+    <div class="pat-card">
+      <div class="pat-head"><span class="pat-icon">🎭</span><span class="pat-name">Visitor — 더블 디스패치</span><span class="tag pat-tag">핵심 구조</span></div>
+      <div class="pat-body">AST 노드는 <code>accept()</code>만 정의. 연산 로직은 각 Visitor가 담당 — AST 수정 없이 새 단계 추가 가능.</div>
+      <!-- UML Diagram: Visitor Pattern -->
+      <svg viewBox="0 0 615 255" xmlns="http://www.w3.org/2000/svg" style="margin-top:14px;width:100%;height:auto;overflow:hidden">
+        <defs>
+          <!-- open arrowhead for dependency «use» -->
+          <marker id="vdep" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polyline points="0,0.5 8.5,3.5 0,6.5" fill="none" stroke="#64748B" stroke-width="1.3"/>
+          </marker>
+        </defs>
+
+        <!-- ── Expr «abstract» ── -->
+        <rect x="1" y="5" width="175" height="72" rx="4" fill="#1E293B" stroke="#7C3AED" stroke-opacity=".5" stroke-width="1.5"/>
+        <line x1="1" y1="41" x2="176" y2="41" stroke="#7C3AED" stroke-opacity=".3"/>
+        <text x="88" y="24" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" fill="#C4B5FD" font-style="italic">«abstract»</text>
+        <text x="88" y="39" text-anchor="middle" font-family="Consolas,monospace" font-size="15" font-weight="bold" fill="#C4B5FD" font-style="italic">Expr</text>
+        <text x="11" y="60" font-family="Consolas,monospace" font-size="9.5" fill="#94A3B8">+ accept(v: Visitor&lt;R&gt;): R</text>
+
+        <!-- ── Stmt «abstract» ── -->
+        <rect x="1" y="105" width="175" height="72" rx="4" fill="#1E293B" stroke="#7C3AED" stroke-opacity=".5" stroke-width="1.5"/>
+        <line x1="1" y1="141" x2="176" y2="141" stroke="#7C3AED" stroke-opacity=".3"/>
+        <text x="88" y="124" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" fill="#C4B5FD" font-style="italic">«abstract»</text>
+        <text x="88" y="139" text-anchor="middle" font-family="Consolas,monospace" font-size="15" font-weight="bold" fill="#C4B5FD" font-style="italic">Stmt</text>
+        <text x="11" y="160" font-family="Consolas,monospace" font-size="9.5" fill="#94A3B8">+ accept(v: Visitor&lt;R&gt;): R</text>
+
+        <!-- ── «use» dependency arrows: Expr/Stmt → Visitor<R> ── -->
+        <line x1="176" y1="41" x2="203" y2="75" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#vdep)"/>
+        <line x1="176" y1="141" x2="203" y2="118" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#vdep)"/>
+
+        <!-- ── Visitor<R> «interface» ── -->
+        <rect x="205" y="48" width="326" height="107" rx="4" fill="#1E293B" stroke="#06B6D4" stroke-opacity=".7" stroke-width="2"/>
+        <line x1="205" y1="88" x2="531" y2="88" stroke="#06B6D4" stroke-opacity=".35" stroke-width="1.5"/>
+        <text x="368" y="68" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" fill="#94A3B8" font-style="italic">«interface»</text>
+        <text x="368" y="86" text-anchor="middle" font-family="Consolas,monospace" font-size="16" font-weight="bold" fill="#22D3EE">Visitor&lt;R&gt;</text>
+        <text x="218" y="106" font-family="Consolas,monospace" font-size="11.5" fill="#94A3B8">+ visitBinary(e: BinaryExpr): R</text>
+        <text x="218" y="123" font-family="Consolas,monospace" font-size="11.5" fill="#94A3B8">+ visitCall(e: CallExpr): R</text>
+        <text x="218" y="140" font-family="Consolas,monospace" font-size="10.5" fill="#475569" font-style="italic">+ visitAssign / visitIf / visitReturn  ···</text>
+
+        <!-- ── Realization: hollow △ at Visitor<R> bottom, dashed fork down ── -->
+        <polygon points="368,155 358,170 378,170" fill="#1E293B" stroke="#64748B" stroke-width="1.3"/>
+        <line x1="368" y1="170" x2="368" y2="190" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="215" y1="190" x2="521" y2="190" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="215" y1="190" x2="215" y2="208" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="368" y1="190" x2="368" y2="208" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="521" y1="190" x2="521" y2="208" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+
+        <!-- ── Executor ── -->
+        <rect x="140" y="208" width="150" height="47" rx="4" fill="#1E293B" stroke="#10B981" stroke-opacity=".4" stroke-width="1.5"/>
+        <line x1="140" y1="230" x2="290" y2="230" stroke="#10B981" stroke-opacity=".25"/>
+        <text x="215" y="223" text-anchor="middle" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#34D399">Executor</text>
+        <text x="150" y="244" font-family="Consolas,monospace" font-size="10" fill="#94A3B8">런타임 실행</text>
+
+        <!-- ── Checker ── -->
+        <rect x="293" y="208" width="150" height="47" rx="4" fill="#1E293B" stroke="#F59E0B" stroke-opacity=".4" stroke-width="1.5"/>
+        <line x1="293" y1="230" x2="443" y2="230" stroke="#F59E0B" stroke-opacity=".25"/>
+        <text x="368" y="223" text-anchor="middle" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#FCD34D">Checker</text>
+        <text x="303" y="244" font-family="Consolas,monospace" font-size="10" fill="#94A3B8">정적 타입 검사</text>
+
+        <!-- ── ConstFold ── -->
+        <rect x="446" y="208" width="150" height="47" rx="4" fill="#1E293B" stroke="#3B82F6" stroke-opacity=".4" stroke-width="1.5"/>
+        <line x1="446" y1="230" x2="596" y2="230" stroke="#3B82F6" stroke-opacity=".25"/>
+        <text x="521" y="223" text-anchor="middle" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#93C5FD">ConstFold</text>
+        <text x="456" y="244" font-family="Consolas,monospace" font-size="10" fill="#94A3B8">상수 최적화</text>
+      </svg>
+    </div>
+
+    <!-- ② Facade -->
+    <div class="pat-card">
+      <div class="pat-head"><span class="pat-icon">🏛️</span><span class="pat-name">Facade — 파이프라인 단일 API</span><span class="tag pat-tag">진입점 분리</span></div>
+      <div class="pat-body">무상태 <code>CodeFab</code>이 파이프라인을 캡슐화. REPL은 하나의 <code>CodeFabSession</code>을 재사용해 상태 유지.</div>
+      <!-- UML Diagram: Facade Pattern -->
+      <svg viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg" style="margin-top:14px;width:100%;height:auto;overflow:hidden">
+        <defs>
+          <marker id="fdep" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polyline points="0,0.5 8.5,3.5 0,6.5" fill="none" stroke="#64748B" stroke-width="1.3"/>
+          </marker>
+        </defs>
+
+        <!-- ── PromptShell (caller) ── -->
+        <rect x="1" y="30" width="148" height="85" rx="4" fill="#1E293B" stroke="#6366F1" stroke-opacity=".45" stroke-width="1.5"/>
+        <line x1="1" y1="60" x2="149" y2="60" stroke="#6366F1" stroke-opacity=".25"/>
+        <text x="74" y="50" text-anchor="middle" font-family="Consolas,monospace" font-size="13.5" font-weight="bold" fill="#A5B4FC">PromptShell</text>
+        <text x="74" y="77" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" fill="#64748B">REPL 진입점</text>
+        <text x="74" y="93" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" fill="#94A3B8">run() 루프</text>
+
+        <!-- ── «uses» dependency arrow ── -->
+        <line x1="149" y1="72" x2="188" y2="72" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#fdep)"/>
+
+        <!-- ── CodeFab «facade» ── -->
+        <rect x="190" y="15" width="278" height="115" rx="4" fill="#1E293B" stroke="#06B6D4" stroke-opacity=".7" stroke-width="2"/>
+        <line x1="190" y1="58" x2="468" y2="58" stroke="#06B6D4" stroke-opacity=".35" stroke-width="1.5"/>
+        <text x="329" y="33" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" fill="#94A3B8" font-style="italic">«facade»</text>
+        <text x="329" y="54" text-anchor="middle" font-family="Consolas,monospace" font-size="17" font-weight="bold" fill="#22D3EE">CodeFab</text>
+        <text x="202" y="75" font-family="Consolas,monospace" font-size="11.5" fill="#94A3B8">+ run(src: String): RunResult</text>
+        <text x="202" y="92" font-family="Consolas,monospace" font-size="10.5" fill="#64748B">- stateless (no instance fields)</text>
+        <line x1="190" y1="103" x2="468" y2="103" stroke="#334155" stroke-opacity=".6"/>
+        <text x="202" y="118" font-family="Consolas,monospace" font-size="9.5" fill="#475569" font-style="italic">Scan → Parse → Check → Fold → Exec  (순서대로)</text>
+
+        <!-- ── «creates» dependency arrow ── -->
+        <line x1="468" y1="72" x2="507" y2="72" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#fdep)"/>
+
+        <!-- ── Session «stateful» ── -->
+        <rect x="509" y="30" width="175" height="85" rx="4" fill="#1E293B" stroke="#10B981" stroke-opacity=".45" stroke-width="1.5"/>
+        <line x1="509" y1="62" x2="684" y2="62" stroke="#10B981" stroke-opacity=".25"/>
+        <text x="596" y="48" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" fill="#94A3B8" font-style="italic">«stateful»</text>
+        <text x="596" y="59" text-anchor="middle" font-family="Consolas,monospace" font-size="15" font-weight="bold" fill="#34D399">Session</text>
+        <text x="519" y="77" font-family="Consolas,monospace" font-size="11" fill="#94A3B8">+ run(): RunResult</text>
+        <text x="519" y="93" font-family="Consolas,monospace" font-size="10.5" fill="#64748B">- env: Environment</text>
+
+        <!-- ── Composition: filled ◆ + line from CodeFab bottom ── -->
+        <polygon points="329,130 319,140 329,150 339,140" fill="#94A3B8"/>
+        <line x1="329" y1="150" x2="329" y2="172" stroke="#94A3B8" stroke-width="1.5"/>
+        <text x="344" y="146" font-family="Consolas,monospace" font-size="9.5" fill="#64748B">◆ 구성 (pipeline 소유)</text>
+
+        <!-- ── Pipeline box ── -->
+        <rect x="137" y="172" width="390" height="58" rx="4" fill="#0F172A" stroke="#334155" stroke-width="1.5"/>
+        <line x1="137" y1="192" x2="527" y2="192" stroke="#334155"/>
+        <text x="332" y="186" text-anchor="middle" font-family="Consolas,monospace" font-size="10" fill="#475569">Pipeline (내부 처리 단계 순서)</text>
+        <!-- pipeline stages (중앙 정렬: 컨테이너 center x=332 기준) -->
+        <text x="204" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#A5B4FC">Scan</text>
+        <text x="245" y="216" font-family="Consolas,monospace" font-size="12" fill="#475569">→</text>
+        <text x="256" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#22D3EE">Parse</text>
+        <text x="304" y="216" font-family="Consolas,monospace" font-size="12" fill="#475569">→</text>
+        <text x="315" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#FCD34D">Check</text>
+        <text x="368" y="216" font-family="Consolas,monospace" font-size="12" fill="#475569">→</text>
+        <text x="379" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#93C5FD">Fold</text>
+        <text x="418" y="216" font-family="Consolas,monospace" font-size="12" fill="#475569">→</text>
+        <text x="429" y="216" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#FDA4AF">Exec</text>
+      </svg>
+    </div>
+
+  </div>
+  <div class="card mt" style="padding:9px 16px">
+    <p style="font-size:.76rem;color:#94A3B8"><strong style="color:var(--white)">추가:</strong> <code>ReturnException</code> — return 구문을 예외로 스택 풀기. <code>catch</code>는 <code>visitCall</code>에서만. <strong>package-private</strong>으로 외부 노출 방지.</p>
+  </div>
+</section>
+
+<!-- ══ S10b: DESIGN PATTERNS 2 ══ -->
+<section class="slide">
+  <div class="lbl">03 — 개발 과정</div>
+  <h2>핵심 디자인 패턴</h2>
+  <div class="pattern-grid">
+
+    <!-- ③ Strategy (OutputSink) -->
+    <div class="pat-card">
+      <div class="pat-head"><span class="pat-icon">🔌</span><span class="pat-name">Strategy — OutputSink</span><span class="tag tag-g pat-tag">테스트 용이성</span></div>
+      <div class="pat-body">Executor가 <code>System.out</code> 직접 사용 안 함. 주입된 <code>OutputSink</code>로만 출력 — 테스트에서 <code>CollectingOutputSink</code>로 교체.</div>
+      <!-- UML Diagram: Strategy (OutputSink) -->
+      <svg viewBox="0 0 615 255" xmlns="http://www.w3.org/2000/svg" style="margin-top:14px;width:100%;height:auto;overflow:hidden">
+        <defs>
+          <marker id="sdep11" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polyline points="0,0.5 8.5,3.5 0,6.5" fill="none" stroke="#64748B" stroke-width="1.3"/>
+          </marker>
+        </defs>
+        <!-- Executor -->
+        <rect x="1" y="30" width="170" height="72" rx="4" fill="#1E293B" stroke="#10B981" stroke-opacity=".4" stroke-width="1.5"/>
+        <line x1="1" y1="60" x2="171" y2="60" stroke="#10B981" stroke-opacity=".25"/>
+        <text x="85" y="50" text-anchor="middle" font-family="Consolas,monospace" font-size="14" font-weight="bold" fill="#34D399">Executor</text>
+        <text x="11" y="77" font-family="Consolas,monospace" font-size="11" fill="#94A3B8">- output: OutputSink</text>
+        <text x="11" y="93" font-family="Consolas,monospace" font-size="11" fill="#94A3B8">+ exec(stmt: Stmt)</text>
+        <!-- «use» dashed dependency arrow -->
+        <line x1="171" y1="66" x2="216" y2="66" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#sdep11)"/>
+        <!-- OutputSink «interface» -->
+        <rect x="218" y="15" width="252" height="100" rx="4" fill="#1E293B" stroke="#06B6D4" stroke-opacity=".7" stroke-width="2"/>
+        <line x1="218" y1="58" x2="470" y2="58" stroke="#06B6D4" stroke-opacity=".35" stroke-width="1.5"/>
+        <text x="344" y="36" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" fill="#94A3B8" font-style="italic">«interface»</text>
+        <text x="344" y="55" text-anchor="middle" font-family="Consolas,monospace" font-size="16" font-weight="bold" fill="#22D3EE">OutputSink</text>
+        <text x="230" y="76" font-family="Consolas,monospace" font-size="11.5" fill="#94A3B8">+ print(line: String): void</text>
+        <text x="230" y="96" font-family="Consolas,monospace" font-size="10" fill="#475569" font-style="italic">DI 주입 — 프로덕션/테스트 교체 가능</text>
+        <!-- Realization: hollow △ at OutputSink bottom, dashed fork down -->
+        <polygon points="344,115 334,130 354,130" fill="#1E293B" stroke="#64748B" stroke-width="1.3"/>
+        <line x1="344" y1="130" x2="344" y2="152" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="175" y1="152" x2="512" y2="152" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="175" y1="152" x2="175" y2="172" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="512" y1="152" x2="512" y2="172" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <!-- StdoutSink -->
+        <rect x="88" y="172" width="174" height="65" rx="4" fill="#1E293B" stroke="#6366F1" stroke-opacity=".45" stroke-width="1.5"/>
+        <line x1="88" y1="198" x2="262" y2="198" stroke="#6366F1" stroke-opacity=".25"/>
+        <text x="175" y="190" text-anchor="middle" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#A5B4FC">StdoutSink</text>
+        <text x="98" y="213" font-family="Consolas,monospace" font-size="10" fill="#64748B">production 환경</text>
+        <text x="98" y="229" font-family="Consolas,monospace" font-size="8.5" fill="#94A3B8">+ print(line) → System.out</text>
+        <!-- CollectingSink -->
+        <rect x="424" y="172" width="185" height="80" rx="4" fill="#1E293B" stroke="#F59E0B" stroke-opacity=".45" stroke-width="1.5"/>
+        <line x1="424" y1="198" x2="609" y2="198" stroke="#F59E0B" stroke-opacity=".25"/>
+        <text x="511" y="190" text-anchor="middle" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#FCD34D">CollectingSink</text>
+        <text x="434" y="212" font-family="Consolas,monospace" font-size="10" fill="#64748B">테스트 환경</text>
+        <text x="434" y="227" font-family="Consolas,monospace" font-size="10" fill="#94A3B8">- lines: List&lt;String&gt;</text>
+        <text x="434" y="241" font-family="Consolas,monospace" font-size="10" fill="#94A3B8">+ print(l) → lines.add(l)</text>
+      </svg>
+    </div>
+
+    <!-- ④ Environment Chain -->
+    <div class="pat-card">
+      <div class="pat-head"><span class="pat-icon">⛓️</span><span class="pat-name">Environment Chain</span><span class="tag pat-tag">스코프 체이닝</span></div>
+      <div class="pat-body"><code>enclosing</code> 참조로 부모 스코프 체인. Checker의 <code>distance</code> 기록 → <code>getAt()</code>으로 O(1) 정적 바인딩.</div>
+      <!-- UML Diagram: Environment Chain (Self-Aggregation) -->
+      <svg viewBox="0 0 615 255" xmlns="http://www.w3.org/2000/svg" style="margin-top:14px;width:100%;height:auto;overflow:hidden">
+        <defs>
+          <marker id="ecarr" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polyline points="0,0.5 8.5,3.5 0,6.5" fill="none" stroke="#06B6D4" stroke-width="1.3"/>
+          </marker>
+        </defs>
+        <!-- Environment class box -->
+        <rect x="110" y="5" width="350" height="95" rx="4" fill="#1E293B" stroke="#06B6D4" stroke-opacity=".7" stroke-width="2"/>
+        <line x1="110" y1="44" x2="460" y2="44" stroke="#06B6D4" stroke-opacity=".35" stroke-width="1.5"/>
+        <text x="285" y="28" text-anchor="middle" font-family="Consolas,monospace" font-size="17" font-weight="bold" fill="#22D3EE">Environment</text>
+        <text x="122" y="62" font-family="Consolas,monospace" font-size="11" fill="#94A3B8">- enclosing: Environment [0..1]</text>
+        <text x="122" y="78" font-family="Consolas,monospace" font-size="11" fill="#94A3B8">- values: Map&lt;String, Object&gt;</text>
+        <text x="122" y="94" font-family="Consolas,monospace" font-size="8.5" fill="#94A3B8">+ get(name): Object  ·  + getAt(depth, name): Object</text>
+        <!-- Self-aggregation: filled diamond on right edge, curved line looping back -->
+        <polygon points="492,52 482,62 492,72 502,62" fill="#94A3B8" stroke="#94A3B8" stroke-width="1"/>
+        <path d="M 502,62 C 560,62 560,20 460,20" stroke="#94A3B8" stroke-width="1.5" fill="none" marker-end="url(#ecarr)"/>
+        <text x="505" y="14" font-family="Consolas,monospace" font-size="9" fill="#64748B">enclosing [0..1]</text>
+        <!-- Instance chain label -->
+        <text x="285" y="120" text-anchor="middle" font-family="Consolas,monospace" font-size="9.5" fill="#475569" font-style="italic">«object instances — enclosing chain»</text>
+        <!-- blockEnv instance -->
+        <rect x="5" y="130" width="157" height="58" rx="4" fill="#1E293B" stroke="#F43F5E" stroke-opacity=".45" stroke-width="1.5"/>
+        <line x1="5" y1="154" x2="162" y2="154" stroke="#F43F5E" stroke-opacity=".25"/>
+        <text x="83" y="146" text-anchor="middle" font-family="Consolas,monospace" font-size="12" fill="#FDA4AF">blockEnv :Block</text>
+        <text x="15" y="170" font-family="Consolas,monospace" font-size="11" fill="#94A3B8">n = 42</text>
+        <!-- Arrow: blockEnv → funcEnv -->
+        <line x1="162" y1="159" x2="228" y2="159" stroke="#06B6D4" stroke-width="1.3" marker-end="url(#ecarr)"/>
+        <text x="172" y="154" font-family="Consolas,monospace" font-size="9" fill="#64748B">enclosing</text>
+        <!-- funcEnv instance -->
+        <rect x="230" y="130" width="157" height="58" rx="4" fill="#1E293B" stroke="#F59E0B" stroke-opacity=".45" stroke-width="1.5"/>
+        <line x1="230" y1="154" x2="387" y2="154" stroke="#F59E0B" stroke-opacity=".25"/>
+        <text x="308" y="146" text-anchor="middle" font-family="Consolas,monospace" font-size="12" fill="#FCD34D">funcEnv :Func</text>
+        <text x="240" y="170" font-family="Consolas,monospace" font-size="11" fill="#94A3B8">x = 10</text>
+        <!-- Arrow: funcEnv → global -->
+        <line x1="387" y1="159" x2="453" y2="159" stroke="#06B6D4" stroke-width="1.3" marker-end="url(#ecarr)"/>
+        <text x="397" y="154" font-family="Consolas,monospace" font-size="9" fill="#64748B">enclosing</text>
+        <!-- global instance -->
+        <rect x="455" y="130" width="157" height="58" rx="4" fill="#1E293B" stroke="#10B981" stroke-opacity=".45" stroke-width="1.5"/>
+        <line x1="455" y1="154" x2="612" y2="154" stroke="#10B981" stroke-opacity=".25"/>
+        <text x="533" y="146" text-anchor="middle" font-family="Consolas,monospace" font-size="12" fill="#34D399">global :Global</text>
+        <text x="465" y="170" font-family="Consolas,monospace" font-size="11" fill="#94A3B8">y = "hi"</text>
+        <!-- get() vs getAt() comparison boxes -->
+        <rect x="5" y="202" width="295" height="40" rx="4" fill="rgba(244,63,94,.08)" stroke="rgba(244,63,94,.25)" stroke-width="1"/>
+        <text x="152" y="218" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" fill="#FDA4AF" font-weight="bold">get(name) — O(n)</text>
+        <text x="152" y="234" text-anchor="middle" font-family="Consolas,monospace" font-size="10" fill="#94A3B8">체인 탐색: 현재 → 부모 → 전역</text>
+        <rect x="315" y="202" width="295" height="40" rx="4" fill="rgba(16,185,129,.08)" stroke="rgba(16,185,129,.25)" stroke-width="1"/>
+        <text x="462" y="218" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" fill="#34D399" font-weight="bold">getAt(depth, name) — O(1)</text>
+        <text x="462" y="234" text-anchor="middle" font-family="Consolas,monospace" font-size="10" fill="#94A3B8">Checker가 depth 기록 → 직접 접근</text>
+      </svg>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ S11: PR19 PATTERNS ══ -->
+<section class="slide">
+  <div class="lbl">03 — 개발 과정</div>
+  <h2>핵심 디자인 패턴</h2>
+  <div class="pr-badge">🔀 PR #19 · refactor(shell): Mode Strategy + Debugger Command 패턴 적용 · 행위 보존 · 233개 테스트 통과</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;flex:1;align-items:start">
+
+    <!-- Strategy (Mode) -->
+    <div class="pat-card">
+      <div class="pat-head"><span class="pat-name">Strategy — 셸 실행 모드 분리</span><span class="tag pat-tag">OCP 적용</span></div>
+
+      <!-- UML Diagram: Strategy (Mode) -->
+      <svg viewBox="0 0 480 185" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:10px;width:100%;height:auto;overflow:hidden">
+        <defs>
+          <marker id="sdep12" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polyline points="0,0.5 8.5,3.5 0,6.5" fill="none" stroke="#64748B" stroke-width="1.3"/>
+          </marker>
+        </defs>
+        <!-- Main (Caller) -->
+        <rect x="1" y="20" width="110" height="72" rx="4" fill="#1E293B" stroke="#6366F1" stroke-opacity=".45" stroke-width="1.5"/>
+        <line x1="1" y1="48" x2="111" y2="48" stroke="#6366F1" stroke-opacity=".25"/>
+        <text x="55" y="38" text-anchor="middle" font-family="Consolas,monospace" font-size="13" font-weight="bold" fill="#A5B4FC">Main</text>
+        <text x="55" y="64" text-anchor="middle" font-family="Consolas,monospace" font-size="8.5" fill="#64748B">args 파싱 후</text>
+        <text x="55" y="80" text-anchor="middle" font-family="Consolas,monospace" font-size="8.5" fill="#94A3B8">dispatch(args): int</text>
+        <!-- «uses» dashed arrow -->
+        <line x1="111" y1="56" x2="148" y2="56" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#sdep12)"/>
+        <!-- Mode «interface» -->
+        <rect x="150" y="8" width="200" height="100" rx="4" fill="#1E293B" stroke="#06B6D4" stroke-opacity=".7" stroke-width="2"/>
+        <line x1="150" y1="44" x2="350" y2="44" stroke="#06B6D4" stroke-opacity=".35" stroke-width="1.5"/>
+        <text x="250" y="24" text-anchor="middle" font-family="Consolas,monospace" font-size="10" fill="#94A3B8" font-style="italic">«interface»</text>
+        <text x="250" y="42" text-anchor="middle" font-family="Consolas,monospace" font-size="15" font-weight="bold" fill="#22D3EE">Mode</text>
+        <text x="160" y="60" font-family="Consolas,monospace" font-size="10.5" fill="#94A3B8">+ execute(cf: CodeFab): int</text>
+        <line x1="150" y1="72" x2="350" y2="72" stroke="#334155" stroke-opacity=".6"/>
+        <text x="160" y="86" font-family="Consolas,monospace" font-size="9.5" fill="#475569" font-style="italic">새 모드 추가 = 구현체 1개 (OCP)</text>
+        <text x="160" y="100" font-family="Consolas,monospace" font-size="9.5" fill="#475569" font-style="italic">System.exit 제거 → 단위 테스트 가능</text>
+        <!-- Realization: hollow △ + dashed fork -->
+        <polygon points="250,108 241,121 259,121" fill="#1E293B" stroke="#64748B" stroke-width="1.3"/>
+        <line x1="250" y1="121" x2="250" y2="140" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="90" y1="140" x2="408" y2="140" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="90" y1="140" x2="90" y2="157" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="250" y1="140" x2="250" y2="157" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="408" y1="140" x2="408" y2="157" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <!-- ReplMode -->
+        <rect x="28" y="157" width="124" height="24" rx="4" fill="#1E293B" stroke="#10B981" stroke-opacity=".4" stroke-width="1.5"/>
+        <text x="90" y="173" text-anchor="middle" font-family="Consolas,monospace" font-size="11" font-weight="bold" fill="#34D399">ReplMode</text>
+        <!-- RunMode -->
+        <rect x="188" y="157" width="124" height="24" rx="4" fill="#1E293B" stroke="#F59E0B" stroke-opacity=".4" stroke-width="1.5"/>
+        <text x="250" y="173" text-anchor="middle" font-family="Consolas,monospace" font-size="11" font-weight="bold" fill="#FCD34D">RunMode</text>
+        <!-- DebugMode -->
+        <rect x="348" y="157" width="124" height="24" rx="4" fill="#1E293B" stroke="#A78BFA" stroke-opacity=".4" stroke-width="1.5"/>
+        <text x="410" y="173" text-anchor="middle" font-family="Consolas,monospace" font-size="11" font-weight="bold" fill="#C4B5FD">DebugMode</text>
+      </svg>
+
+      <!-- Before / After -->
+      <div class="ba">
+        <div class="ba-b"><div class="ba-lbl">Before</div>
+          <div class="ba-c">if length==0 → REPL<br>if "run" → runFile()<br>System.exit ← 테스트 불가</div></div>
+        <div class="ba-a"><div class="ba-lbl">After</div>
+          <div class="ba-c">dispatch() → int 반환<br>System.exit 없음<br>MainDispatchTest 7케이스</div></div>
+      </div>
+    </div>
+
+    <!-- Command -->
+    <div class="pat-card">
+      <div class="pat-head"><span class="pat-name">Command — 디버거 명령 레지스트리</span><span class="tag tag-a pat-tag">레지스트리 패턴</span></div>
+
+      <!-- UML Diagram: Command Pattern -->
+      <svg viewBox="0 0 480 185" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:10px;width:100%;height:auto;overflow:hidden">
+        <defs>
+          <marker id="cdep12" markerWidth="9" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polyline points="0,0.5 8.5,3.5 0,6.5" fill="none" stroke="#64748B" stroke-width="1.3"/>
+          </marker>
+        </defs>
+        <!-- DebugShell (Invoker) -->
+        <rect x="1" y="15" width="118" height="82" rx="4" fill="#1E293B" stroke="#6366F1" stroke-opacity=".45" stroke-width="1.5"/>
+        <line x1="1" y1="44" x2="119" y2="44" stroke="#6366F1" stroke-opacity=".25"/>
+        <text x="59" y="33" text-anchor="middle" font-family="Consolas,monospace" font-size="12" font-weight="bold" fill="#A5B4FC">DebugShell</text>
+        <text x="59" y="56" text-anchor="middle" font-family="Consolas,monospace" font-size="9" fill="#64748B">«Invoker»</text>
+        <text x="11" y="78" font-family="Consolas,monospace" font-size="8.5" fill="#94A3B8">- cmds: Map&lt;Str,Cmd&gt;</text>
+        <!-- «uses» dashed arrow -->
+        <line x1="119" y1="56" x2="156" y2="56" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#cdep12)"/>
+        <!-- DebugCommand «interface» -->
+        <rect x="158" y="5" width="210" height="100" rx="4" fill="#1E293B" stroke="#06B6D4" stroke-opacity=".7" stroke-width="2"/>
+        <line x1="158" y1="46" x2="368" y2="46" stroke="#06B6D4" stroke-opacity=".35" stroke-width="1.5"/>
+        <text x="263" y="24" text-anchor="middle" font-family="Consolas,monospace" font-size="10" fill="#94A3B8" font-style="italic">«interface»</text>
+        <text x="263" y="44" text-anchor="middle" font-family="Consolas,monospace" font-size="14" font-weight="bold" fill="#22D3EE">DebugCommand</text>
+        <text x="168" y="68" font-family="Consolas,monospace" font-size="9" fill="#94A3B8">+ execute(s, args: String[]): void</text>
+        <line x1="158" y1="88" x2="368" y2="88" stroke="#334155" stroke-opacity=".6"/>
+        <text x="168" y="100" font-family="Consolas,monospace" font-size="9.5" fill="#475569" font-style="italic">람다로 구현 · 레지스트리에 등록</text>
+        <!-- Realization: hollow △ + dashed fork -->
+        <polygon points="263,105 254,118 272,118" fill="#1E293B" stroke="#64748B" stroke-width="1.3"/>
+        <line x1="263" y1="118" x2="263" y2="138" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="90" y1="138" x2="412" y2="138" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="90" y1="138" x2="90" y2="157" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="263" y1="138" x2="263" y2="157" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <line x1="412" y1="138" x2="412" y2="157" stroke="#64748B" stroke-width="1.3" stroke-dasharray="5,3"/>
+        <!-- λ StepCmd -->
+        <rect x="22" y="157" width="136" height="24" rx="4" fill="#1E293B" stroke="#10B981" stroke-opacity=".4" stroke-width="1.5"/>
+        <text x="90" y="173" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" font-weight="bold" fill="#34D399">StepCmd</text>
+        <!-- λ BreakCmd -->
+        <rect x="195" y="157" width="136" height="24" rx="4" fill="#1E293B" stroke="#F59E0B" stroke-opacity=".4" stroke-width="1.5"/>
+        <text x="263" y="173" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" font-weight="bold" fill="#FCD34D">BreakCmd</text>
+        <!-- λ WatchCmd -->
+        <rect x="352" y="157" width="120" height="24" rx="4" fill="#1E293B" stroke="#A78BFA" stroke-opacity=".4" stroke-width="1.5"/>
+        <text x="412" y="173" text-anchor="middle" font-family="Consolas,monospace" font-size="10.5" font-weight="bold" fill="#C4B5FD">WatchCmd</text>
+      </svg>
+
+      <!-- Before / After -->
+      <div class="ba">
+        <div class="ba-b"><div class="ba-lbl">Before</div>
+          <div class="ba-c">if "step" → doStep()<br>if "break" → doBreak<br>10개 이상 if/else 분기</div></div>
+        <div class="ba-a"><div class="ba-lbl">After</div>
+          <div class="ba-c">레지스트리 1줄 추가<br>DebugShellTest 6케이스<br>watch 버그(C-1) 수정</div></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ S13: CONSTANT FOLDER ══ -->
+<section class="slide">
+  <div class="lbl">03 — 개발 과정</div>
+  <h2>ConstantFolder 최적화 효과</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
+
+    <!-- 사례 1: 상수 폴딩 구현 리뷰 -->
+    <div>
+      <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 1 — 상수 폴딩: Binary AST를 Literal로 치환</h3>
+      <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
+        <div class="gh-header">
+          <span class="gh-title">PR #18 · feat(optimizer): ConstantFolder 상수 폴딩 구현</span>
+          <span class="gh-state gh-merged">merged</span>
+        </div>
+        <!-- Thread 1: 폴딩 로직 -->
+        <div class="gh-thread">
+          <div class="gh-file">📄 ConstantFolder.java · visitBinary()</div>
+          <div class="gh-line">return expr; // Binary 노드 그대로 반환 — 최적화 없음</div>
+          <div class="gh-comment">
+            <div class="gh-avatar">m</div>
+            <div style="flex:1">
+              <div class="gh-meta"><span class="gh-user">mylhb9</span><span class="gh-time">Jun 6, 2026</span></div>
+              <div class="gh-body">양쪽 피연산자가 모두 <code style="color:var(--cyan2)">Literal(Number)</code>이면 컴파일 타임에 계산해서 <code style="color:var(--cyan2)">Literal(7)</code>로 치환할 수 있어요! Executor의 <code style="color:var(--cyan2)">visitBinary</code> 호출을 완전히 제거할 수 있습니다~</div>
+            </div>
+          </div>
+          <div class="gh-reply">totoseel: <code>return new Expr.Literal(left.value + right.value);</code> 로 수정 완료 — <strong>visitBinary N회 → 0회</strong> ✅</div>
+        </div>
+        <!-- Thread 2: 0나눗셈 처리 -->
+        <div class="gh-thread">
+          <div class="gh-file">📄 ConstantFolder.java · visitBinary() · 0나눗셈 가드</div>
+          <div class="gh-line">// right.value == 0 처리 누락</div>
+          <div class="gh-comment">
+            <div class="gh-avatar">t</div>
+            <div style="flex:1">
+              <div class="gh-meta"><span class="gh-user">totoseel</span><span class="gh-time">Jun 6, 2026</span></div>
+              <div class="gh-body">0나눗셈은 폴딩을 <strong>생략</strong>하고 원본 Binary 노드를 반환해야 합니다. 최적화 패스에서 진단을 내면 안 돼요 — 런타임에 <code style="color:var(--red2)">InterpreterRuntimeError</code>로 위임하세요.</div>
+            </div>
+          </div>
+          <div class="gh-reply">수정: <code>if (right.value == 0) return null;</code> — 진단 발생 없이 런타임 위임 ✅</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 사례 2: TDD 검증 & 정적 바인딩 -->
+    <div>
+      <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 2 — SpyExecutor TDD 검증 & O(1) 정적 바인딩</h3>
+      <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
+        <div class="gh-header">
+          <span class="gh-title">PR #18 · test: SpyExecutor로 최적화 효과 정량 검증</span>
+          <span class="gh-state gh-merged">merged</span>
+        </div>
+        <!-- Thread 1: SpyExecutor -->
+        <div class="gh-thread">
+          <div class="gh-file">📄 ConstantFolderTest.java · 폴딩 효과 검증</div>
+          <div class="gh-line">// visitBinary 호출 횟수 검증 누락</div>
+          <div class="gh-comment">
+            <div class="gh-avatar">H</div>
+            <div style="flex:1">
+              <div class="gh-meta"><span class="gh-user">HKLeeeee</span><span class="gh-time">Jun 7, 2026</span></div>
+              <div class="gh-body"><code style="color:var(--amber2)">SpyExecutor</code>로 <code style="color:var(--cyan2)">visitBinary</code> 호출 횟수를 카운트해서 검증하면 최적화 효과를 정량적으로 증명할 수 있어요. TDD 원칙에 딱 맞네요!</div>
+            </div>
+          </div>
+          <div class="gh-reply">totoseel: <code>assertThat(spy.visitBinaryCount).isEqualTo(0);</code> 추가 완료 — <code>SpyEnvironment</code>로 O(1) 바인딩도 함께 검증 ✅</div>
+        </div>
+        <!-- Thread 2: 정적 바인딩 O(1) -->
+        <div class="gh-thread">
+          <div class="gh-file">📄 Checker.java + Executor.java · 정적 바인딩</div>
+          <div class="gh-line">environment.get(name); // O(n) — 체인 전체 탐색</div>
+          <div class="gh-comment">
+            <div class="gh-avatar">j</div>
+            <div style="flex:1">
+              <div class="gh-meta"><span class="gh-user">totoseel</span><span class="gh-time">Jun 7, 2026</span></div>
+              <div class="gh-body">Checker가 분석 시점에 스코프 <code style="color:var(--cyan2)">depth</code>를 AST 노드에 기록해두면, Executor는 <code style="color:var(--green2)">getAt(depth, name)</code>으로 체인 탐색 없이 <strong>O(1)</strong> 직접 접근할 수 있습니다.</div>
+            </div>
+          </div>
+          <div class="gh-reply">SpyEnvironment: <code>get()</code> 호출 0번 확인 — 모든 변수 조회가 <code>getAt()</code>으로 전환됨 ✅</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ S14: GITHUB CODE REVIEW ══ -->
+<section class="slide">
+  <div class="lbl">03 — 개발 과정</div>
+  <h2>코드 리뷰 활동</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
+
+    <!-- 사례 1: 변수 선언 순서 -->
+    <div>
+      <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 1 — 관련 필드끼리 배치(가독성 개선)</h3>
+      <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
+        <!-- Before -->
+        <div style="padding:8px 14px;border-bottom:1px solid #30363d">
+          <div style="font-size:.67rem;color:var(--gray);margin-bottom:5px">📄 Checker.java · 수정 전</div>
+          <div style="font-family:'JetBrains Mono',Consolas,monospace;font-size:.71rem;line-height:1.7;color:#C9D1D9">
+            <span style="color:#6272A4">52</span>&nbsp; this.replMode = replMode;<br>
+            <span style="color:#6272A4">53</span>&nbsp; this.scopes = <span style="color:#FF79C6">new</span> ArrayDeque&lt;&gt;();<br>
+            <span style="color:#6272A4">54</span>&nbsp; this.diagnostics = diagnostics;
+          </div>
+        </div>
+        <!-- Review -->
+        <div class="gh-thread" style="margin:0;border-radius:0;border-left:none;border-right:none">
+          <div class="gh-comment">
+            <div class="gh-avatar">m</div>
+            <div style="flex:1">
+              <div class="gh-meta"><span class="gh-user">mylhb9</span><span class="gh-time">Jun 4, 2026</span></div>
+              <div class="gh-body">52, 54번째 줄 순서를 바꾸면 <code style="color:var(--cyan2)">diagnostics</code>와 <code style="color:var(--cyan2)">scopes</code>가 인접해서 가독성이 향상될 것 같아요~!</div>
+            </div>
+          </div>
+          <div class="gh-reply">totoseel: scopes를 diagnostics 바로 아래에 붙여놓을게요 감사합니다~ ✅</div>
+        </div>
+        <!-- After -->
+        <div style="padding:8px 14px;background:rgba(16,185,129,.05);border-top:1px solid rgba(16,185,129,.2)">
+          <div style="font-size:.67rem;color:var(--green);margin-bottom:5px">✅ 수정 후 — 상태 필드끼리 인접 배치</div>
+          <div style="font-family:'JetBrains Mono',Consolas,monospace;font-size:.71rem;line-height:1.7;color:#C9D1D9">
+            <span style="color:#6272A4">52</span>&nbsp; this.diagnostics = diagnostics;<br>
+            <span style="color:#6272A4">53</span>&nbsp; this.scopes = <span style="color:#FF79C6">new</span> ArrayDeque&lt;&gt;();<br>
+            <span style="color:#6272A4">54</span>&nbsp; this.replMode = replMode;
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 사례 2: @DisplayName 누락 + watch 버그 -->
+    <div>
+      <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 2 — 컨벤션 누락 & 버그 발견</h3>
+      <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
+        <!-- Before: @DisplayName -->
+        <div style="padding:8px 14px;border-bottom:1px solid #30363d">
+          <div style="font-size:.67rem;color:var(--gray);margin-bottom:5px">📄 DebugShellTest.java · 수정 전</div>
+          <div style="font-family:'JetBrains Mono',Consolas,monospace;font-size:.71rem;line-height:1.7;color:#C9D1D9">
+            <span style="color:#6272A4">37</span>&nbsp; <span style="color:#FF79C6">void</span> <span style="color:#50FA7B">stepExecutesStatementsInOrder</span>() {
+          </div>
+        </div>
+        <!-- Review: DisplayName -->
+        <div class="gh-thread" style="margin:0;border-radius:0;border-left:none;border-right:none;border-bottom:1px solid #30363d">
+          <div class="gh-comment">
+            <div class="gh-avatar">H</div>
+            <div style="flex:1">
+              <div class="gh-meta"><span class="gh-user">HKLeeeee</span><span class="gh-time">Jun 8, 2026</span></div>
+              <div class="gh-body">추가 요구사항 테스트에 <code style="color:var(--cyan2)">@DisplayName</code>이 없어요. 팀 컨벤션에 맞게 추가해 주세요~</div>
+            </div>
+          </div>
+          <div class="gh-reply" style="background:rgba(16,185,129,.08);border-left:2px solid var(--green);color:var(--green2)">✅ @DisplayName("step 명령어로 순서대로 실행") 추가</div>
+        </div>
+        <!-- Before: watch bug -->
+        <div style="padding:8px 14px;border-bottom:1px solid #30363d">
+          <div style="font-size:.67rem;color:var(--gray);margin-bottom:5px">📄 DebugShell.java · watch 핸들러 · 수정 전</div>
+          <div style="font-family:'JetBrains Mono',Consolas,monospace;font-size:.71rem;line-height:1.7;color:#C9D1D9">
+            commands.put(<span style="color:#F1FA8C">"watch"</span>, args -&gt; {<br>
+            &nbsp;&nbsp;<span style="color:#6272A4;font-style:italic">// 빈 args 검사 없음</span><br>
+            &nbsp;&nbsp;watchedVars.add(args[<span style="color:#BD93F9">0</span>]);<br>
+            });
+          </div>
+        </div>
+        <!-- Review: watch -->
+        <div class="gh-thread" style="margin:0;border-radius:0;border-left:none;border-right:none">
+          <div class="gh-comment">
+            <div class="gh-avatar">H</div>
+            <div style="flex:1">
+              <div class="gh-meta"><span class="gh-user">HKLeeeee</span><span class="gh-time">Jun 8, 2026</span></div>
+              <div class="gh-body"><code style="color:var(--cyan2)">watch</code>만 입력하면 빈 인자 가드가 없어서 <code style="color:var(--red2)">ArrayIndexOutOfBoundsException</code>이 발생합니다</div>
+            </div>
+          </div>
+          <div class="gh-reply" style="background:rgba(16,185,129,.08);border-left:2px solid var(--green);color:var(--green2)">✅ 빈 args 검사 + Usage 안내 추가 · 회귀 테스트 <code>watchWithNoArg</code> 추가</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ S14b: GITHUB CODE REVIEW 2 ══ -->
+<section class="slide">
+  <div class="lbl">03 — 개발 과정</div>
+  <h2>코드 리뷰 활동</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
+
+    <!-- 사례 3: mockScanner Scanner 의존 제거 -->
+    <div>
+      <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 3 — 불필요한 의존성 제거 (테스트 품질 개선)</h3>
+      <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
+        <!-- Before -->
+        <div style="padding:8px 14px;border-bottom:1px solid #30363d">
+          <div style="font-size:.67rem;color:var(--gray);margin-bottom:5px">📄 ParserTest.java · mockScanner() · 수정 전</div>
+          <div style="font-family:'JetBrains Mono',Consolas,monospace;font-size:.71rem;line-height:1.7;color:#C9D1D9">
+            <span style="color:#6272A4">190</span>&nbsp; <span style="color:#FF79C6">private</span> List&lt;Token&gt; <span style="color:#50FA7B">mockScanner</span>(String src) {<br>
+            <span style="color:#6272A4">191</span>&nbsp; &nbsp; Scanner scanner = <span style="color:#FF79C6">new</span> Scanner(src);<br>
+            <span style="color:#6272A4">192</span>&nbsp; &nbsp; List&lt;Token&gt; tokens = scanner.scan();<br>
+            <span style="color:#6272A4">193</span>&nbsp; &nbsp; <span style="color:#FF79C6">return</span> scanner.getTokens();<br>
+            <span style="color:#6272A4">194</span>&nbsp; }
+          </div>
+        </div>
+        <!-- Review -->
+        <div class="gh-thread" style="margin:0;border-radius:0;border-left:none;border-right:none">
+          <div class="gh-comment">
+            <div class="gh-avatar">c</div>
+            <div style="flex:1">
+              <div class="gh-meta"><span class="gh-user">chloelee7</span><span class="gh-time">Jun 4, 2026</span></div>
+              <div class="gh-body">Scanner를 사용해서 단순히 토큰을 반환하는 건데 그냥 <code style="color:var(--cyan2)">return tokens</code>를 하면 Scanner와의 의존성도 없어지고 좋지 않을까요?</div>
+            </div>
+          </div>
+          <div class="gh-reply">totoseel: 맞아요, scan() 결과를 바로 반환하면 되겠네요. 수정할게요! ✅</div>
+        </div>
+        <!-- After -->
+        <div style="padding:8px 14px;background:rgba(16,185,129,.05);border-top:1px solid rgba(16,185,129,.2)">
+          <div style="font-size:.67rem;color:var(--green);margin-bottom:5px">✅ 수정 후 — Scanner 참조 제거</div>
+          <div style="font-family:'JetBrains Mono',Consolas,monospace;font-size:.71rem;line-height:1.7;color:#C9D1D9">
+            <span style="color:#6272A4">190</span>&nbsp; <span style="color:#FF79C6">private</span> List&lt;Token&gt; <span style="color:#50FA7B">mockScanner</span>(String src) {<br>
+            <span style="color:#6272A4">191</span>&nbsp; &nbsp; List&lt;Token&gt; tokens = <span style="color:#FF79C6">new</span> Scanner(src).scan();<br>
+            <span style="color:#6272A4">192</span>&nbsp; &nbsp; <span style="color:#FF79C6">return</span> tokens;<br>
+            <span style="color:#6272A4">193</span>&nbsp; }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 사례 4: ReturnException package-private -->
+    <div>
+      <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 4 — 제어 흐름 예외의 외부 노출 방지</h3>
+      <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
+        <div class="gh-header">
+          <span class="gh-title">PR #19 · refactor(shell): Mode Strategy + Command 패턴</span>
+          <span class="gh-state gh-merged">merged</span>
+        </div>
+        <div class="gh-file">📄 ReturnException.java</div>
+        <div class="gh-line"><span style="color:#FF79C6">public</span> <span style="color:#FF79C6">class</span> <span style="color:#50FA7B">ReturnException</span> <span style="color:#FF79C6">extends</span> RuntimeException {</div>
+        <div class="gh-thread" style="margin:0;border-radius:0;border-left:none;border-right:none">
+          <div class="gh-comment">
+            <div class="gh-avatar">j</div>
+            <div style="flex:1">
+              <div class="gh-meta"><span class="gh-user">mylhb9</span><span class="gh-time">Jun 8, 2026</span></div>
+              <div class="gh-body">제어 흐름용 예외는 <code style="color:var(--cyan2)">codefab.executor</code> 내부에서만 catch해야 합니다. public으로 노출되면 외부 패키지에서 남용될 수 있어요.</div>
+            </div>
+          </div>
+          <div class="gh-reply" style="background:rgba(16,185,129,.08);border-left:2px solid var(--green);color:var(--green2)"><code>class ReturnException</code> (package-private)으로 변경 — 외부 catch 차단 완료 ✅</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ S15: REVIEW HIGHLIGHTS ══ -->
+<section class="slide">
+  <div class="lbl">03 — 개발 과정</div>
+  <h2>코드 리뷰 활동</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
+
+    <!-- LEFT COLUMN: Case 1 + Case 2 -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+
+      <!-- 사례 5: Parser.reportError() throw 누락 -->
+      <div>
+        <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 5 — throw 누락: 파싱 흐름이 계속됨</h3>
+        <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
+          <div class="gh-header">
+            <span class="gh-title">PR #8 · Parser 재귀 하강 구현</span>
+            <span class="gh-state gh-merged">merged</span>
+          </div>
+          <div class="gh-file">📄 Parser.java · parseStatement()</div>
+          <div class="gh-line">reportError(token, msg);&nbsp;&nbsp;<span style="color:var(--red2);font-style:italic">// ← throw 없음</span></div>
+          <div class="gh-thread" style="margin:0;border-radius:0;border-left:none;border-right:none">
+            <div class="gh-comment">
+              <div class="gh-avatar">H</div>
+              <div style="flex:1">
+                <div class="gh-meta"><span class="gh-user">HKLeeeee</span><span class="gh-time">Jun 5, 2026</span></div>
+                <div class="gh-body"><code style="color:var(--cyan2)">throw</code>가 없으면 진단만 기록되고 파싱이 계속됩니다. 잘못된 AST 노드가 생성될 수 있어요!</div>
+              </div>
+            </div>
+            <div class="gh-reply" style="background:rgba(16,185,129,.08);border-left:2px solid var(--green);color:var(--green2)">chloelee7: <code>throw reportError(token, msg);</code> 로 수정했습니다 — recoverToNextStatement() 정상 동작 ✅</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사례 6: ConstantFolder 0나눗셈 진단 금지 -->
+      <div>
+        <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 6 — 최적화 패스에서 진단 발생 금지</h3>
+        <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
+          <div class="gh-header">
+            <span class="gh-title">PR #18 · feat(optimizer): ConstantFolder 상수 폴딩 구현</span>
+            <span class="gh-state gh-merged">merged</span>
+          </div>
+          <div class="gh-file">📄 ConstantFolder.java · visitBinary()</div>
+          <div class="gh-line">diagnostics.add(<span style="color:#FF79C6">new</span> Diagnostic(OPTIMIZER, <span style="color:#F1FA8C">"Division by zero"</span>));</div>
+          <div class="gh-thread" style="margin:0;border-radius:0;border-left:none;border-right:none">
+            <div class="gh-comment">
+              <div class="gh-avatar">t</div>
+              <div style="flex:1">
+                <div class="gh-meta"><span class="gh-user">totoseel</span><span class="gh-time">Jun 6, 2026</span></div>
+                <div class="gh-body">ConstantFolder는 최적화 단계입니다. 0나눗셈은 진단 없이 <code style="color:var(--cyan2)">return null</code>로 폴딩만 생략하고 런타임에 위임해야 해요.</div>
+              </div>
+            </div>
+            <div class="gh-reply" style="background:rgba(16,185,129,.08);border-left:2px solid var(--green);color:var(--green2)">수정 완료: <code>return null;</code> — InterpreterRuntimeError는 Executor에서 처리 ✅</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Case 7 -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+
+      <!-- 사례 7: Checker REPL 모드 분리 -->
+      <div>
+        <h3 style="margin-bottom:8px;font-size:.82rem;color:var(--cyan2)">사례 7 — REPL과 정적 분석 모드 분리</h3>
+        <div class="gh-mock" style="display:flex;flex-direction:column;gap:0">
+          <div class="gh-header">
+            <span class="gh-title">PR #8 · Checker 정적 분석 구현</span>
+            <span class="gh-state gh-merged">merged</span>
+          </div>
+          <div class="gh-file">📄 Checker.java · constructor</div>
+          <div class="gh-line"><span style="color:#FF79C6">new</span> <span style="color:#50FA7B">Checker</span>(diagnostics)&nbsp;&nbsp;<span style="color:var(--red2);font-style:italic">// replMode 없음 — REPL에서 이전 변수 참조 불가</span></div>
+          <div class="gh-thread" style="margin:0;border-radius:0;border-left:none;border-right:none">
+            <div class="gh-comment">
+              <div class="gh-avatar">j</div>
+              <div style="flex:1">
+                <div class="gh-meta"><span class="gh-user">chloelee7</span><span class="gh-time">Jun 4, 2026</span></div>
+                <div class="gh-body">REPL에서 이전 입력에서 선언한 변수를 참조하면 '미선언 변수'로 잡힙니다. <code style="color:var(--cyan2)">replMode</code> 플래그로 전역 미선언 검사를 분기해야 해요.</div>
+              </div>
+            </div>
+            <div class="gh-reply" style="background:rgba(16,185,129,.08);border-left:2px solid var(--green);color:var(--green2)"><code>replMode=true</code> 시 전역 스코프 미선언 검사 생략 → Executor에 위임 ✅</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ S4: LANGUAGE DIFF ══ -->
+<section class="slide">
+  <div class="lbl">04 — 다른 언어와의 차이점</div>
+  <h2>일반 언어와의 주요 차이점</h2>
+  <div class="lang-grid">
+    <div class="lang-card">
+      <h3>진리값 (Truthiness)</h3>
+      <div style="font-size:.65rem;font-weight:700;color:var(--cyan);letter-spacing:.08em;margin-bottom:6px">vs JavaScript / Python</div>
+      <div class="lang-diff">
+        <div class="ld-row"><span class="ld-before">JS: 0, "" → false</span><span class="ld-arrow">≠</span><span class="ld-after">CodeFab</span></div>
+        <div class="ld-row"><span class="ld-after">nil, false → false</span></div>
+        <div class="ld-row"><span class="ld-after">0, "" → <strong style="color:var(--green2)">true</strong></span></div>
+      </div>
+      <p style="font-size:.71rem;color:var(--gray);margin-top:6px">암묵적 형변환으로 인한 버그 방지 — 오직 의미상 "없음"만 falsy</p>
+    </div>
+    <div class="lang-card">
+      <h3>null 대신 nil</h3>
+      <div style="font-size:.65rem;font-weight:700;color:var(--cyan);letter-spacing:.08em;margin-bottom:6px">vs Java / C</div>
+      <div class="lang-diff">
+        <div class="ld-row"><span class="ld-before">Java: null</span><span class="ld-arrow">→</span><span class="ld-after">nil</span></div>
+        <div class="ld-row"><span class="ld-before">System.out.println</span><span class="ld-arrow">→</span><span class="ld-after">print</span></div>
+      </div>
+      <p style="font-size:.71rem;color:var(--gray);margin-top:6px">Java NullPointerException과 혼동 방지 · 학습용 언어로 문법 단순화</p>
+    </div>
+    <div class="lang-card">
+      <h3>숫자 출력 형식</h3>
+      <div style="font-size:.65rem;font-weight:700;color:var(--cyan);letter-spacing:.08em;margin-bottom:6px">vs Java / C++</div>
+      <div class="lang-diff">
+        <div class="ld-row"><span class="ld-before">Java: 5.0 → "5.0"</span><span class="ld-arrow">→</span><span class="ld-after">5</span></div>
+        <div class="ld-row"><span class="ld-before">3.14 → "3.14"</span><span class="ld-arrow">→</span><span class="ld-after">3.14</span></div>
+      </div>
+      <p style="font-size:.71rem;color:var(--gray);margin-top:6px">사용자가 정수처럼 쓰면 정수로 보이도록 — 불필요한 .0 노출 제거</p>
+    </div>
+    <div class="lang-card">
+      <h3>배열 — 정적 크기</h3>
+      <div style="font-size:.65rem;font-weight:700;color:var(--cyan);letter-spacing:.08em;margin-bottom:6px">vs Python / JavaScript</div>
+      <div class="lang-diff">
+        <div class="ld-row"><span class="ld-before">Python: list 동적</span><span class="ld-arrow">→</span><span class="ld-after">Array(n)</span></div>
+        <div class="ld-row"><span class="ld-after">고정 크기 · nil 초기화</span></div>
+      </div>
+      <p style="font-size:.71rem;color:var(--gray);margin-top:6px">메모리 모델 학습 목적 — 크기 초과 시 즉시 런타임 오류로 명시적 피드백</p>
+    </div>
+    <div class="lang-card">
+      <h3>함수 — 일급 객체 + 클로저</h3>
+      <div style="font-size:.65rem;font-weight:700;color:var(--cyan);letter-spacing:.08em;margin-bottom:6px">vs Java (메서드 중심)</div>
+      <div class="lang-diff">
+        <div class="ld-row"><span class="ld-before">Java: 클래스 필수</span><span class="ld-arrow">→</span><span class="ld-after">Func</span></div>
+        <div class="ld-row"><span class="ld-after">선언 시점 Environment 캡처</span></div>
+      </div>
+      <p style="font-size:.71rem;color:var(--gray);margin-top:6px">함수형 개념 학습 목적 · 클래스 없이 클로저·재귀를 직접 체험</p>
+    </div>
+    <div class="lang-card">
+      <h3>동등성 비교</h3>
+      <div style="font-size:.65rem;font-weight:700;color:var(--cyan);letter-spacing:.08em;margin-bottom:6px">vs Java / Python</div>
+      <div class="lang-diff">
+        <div class="ld-row"><span class="ld-after">nil == nil → true</span></div>
+        <div class="ld-row"><span class="ld-before">Python: [1,2]==[1,2] true</span></div>
+        <div class="ld-row"><span class="ld-after">배열: 참조 비교 → false</span></div>
+      </div>
+      <p style="font-size:.71rem;color:var(--gray);margin-top:6px">참조 vs 값 동등성 개념을 명확히 구분 — 구조적 비교 의존 버그 차단</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S16: CLOSING ══ -->
+<section class="slide" id="s-closing">
+  <div class="lbl">마무리</div>
+  <h1>감사합니다</h1>
+  <p class="muted" style="margin-bottom:16px">CodeFab Interpreter — 팀 프로젝트 발표</p>
+  <div class="divider" style="margin:0 auto 20px"></div>
+  <div class="feat-row">
+    <span class="feat">변수·조건문·반복문</span>
+    <span class="feat">함수 &amp; 클로저 &amp; 재귀</span>
+    <span class="feat">정적 배열 + len()</span>
+    <span class="feat">상수 폴딩 최적화</span>
+    <span class="feat">정적 바인딩 O(1)</span>
+    <span class="feat">멀티라인 REPL</span>
+    <span class="feat">디버그 쉘</span>
+    <span class="feat">웹 실행 모드</span>
+    <span class="feat">Strategy + Command 패턴</span>
+    <span class="feat">Google Style Guide</span>
+  </div>
+  <div class="test-row">
+    <span class="tch2">ScannerTest</span>
+    <span class="tch2">ParserTest</span>
+    <span class="tch2">CheckerTest</span>
+    <span class="tch2">ExecutorTest</span>
+    <span class="tch2">PromptShellTest</span>
+    <span class="tch2">EndToEndTest</span>
+    <span class="tch2">MainDispatchTest</span>
+    <span class="tch2">DebugShellTest</span>
+  </div>
+  <div class="card mt" style="padding:11px 22px;margin-bottom:20px;border-color:var(--green);max-width:500px">
+    <p style="text-align:center;font-size:.86rem;color:#CBD5E1">전체 <strong style="color:var(--green);font-size:1.05rem">233개</strong> 테스트 통과 · 실패 0</p>
+  </div>
+  <div class="qa">Q &amp; A</div>
+</section>
+
+<!-- ── Fixed UI ── -->
+<div id="sctr">1 / 16</div>
+<div id="pbar"><div id="pfill" style="width:6.25%"></div></div>
+<div id="hint">F — 전체화면 · ← → 탐색 · Home/End</div>
+</div>
+
+<script>
+var cur=0;
+var slides=document.querySelectorAll('.slide');
+var ctr=document.getElementById('sctr');
+var fill=document.getElementById('pfill');
+var total=slides.length;
+
+function goTo(n){
+  var prev=cur;
+  cur=Math.max(0,Math.min(n,total-1));
+  if(prev===cur)return;
+  slides[prev].classList.remove('active');
+  slides[prev].classList.add('prev');
+  setTimeout(function(){slides[prev].classList.remove('prev')},400);
+  slides[cur].classList.add('active');
+  ctr.textContent=(cur+1)+' / '+total;
+  fill.style.width=((cur+1)/total*100)+'%';
+}
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='ArrowRight'||e.key==='ArrowDown')goTo(cur+1);
+  else if(e.key==='ArrowLeft'||e.key==='ArrowUp')goTo(cur-1);
+  else if(e.key==='Home')goTo(0);
+  else if(e.key==='End')goTo(total-1);
+  else if(e.key==='f'||e.key==='F')toggleFS();
+  else if(e.key>='1'&&e.key<='9')goTo(parseInt(e.key)-1);
+});
+
+document.getElementById('pres').addEventListener('click',function(e){
+  var x=e.clientX/window.innerWidth;
+  if(x>0.75)goTo(cur+1);
+  else if(x<0.25)goTo(cur-1);
+});
+
+var tx=0;
+document.addEventListener('touchstart',function(e){tx=e.changedTouches[0].clientX},{passive:true});
+document.addEventListener('touchend',function(e){
+  var dx=e.changedTouches[0].clientX-tx;
+  if(Math.abs(dx)>50){if(dx<0)goTo(cur+1);else goTo(cur-1);}
+},{passive:true});
+
+function toggleFS(){
+  if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(function(){});
+  else document.exitFullscreen();
+}
+</script>
+</body>
+</html>
