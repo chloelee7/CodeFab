@@ -35,7 +35,7 @@ class ExecutorTest {
 
     @BeforeEach
     void setUp() {
-        executor = new Executor(output, new Environment());
+        executor = new Executor(output, Executor.newGlobalScope());
     }
 
     private static Token tok(TokenType type, String lexeme) {

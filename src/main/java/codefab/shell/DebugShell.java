@@ -73,7 +73,7 @@ public final class DebugShell {
         }
 
         this.outputSink = new CollectingOutputSink();
-        this.executor = new Executor(outputSink, new Environment());
+        this.executor = new Executor(outputSink, Executor.newGlobalScope());
         // statement 단위로 끼어들어 step/breakpoint를 처리한다. 중첩 블록(함수 본문,
         // for/while 본문, if 분기) 내부의 statement도 이 훅을 통과하므로 블록 내부에서 멈춘다.
         executor.setDebugHook(this::onStatement);

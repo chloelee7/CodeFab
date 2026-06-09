@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -24,15 +23,7 @@ class DebugShellTest {
     Path tempDir;
 
     private String drive(String source, String commands) throws IOException {
-        Path script = tempDir.resolve("program.cfab");
-        Files.writeString(script, source, StandardCharsets.UTF_8);
-
-        BufferedReader in = new BufferedReader(new StringReader(commands));
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        PrintStream out = new PrintStream(bytes, true, StandardCharsets.UTF_8);
-        PrintStream err = new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8);
-        new DebugShell(in, out, err, script.toString()).run();
-        return bytes.toString(StandardCharsets.UTF_8);
+        return DebugShellTestSupport.drive(tempDir, source, commands);
     }
 
     private boolean containsOutputLine(String output, String expected) {
