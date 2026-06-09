@@ -85,21 +85,24 @@ public final class DebugShell {
         } catch (DebugExit e) {
             // 사용자가 exit/quit 했거나 입력이 끝남 — 정상 종료
         } catch (codefab.core.InterpreterRuntimeError e) {
+            // 사용자 코드의 런타임 오류만 여기서 보고한다.
             drainOutput();
             out.println("[RUNTIME ERROR] " + e.getMessage());
-        } catch (RuntimeException e) {
-            // ReturnException(package-private) 포함 — top-level return 등 비정상 흐름 처리
-            drainOutput();
-            String msg = e.getMessage();
-            out.println("[RUNTIME ERROR] " + (msg != null ? msg : e.getClass().getSimpleName()));
         }
+        // 그 외 RuntimeException/Error는 디버거 자체 버그이므로 가리지 않고 전파한다.
+        // (top-level return은 Checker가 금지하므로 ReturnException은 여기까지 오지 않는다.)
 
         drainOutput();
         out.println("[DEBUG] 실행 완료.");
     }
 
     /** Executor가 각 statement 실행 직전에 호출. 멈춰야 하면 대화형 명령 루프로 진입한다. */
-    private void onStatement(Stmt stmt, Environment env) {
+    private void onStatement(Stmt stmt) {
+        // BlockStmt 자체는 줄번호가 없고(정지 메시지가 줄 미상이 됨) breakpoint 대상도 아니다.
+        // 통과시키면 내부 각 statement에서 정상적으로 멈추므로 블록 노드 이중 정지를 피한다.
+        if (stmt instanceof Stmt.BlockStmt) {
+            return;
+        }
         int line = getLine(stmt);
         boolean atBreakpoint = line > 0 && breakpoints.contains(line);
         if (!stepping && !atBreakpoint) {

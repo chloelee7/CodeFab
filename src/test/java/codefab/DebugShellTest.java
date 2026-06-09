@@ -153,6 +153,40 @@ class DebugShellTest {
     }
 
     @Test
+    @DisplayName("함수 본문 내부에서 멈춰 파라미터·지역변수를 inspect로 확인한다")
+    void inspectShowsFunctionLocalsWhenStoppedInsideBody() throws IOException {
+        String source = String.join("\n",
+                "Func f(a) {",
+                "  var b = a + 1;",
+                "  print b;",
+                "}",
+                "f(10);",
+                "");
+
+        String output = drive(source, "break 3\ncontinue\ninspect\nexit\n");
+
+        assertTrue(output.contains("3번째 줄에서 정지 (breakpoint)"), () -> output);
+        assertTrue(output.contains("a = 10"), () -> output);
+        assertTrue(output.contains("b = 11"), () -> output);
+    }
+
+    @Test
+    @DisplayName("continue는 while 본문 내부 breakpoint에서 멈춘다")
+    void continueStopsAtBreakpointInsideWhileBody() throws IOException {
+        String source = String.join("\n",
+                "var x = 0;",
+                "while (x < 2) {",
+                "  x = x + 1;",
+                "}",
+                "print x;",
+                "");
+
+        String output = drive(source, "break 3\ncontinue\nexit\n");
+
+        assertTrue(output.contains("3번째 줄에서 정지 (breakpoint)"), () -> output);
+    }
+
+    @Test
     @DisplayName("파일 없음 오류는 stdout이 아닌 stderr로 출력된다")
     void missingFileErrorGoesToStderrNotStdout() throws Exception {
         BufferedReader in = new BufferedReader(new StringReader(""));

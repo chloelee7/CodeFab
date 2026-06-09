@@ -16,7 +16,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     /** 디버거가 statement 실행 직전에 끼어들 수 있는 훅. */
     @FunctionalInterface
     public interface DebugHook {
-        void beforeStatement(Stmt stmt, Environment environment);
+        void beforeStatement(Stmt stmt);
     }
 
     private final OutputSink output;
@@ -83,7 +83,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
      */
     private void exec(Stmt stmt) {
         if (debugHook != null) {
-            debugHook.beforeStatement(stmt, environment);
+            debugHook.beforeStatement(stmt);
         }
         stmt.accept(this);
     }
