@@ -169,61 +169,61 @@ public final class ExplainMode implements Mode {
 
         @Override
         public String visitExpressionStmt(Stmt.ExpressionStmt stmt) {
-            return "ExpressionStmt(" + format(stmt.expression) + ")";
+            return "ExpressionStmt(" + format(stmt.expression()) + ")";
         }
 
         @Override
         public String visitPrintStmt(Stmt.PrintStmt stmt) {
-            return "PrintStmt(" + format(stmt.expression) + ")";
+            return "PrintStmt(" + format(stmt.expression()) + ")";
         }
 
         @Override
         public String visitVarStmt(Stmt.VarStmt stmt) {
-            return "VarStmt(" + stmt.name.lexeme + ", " + format(stmt.initializer) + ")";
+            return "VarStmt(" + stmt.name().lexeme + ", " + format(stmt.initializer()) + ")";
         }
 
         @Override
         public String visitBlockStmt(Stmt.BlockStmt stmt) {
-            return "BlockStmt(" + formatStatements(stmt.statements) + ")";
+            return "BlockStmt(" + formatStatements(stmt.statements()) + ")";
         }
 
         @Override
         public String visitIfStmt(Stmt.IfStmt stmt) {
-            return "IfStmt(" + format(stmt.condition)
-                + ", " + stmt.thenBranch.accept(this)
-                + ", " + formatNullableStmt(stmt.elseBranch) + ")";
+            return "IfStmt(" + format(stmt.condition())
+                + ", " + stmt.thenBranch().accept(this)
+                + ", " + formatNullableStmt(stmt.elseBranch()) + ")";
         }
 
         @Override
         public String visitForStmt(Stmt.ForStmt stmt) {
-            return "ForStmt(" + formatNullableStmt(stmt.initializer)
-                + ", " + format(stmt.condition)
-                + ", " + format(stmt.increment)
-                + ", " + stmt.body.accept(this) + ")";
+            return "ForStmt(" + formatNullableStmt(stmt.initializer())
+                + ", " + format(stmt.condition())
+                + ", " + format(stmt.increment())
+                + ", " + stmt.body().accept(this) + ")";
         }
 
         @Override
         public String visitWhileStmt(Stmt.WhileStmt stmt) {
-            return "WhileStmt(" + format(stmt.condition) + ", " + stmt.body.accept(this) + ")";
+            return "WhileStmt(" + format(stmt.condition()) + ", " + stmt.body().accept(this) + ")";
         }
 
         @Override
         public String visitFunctionStmt(Stmt.FunctionStmt stmt) {
-            String params = stmt.params.stream()
+            String params = stmt.params().stream()
                 .map(token -> token.lexeme)
                 .collect(Collectors.joining(", "));
-            return "FunctionStmt(" + stmt.name.lexeme + ", [" + params + "], "
-                + formatStatements(stmt.body) + ")";
+            return "FunctionStmt(" + stmt.name().lexeme + ", [" + params + "], "
+                + formatStatements(stmt.body()) + ")";
         }
 
         @Override
         public String visitReturnStmt(Stmt.ReturnStmt stmt) {
-            return "ReturnStmt(" + format(stmt.value) + ")";
+            return "ReturnStmt(" + format(stmt.value()) + ")";
         }
 
         @Override
         public String visitLiteral(Expr.Literal expr) {
-            return "Literal(" + valueText(expr.value) + ")";
+            return "Literal(" + valueText(expr.value()) + ")";
         }
 
         @Override
@@ -238,40 +238,40 @@ public final class ExplainMode implements Mode {
 
         @Override
         public String visitUnary(Expr.Unary expr) {
-            return "Unary(" + expr.operator.lexeme + ", " + format(expr.right) + ")";
+            return "Unary(" + expr.operator().lexeme + ", " + format(expr.right()) + ")";
         }
 
         @Override
         public String visitBinary(Expr.Binary expr) {
-            return "Binary(" + format(expr.left) + ", " + expr.operator.lexeme + ", "
-                + format(expr.right) + ")";
+            return "Binary(" + format(expr.left()) + ", " + expr.operator().lexeme + ", "
+                + format(expr.right()) + ")";
         }
 
         @Override
         public String visitLogical(Expr.Logical expr) {
-            return "Logical(" + format(expr.left) + ", " + expr.operator.lexeme + ", "
-                + format(expr.right) + ")";
+            return "Logical(" + format(expr.left()) + ", " + expr.operator().lexeme + ", "
+                + format(expr.right()) + ")";
         }
 
         @Override
         public String visitGrouping(Expr.Grouping expr) {
-            return "Grouping(" + format(expr.expression) + ")";
+            return "Grouping(" + format(expr.expression()) + ")";
         }
 
         @Override
         public String visitCall(Expr.Call expr) {
-            return "Call(" + format(expr.callee) + ", " + formatExpressions(expr.arguments) + ")";
+            return "Call(" + format(expr.callee()) + ", " + formatExpressions(expr.arguments()) + ")";
         }
 
         @Override
         public String visitArrayGet(Expr.ArrayGet expr) {
-            return "ArrayGet(" + format(expr.array) + ", " + format(expr.index) + ")";
+            return "ArrayGet(" + format(expr.array()) + ", " + format(expr.index()) + ")";
         }
 
         @Override
         public String visitArraySet(Expr.ArraySet expr) {
-            return "ArraySet(" + format(expr.array) + ", " + format(expr.index)
-                + ", " + format(expr.value) + ")";
+            return "ArraySet(" + format(expr.array()) + ", " + format(expr.index())
+                + ", " + format(expr.value()) + ")";
         }
 
         private String formatNullableStmt(Stmt statement) {
