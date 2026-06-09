@@ -324,6 +324,51 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
 .tch2::before{content:'✓';font-weight:800}
 .qa{font-size:1.3rem;font-weight:800;color:var(--cyan);letter-spacing:.1em}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* === 웹 실행 모드 카드 강조 애니메이션 === */
+.web-highlight{
+  position:relative;
+  overflow:hidden;               /* 빛 반사 띠를 카드 경계로 클립 */
+  animation:webGlow 2.4s ease-in-out infinite;
+}
+/* 테두리 글로우 펄스 */
+@keyframes webGlow{
+  0%,100%{box-shadow:0 0 0 0 rgba(6,182,212,.0),0 0 18px 0 rgba(6,182,212,.18);border-color:rgba(6,182,212,.55)}
+  50%{box-shadow:0 0 0 3px rgba(6,182,212,.18),0 0 34px 4px rgba(6,182,212,.45);border-color:var(--cyan)}
+}
+/* 좌상단 → 우하단 빛 반사(sheen) */
+.web-highlight::before{
+  content:'';position:absolute;top:-60%;left:-60%;
+  width:120%;height:220%;
+  pointer-events:none;z-index:5;
+  background:linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,.08) 35%,
+    rgba(186,247,255,.55) 50%,
+    rgba(255,255,255,.08) 65%,
+    transparent 100%);
+  transform:rotate(25deg) translate(-160%,0);
+  animation:webSheen 4.0s ease-in-out infinite;
+}
+@keyframes webSheen{
+  0%{transform:rotate(25deg) translate(-160%,0)}
+  /* 띠가 좌상단에서 우하단으로 통과 후 다음 주기까지 대기 */
+  45%,100%{transform:rotate(25deg) translate(210%,0)}
+}
+/* NEW 배지 펄스 */
+.web-new{
+  animation:newPulse 1.4s ease-in-out infinite;
+  transform-origin:center;
+}
+@keyframes newPulse{
+  0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(6,182,212,.5)}
+  50%{transform:scale(1.12);box-shadow:0 0 0 5px rgba(6,182,212,0)}
+}
+@media(prefers-reduced-motion:reduce){
+  .web-highlight{animation:none;box-shadow:0 0 24px 2px rgba(6,182,212,.35)}
+  .web-highlight::before{animation:none;opacity:0}
+  .web-new{animation:none}
+}
 </style>
 </head>
 <body>
@@ -553,15 +598,15 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
 
   <div style="font-size:.867rem;font-weight:700;color:var(--gray2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px">컴파일 파이프라인</div>
   <div class="pipe">
-    <div class="pipe-step"><div class="pipe-box">Scanner<div class="pipe-lbl" style="margin-top:4px">소스 문자열</div></div></div>
+    <div class="pipe-step"><div class="pipe-box">Scanner<div class="pipe-lbl" style="margin-top:4px">문자 → 토큰</div></div></div>
     <div class="pipe-arrow">→</div>
-    <div class="pipe-step"><div class="pipe-box">Parser<div class="pipe-lbl" style="margin-top:4px">Token 리스트</div></div></div>
+    <div class="pipe-step"><div class="pipe-box">Parser<div class="pipe-lbl" style="margin-top:4px">토큰 → 트리 구조(AST)</div></div></div>
     <div class="pipe-arrow">→</div>
-    <div class="pipe-step"><div class="pipe-box">Checker<div class="pipe-lbl" style="margin-top:4px">AST</div></div></div>
+    <div class="pipe-step"><div class="pipe-box">Checker<div class="pipe-lbl" style="margin-top:4px">정적 검사</div></div></div>
     <div class="pipe-arrow">→</div>
-    <div class="pipe-step"><div class="pipe-box">ConstantFolder<div class="pipe-lbl" style="margin-top:4px">검증된 AST</div></div></div>
+    <div class="pipe-step"><div class="pipe-box">ConstantFolder<div class="pipe-lbl" style="margin-top:4px">상수 최적화</div></div></div>
     <div class="pipe-arrow">→</div>
-    <div class="pipe-step"><div class="pipe-box">Executor<div class="pipe-lbl" style="margin-top:4px">최적화 AST</div></div></div>
+    <div class="pipe-step"><div class="pipe-box">Executor<div class="pipe-lbl" style="margin-top:4px">AST를 DFS로 실행</div></div></div>
   </div>
   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;flex:1">
     <div class="card"><div class="pat-name" style="color:#A5B4FC;font-size:.947rem;margin-bottom:5px">Scanner</div>
@@ -640,9 +685,9 @@ pre.code{background:#0D1117;border:1px solid var(--navy3);border-radius:8px;padd
       </div>
     </div>
     <!-- Mode 4: Web -->
-    <div class="mode-card" style="border-color:var(--cyan)">
+    <div class="mode-card web-highlight" style="border-color:var(--cyan)">
       <div class="mode-num" style="background:rgba(6,182,212,.2);color:var(--cyan2)">🌐</div>
-      <div class="mode-name">웹 실행 모드 <span class="tag" style="font-size:9px;margin-left:4px">NEW</span></div>
+      <div class="mode-name">웹 실행 모드 <span class="tag web-new" style="font-size:9px;margin-left:4px">NEW</span></div>
       <div class="mode-cmd" style="font-size:.68rem"><a href="http://158.179.194.73/" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:none">CCC 웹사이트 ↗</a></div>
       <ul class="mode-list">
         <li>브라우저에서 바로 체험</li>
