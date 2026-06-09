@@ -59,3 +59,8 @@ test {
         exceptionFormat 'full'
     }
 }
+
+// debug/REPL 모드에서 ./gradlew run 실행 시 키보드 입력이 전달되도록 설정
+run {
+    standardInput = System.in
+}
