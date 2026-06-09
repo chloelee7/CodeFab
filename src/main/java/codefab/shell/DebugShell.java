@@ -26,7 +26,7 @@ public final class DebugShell {
         }
     }
 
-    private final BufferedReader in;
+    private final LineSource lineSource;
     private final PrintStream out;
     private final PrintStream err;
     private final String filePath;
@@ -50,8 +50,13 @@ public final class DebugShell {
     private CollectingOutputSink outputSink;
     private Executor executor;
 
+    /** 기존 생성자 — BufferedReader 경로로 위임(테스트 무변경). */
     public DebugShell(BufferedReader in, PrintStream out, PrintStream err, String filePath) {
-        this.in = in;
+        this(new BufferedLineSource(in, out), out, err, filePath);
+    }
+
+    public DebugShell(LineSource lineSource, PrintStream out, PrintStream err, String filePath) {
+        this.lineSource = lineSource;
         this.out = out;
         this.err = err;
         this.filePath = filePath;
@@ -140,11 +145,9 @@ public final class DebugShell {
     /** step/continue로 실행을 재개할 때까지 명령을 읽어 처리한다. exit/quit/EOF는 DebugExit를 던진다. */
     private void interact() {
         while (true) {
-            out.print("> ");
-            out.flush();
             String raw;
             try {
-                raw = in.readLine();
+                raw = lineSource.readLine("> ");
             } catch (IOException e) {
                 throw new DebugExit();
             }
