@@ -107,6 +107,124 @@ class DebugShellTest {
     }
 
     @Test
+    @DisplayName("continue는 함수 본문 내부 breakpoint에서 멈춘다")
+    void continueStopsAtBreakpointInsideFunctionBody() throws IOException {
+        String source = String.join("\n",
+                "Func f() {",
+                "  print 99;",
+                "}",
+                "f();",
+                "");
+
+        String output = drive(source, "break 2\ncontinue\nexit\n");
+
+        assertTrue(output.contains("2번째 줄에서 정지 (breakpoint)"), () -> output);
+        assertFalse(containsOutputLine(output, "99"), () -> output);
+    }
+
+    @Test
+    @DisplayName("continue는 for 본문 내부 breakpoint에서 멈춘다")
+    void continueStopsAtBreakpointInsideForBody() throws IOException {
+        String source = String.join("\n",
+                "for (var i = 0; i < 3; i = i + 1) {",
+                "  print i;",
+                "}",
+                "");
+
+        String output = drive(source, "break 2\ncontinue\nexit\n");
+
+        assertTrue(output.contains("2번째 줄에서 정지 (breakpoint)"), () -> output);
+        assertFalse(containsOutputLine(output, "0"), () -> output);
+    }
+
+    @Test
+    @DisplayName("step은 함수 본문 내부로 진입한다")
+    void stepDescendsIntoFunctionBody() throws IOException {
+        String source = String.join("\n",
+                "Func f() {",
+                "  print 99;",
+                "}",
+                "f();",
+                "");
+
+        String output = drive(source, "step\nstep\nstep\nexit\n");
+
+        assertTrue(output.contains("2번째 줄에서 정지"), () -> output);
+    }
+
+    @Test
+    @DisplayName("next는 함수 호출을 step-over한다 (본문 내부로 진입하지 않음)")
+    void nextStepsOverFunctionCall() throws IOException {
+        String source = String.join("\n",
+                "Func f() {",
+                "  print 99;",
+                "}",
+                "f();",
+                "print 1;",
+                "");
+
+        // 1줄(Func 정의)에서 정지 → next로 정의 실행 → 4줄(f();)에서 정지 →
+        // next로 f() 호출을 step-over(본문 진입 X, 99 출력) → 5줄(print 1)에서 정지
+        String output = drive(source, "next\nnext\nnext\nexit\n");
+
+        assertTrue(output.contains("4번째 줄에서 정지"), () -> output);
+        assertTrue(output.contains("5번째 줄에서 정지"), () -> output);
+        assertTrue(containsOutputLine(output, "99"), () -> output);   // 본문은 실행됨
+        assertFalse(output.contains("2번째 줄에서 정지"), () -> output); // 본문 내부엔 정지 안 함
+    }
+
+    @Test
+    @DisplayName("step은 함수 호출 시 본문 내부로 진입한다 (step-into)")
+    void stepStepsIntoFunctionCall() throws IOException {
+        String source = String.join("\n",
+                "Func f() {",
+                "  print 99;",
+                "}",
+                "f();",
+                "print 1;",
+                "");
+
+        // 1줄 정지 → step(정의) → 4줄 f() 정지 → step → 본문 2줄 print 99에서 정지
+        String output = drive(source, "step\nstep\nstep\nexit\n");
+
+        assertTrue(output.contains("2번째 줄에서 정지"), () -> output); // 본문 진입
+    }
+
+    @Test
+    @DisplayName("함수 본문 내부에서 멈춰 파라미터·지역변수를 inspect로 확인한다")
+    void inspectShowsFunctionLocalsWhenStoppedInsideBody() throws IOException {
+        String source = String.join("\n",
+                "Func f(a) {",
+                "  var b = a + 1;",
+                "  print b;",
+                "}",
+                "f(10);",
+                "");
+
+        String output = drive(source, "break 3\ncontinue\ninspect\nexit\n");
+
+        assertTrue(output.contains("3번째 줄에서 정지 (breakpoint)"), () -> output);
+        assertTrue(output.contains("a = 10"), () -> output);
+        assertTrue(output.contains("b = 11"), () -> output);
+    }
+
+    @Test
+    @DisplayName("continue는 while 본문 내부 breakpoint에서 멈춘다")
+    void continueStopsAtBreakpointInsideWhileBody() throws IOException {
+        String source = String.join("\n",
+                "var x = 0;",
+                "while (x < 2) {",
+                "  x = x + 1;",
+                "}",
+                "print x;",
+                "");
+
+        String output = drive(source, "break 3\ncontinue\nexit\n");
+
+        assertTrue(output.contains("3번째 줄에서 정지 (breakpoint)"), () -> output);
+    }
+
+    @Test
     @DisplayName("파일 없음 오류는 stdout이 아닌 stderr로 출력된다")
     void missingFileErrorGoesToStderrNotStdout() throws Exception {
         BufferedReader in = new BufferedReader(new StringReader(""));

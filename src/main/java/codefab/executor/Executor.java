@@ -12,8 +12,21 @@ import java.util.Collections;
 import java.util.List;
 
 public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
+
+    /**
+     * 디버거가 statement 실행 직전에 끼어들 수 있는 훅.
+     * {@code depth}는 현재 statement의 중첩 깊이(top-level=0, 블록·함수 본문·루프 본문 진입 시 +1)로,
+     * step-over(next) 구현에 쓰인다 — 정지 시점 depth 이하로 복귀할 때까지 통지를 무시하면 된다.
+     */
+    @FunctionalInterface
+    public interface DebugHook {
+        void beforeStatement(Stmt stmt, int depth);
+    }
+
     private final OutputSink output;
     private Environment environment;
+    private DebugHook debugHook;
+    private int stmtDepth = 0;
 
     public static final int DEFAULT_MAX_CALL_DEPTH = 500;
     private final int maxCallDepth;
@@ -59,7 +72,29 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
 
     public void execute(List<Stmt> statements) {
         for (Stmt statement : statements) {
-            statement.accept(this);
+            exec(statement);
+        }
+    }
+
+    /** 디버그 훅을 등록한다. null이면 훅 없이 일반 실행. */
+    public void setDebugHook(DebugHook hook) {
+        this.debugHook = hook;
+    }
+
+    /**
+     * 단일 statement 실행 진입점. 등록된 디버그 훅이 있으면 실행 직전에 호출한다.
+     * 중첩 블록(함수 본문, for/while 본문, if 분기)을 포함한 모든 statement가
+     * 이 경로를 통과하므로, 훅은 블록 내부에서도 statement 단위로 끼어들 수 있다.
+     */
+    private void exec(Stmt stmt) {
+        if (debugHook != null) {
+            debugHook.beforeStatement(stmt, stmtDepth);
+        }
+        stmtDepth++;
+        try {
+            stmt.accept(this);
+        } finally {
+            stmtDepth--;
         }
     }
 
@@ -99,7 +134,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
         try {
             this.environment = env;
             for (Stmt s : statements) {
-                s.accept(this);
+                exec(s);
             }
         } finally {
             this.environment = previous;
@@ -109,9 +144,9 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     @Override
     public Void visitIfStmt(Stmt.IfStmt stmt) {
         if (isTruthy(evaluate(stmt.condition()))) {
-            stmt.thenBranch().accept(this);
+            exec(stmt.thenBranch());
         } else if (stmt.elseBranch() != null) {
-            stmt.elseBranch().accept(this);
+            exec(stmt.elseBranch());
         }
         return null;
     }
@@ -119,9 +154,9 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     @Override
     public Void visitForStmt(Stmt.ForStmt stmt) {
         withNewScope(() -> {
-            if (stmt.initializer() != null) stmt.initializer().accept(this);
+            if (stmt.initializer() != null) exec(stmt.initializer());
             while (stmt.condition() == null || isTruthy(evaluate(stmt.condition()))) {
-                stmt.body().accept(this);
+                exec(stmt.body());
                 if (stmt.increment() != null) evaluate(stmt.increment());
             }
         });
@@ -131,7 +166,7 @@ public final class Executor implements Expr.Visitor<Object>, Stmt.Visitor<Void> 
     @Override
     public Void visitWhileStmt(Stmt.WhileStmt stmt) {
         while (isTruthy(evaluate(stmt.condition()))) {
-            stmt.body().accept(this);
+            exec(stmt.body());
         }
         return null;
     }
