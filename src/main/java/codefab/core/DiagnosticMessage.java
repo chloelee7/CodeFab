@@ -1,6 +1,10 @@
 package codefab.core;
 
-public class DiagnosticMessage {
+public final class DiagnosticMessage {
+
+    private DiagnosticMessage() {
+        // 상수 모음 유틸 클래스 — 인스턴스화 금지
+    }
 
     // 변수 선언
     public static final String ERR_VARIABLE_NAME = "Expect variable name.";

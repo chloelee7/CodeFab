@@ -86,32 +86,32 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitUnary(Unary expr) {
-        expr.right.accept(this);
+        expr.right().accept(this);
         return null;
     }
 
     @Override
     public Void visitBinary(Binary expr) {
-        visitChildren(expr.left, expr.right);
+        visitChildren(expr.left(), expr.right());
         return null;
     }
 
     @Override
     public Void visitLogical(Logical expr) {
-        visitChildren(expr.left, expr.right);
+        visitChildren(expr.left(), expr.right());
         return null;
     }
 
     @Override
     public Void visitGrouping(Grouping expr) {
-        expr.expression.accept(this);
+        expr.expression().accept(this);
         return null;
     }
 
     @Override
     public Void visitCall(Call expr) {
-        expr.callee.accept(this);
-        for (Expr arg : expr.arguments) {
+        expr.callee().accept(this);
+        for (Expr arg : expr.arguments()) {
             arg.accept(this);
         }
         return null;
@@ -119,16 +119,16 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitArrayGet(ArrayGet expr) {
-        expr.array.accept(this);
-        expr.index.accept(this);
+        expr.array().accept(this);
+        expr.index().accept(this);
         return null;
     }
 
     @Override
     public Void visitArraySet(ArraySet expr) {
-        expr.array.accept(this);
-        expr.index.accept(this);
-        expr.value.accept(this);
+        expr.array().accept(this);
+        expr.index().accept(this);
+        expr.value().accept(this);
         return null;
     }
 
@@ -136,33 +136,33 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitExpressionStmt(ExpressionStmt stmt) {
-        stmt.expression.accept(this);
+        stmt.expression().accept(this);
         return null;
     }
 
     @Override
     public Void visitPrintStmt(PrintStmt stmt) {
-        stmt.expression.accept(this);
+        stmt.expression().accept(this);
         return null;
     }
 
     @Override
     public Void visitVarStmt(VarStmt stmt) {
         String previous = this.initializingVar;
-        this.initializingVar = stmt.name.lexeme;
+        this.initializingVar = stmt.name().lexeme;
         try {
-            visitIfPresent(stmt.initializer);
+            visitIfPresent(stmt.initializer());
         } finally {
             this.initializingVar = previous;
         }
-        declare(stmt.name);
+        declare(stmt.name());
         return null;
     }
 
     @Override
     public Void visitBlockStmt(BlockStmt stmt) {
         withNewScope(() -> {
-            for (Stmt s : stmt.statements) {
+            for (Stmt s : stmt.statements()) {
                 s.accept(this);
             }
         });
@@ -171,37 +171,37 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitIfStmt(IfStmt stmt) {
-        stmt.condition.accept(this);
-        stmt.thenBranch.accept(this);
-        visitIfPresent(stmt.elseBranch);
+        stmt.condition().accept(this);
+        stmt.thenBranch().accept(this);
+        visitIfPresent(stmt.elseBranch());
         return null;
     }
 
     @Override
     public Void visitForStmt(ForStmt stmt) {
         withNewScope(() -> {
-            visitIfPresent(stmt.initializer);
-            visitIfPresent(stmt.condition);
-            stmt.body.accept(this);
-            visitIfPresent(stmt.increment);
+            visitIfPresent(stmt.initializer());
+            visitIfPresent(stmt.condition());
+            stmt.body().accept(this);
+            visitIfPresent(stmt.increment());
         });
         return null;
     }
 
     @Override
     public Void visitWhileStmt(WhileStmt stmt) {
-        stmt.condition.accept(this);
-        stmt.body.accept(this);
+        stmt.condition().accept(this);
+        stmt.body().accept(this);
         return null;
     }
 
     @Override
     public Void visitFunctionStmt(FunctionStmt stmt) {
-        declare(stmt.name);
+        declare(stmt.name());
 
         // 파라미터 이름 중복 검사
         Set<String> paramNames = new HashSet<>();
-        for (Token param : stmt.params) {
+        for (Token param : stmt.params()) {
             if (!paramNames.add(param.lexeme)) {
                 error(param.line, "Already a parameter with this name.");
             }
@@ -210,10 +210,10 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         boolean previousInFunction = this.inFunction;
         this.inFunction = true;
         withNewScope(() -> {
-            for (Token param : stmt.params) {
+            for (Token param : stmt.params()) {
                 declare(param);
             }
-            for (Stmt s : stmt.body) {
+            for (Stmt s : stmt.body()) {
                 s.accept(this);
             }
         });
@@ -224,9 +224,9 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     @Override
     public Void visitReturnStmt(ReturnStmt stmt) {
         if (!this.inFunction) {
-            error(stmt.keyword.line, "Can't return from top-level code.");
+            error(stmt.keyword().line, "Can't return from top-level code.");
         }
-        visitIfPresent(stmt.value);
+        visitIfPresent(stmt.value());
         return null;
     }
 

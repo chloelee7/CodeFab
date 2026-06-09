@@ -19,7 +19,7 @@ class CodeFabFunction implements CodeFabCallable {
 
     @Override
     public int arity() {
-        return declaration.params.size();
+        return declaration.params().size();
     }
 
     @Override
@@ -29,6 +29,6 @@ class CodeFabFunction implements CodeFabCallable {
 
     @Override
     public String toString() {
-        return "<fn " + declaration.name.lexeme + ">";
+        return "<fn " + declaration.name().lexeme + ">";
     }
 }

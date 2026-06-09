@@ -303,36 +303,36 @@ public final class DebugShell {
 
     private int getLine(Stmt stmt) {
         if (stmt instanceof Stmt.VarStmt s) {
-            return s.name.line;
+            return s.name().line;
         }
         if (stmt instanceof Stmt.FunctionStmt s) {
-            return s.name.line;
+            return s.name().line;
         }
         if (stmt instanceof Stmt.ReturnStmt s) {
-            return s.keyword.line;
+            return s.keyword().line;
         }
         if (stmt instanceof Stmt.PrintStmt s) {
-            return getExprLine(s.expression);
+            return getExprLine(s.expression());
         }
         if (stmt instanceof Stmt.ExpressionStmt s) {
-            return getExprLine(s.expression);
+            return getExprLine(s.expression());
         }
         if (stmt instanceof Stmt.IfStmt s) {
-            return getExprLine(s.condition);
+            return getExprLine(s.condition());
         }
         if (stmt instanceof Stmt.WhileStmt s) {
-            return getExprLine(s.condition);
+            return getExprLine(s.condition());
         }
         if (stmt instanceof Stmt.ForStmt f) {
-            int line = f.initializer != null ? getLine(f.initializer) : -1;
+            int line = f.initializer() != null ? getLine(f.initializer()) : -1;
             if (line > 0) {
                 return line;
             }
-            line = f.condition != null ? getExprLine(f.condition) : -1;
+            line = f.condition() != null ? getExprLine(f.condition()) : -1;
             if (line > 0) {
                 return line;
             }
-            return f.increment != null ? getExprLine(f.increment) : -1;
+            return f.increment() != null ? getExprLine(f.increment()) : -1;
         }
         return -1;
     }
@@ -345,25 +345,25 @@ public final class DebugShell {
             return e.name.line;
         }
         if (expr instanceof Expr.Unary e) {
-            return e.operator.line;
+            return e.operator().line;
         }
         if (expr instanceof Expr.Binary e) {
-            return e.operator.line;
+            return e.operator().line;
         }
         if (expr instanceof Expr.Logical e) {
-            return e.operator.line;
+            return e.operator().line;
         }
         if (expr instanceof Expr.Grouping e) {
-            return getExprLine(e.expression);
+            return getExprLine(e.expression());
         }
         if (expr instanceof Expr.Call e) {
-            return e.paren.line;
+            return e.paren().line;
         }
         if (expr instanceof Expr.ArrayGet e) {
-            return e.bracket.line;
+            return e.bracket().line;
         }
         if (expr instanceof Expr.ArraySet e) {
-            return e.bracket.line;
+            return e.bracket().line;
         }
         return -1;
     }
@@ -375,7 +375,7 @@ public final class DebugShell {
         }
 
         if (stmt instanceof Stmt.BlockStmt s) {
-            return firstBreakpointLine(s.statements);
+            return firstBreakpointLine(s.statements());
         }
 
         return -1;
@@ -393,27 +393,27 @@ public final class DebugShell {
 
     private String stmtText(Stmt stmt) {
         if (stmt instanceof Stmt.VarStmt s) {
-            String init = s.initializer != null ? " = " + exprText(s.initializer) : "";
-            return "var " + s.name.lexeme + init + ";";
+            String init = s.initializer() != null ? " = " + exprText(s.initializer()) : "";
+            return "var " + s.name().lexeme + init + ";";
         }
-        if (stmt instanceof Stmt.ExpressionStmt s) return exprText(s.expression) + ";";
-        if (stmt instanceof Stmt.PrintStmt s)      return "print " + exprText(s.expression) + ";";
-        if (stmt instanceof Stmt.ReturnStmt s)     return s.value != null ? "return " + exprText(s.value) + ";" : "return;";
+        if (stmt instanceof Stmt.ExpressionStmt s) return exprText(s.expression()) + ";";
+        if (stmt instanceof Stmt.PrintStmt s)      return "print " + exprText(s.expression()) + ";";
+        if (stmt instanceof Stmt.ReturnStmt s)     return s.value() != null ? "return " + exprText(s.value()) + ";" : "return;";
         if (stmt instanceof Stmt.IfStmt s) {
-            String els = s.elseBranch != null ? " else " + bodyText(s.elseBranch) : "";
-            return "if (" + exprText(s.condition) + ") " + bodyText(s.thenBranch) + els;
+            String els = s.elseBranch() != null ? " else " + bodyText(s.elseBranch()) : "";
+            return "if (" + exprText(s.condition()) + ") " + bodyText(s.thenBranch()) + els;
         }
-        if (stmt instanceof Stmt.WhileStmt s)      return "while (" + exprText(s.condition) + ") " + bodyText(s.body);
+        if (stmt instanceof Stmt.WhileStmt s)      return "while (" + exprText(s.condition()) + ") " + bodyText(s.body());
         if (stmt instanceof Stmt.ForStmt s) {
-            String init = s.initializer != null ? stmtText(s.initializer).replaceAll(";$", "") : "";
-            String cond = s.condition  != null ? exprText(s.condition)  : "";
-            String incr = s.increment  != null ? exprText(s.increment)  : "";
-            return "for (" + init + "; " + cond + "; " + incr + ") " + bodyText(s.body);
+            String init = s.initializer() != null ? stmtText(s.initializer()).replaceAll(";$", "") : "";
+            String cond = s.condition()  != null ? exprText(s.condition())  : "";
+            String incr = s.increment()  != null ? exprText(s.increment())  : "";
+            return "for (" + init + "; " + cond + "; " + incr + ") " + bodyText(s.body());
         }
         if (stmt instanceof Stmt.FunctionStmt s) {
-            String params = String.join(", ", s.params.stream().map(t -> t.lexeme).toList());
-            String body = s.body.stream().map(this::stmtText).collect(java.util.stream.Collectors.joining(" "));
-            return "Func " + s.name.lexeme + "(" + params + ") { " + body + " }";
+            String params = String.join(", ", s.params().stream().map(t -> t.lexeme).toList());
+            String body = s.body().stream().map(this::stmtText).collect(java.util.stream.Collectors.joining(" "));
+            return "Func " + s.name().lexeme + "(" + params + ") { " + body + " }";
         }
         if (stmt instanceof Stmt.BlockStmt s)      return bodyText(s);
         return stmt.getClass().getSimpleName();
@@ -421,7 +421,7 @@ public final class DebugShell {
 
     private String bodyText(Stmt body) {
         if (body instanceof Stmt.BlockStmt b) {
-            String inner = b.statements.stream().map(this::stmtText).collect(java.util.stream.Collectors.joining(" "));
+            String inner = b.statements().stream().map(this::stmtText).collect(java.util.stream.Collectors.joining(" "));
             return "{ " + inner + " }";
         }
         return stmtText(body);
@@ -429,24 +429,24 @@ public final class DebugShell {
 
     private String exprText(Expr expr) {
         if (expr instanceof Expr.Literal e) {
-            if (e.value == null)             return "nil";
-            if (e.value instanceof Boolean)  return e.value.toString();
-            if (e.value instanceof Double d) return d == Math.floor(d) && !Double.isInfinite(d)
+            if (e.value() == null)             return "nil";
+            if (e.value() instanceof Boolean)  return e.value().toString();
+            if (e.value() instanceof Double d) return d == Math.floor(d) && !Double.isInfinite(d)
                                                     ? String.valueOf(d.longValue()) : d.toString();
-            return "\"" + e.value + "\"";
+            return "\"" + e.value() + "\"";
         }
         if (expr instanceof Expr.Variable e)  return e.name.lexeme;
         if (expr instanceof Expr.Assign e)    return e.name.lexeme + " = " + exprText(e.value);
-        if (expr instanceof Expr.Unary e)     return e.operator.lexeme + exprText(e.right);
-        if (expr instanceof Expr.Binary e)    return exprText(e.left) + " " + e.operator.lexeme + " " + exprText(e.right);
-        if (expr instanceof Expr.Logical e)   return exprText(e.left) + " " + e.operator.lexeme + " " + exprText(e.right);
-        if (expr instanceof Expr.Grouping e)  return "(" + exprText(e.expression) + ")";
+        if (expr instanceof Expr.Unary e)     return e.operator().lexeme + exprText(e.right());
+        if (expr instanceof Expr.Binary e)    return exprText(e.left()) + " " + e.operator().lexeme + " " + exprText(e.right());
+        if (expr instanceof Expr.Logical e)   return exprText(e.left()) + " " + e.operator().lexeme + " " + exprText(e.right());
+        if (expr instanceof Expr.Grouping e)  return "(" + exprText(e.expression()) + ")";
         if (expr instanceof Expr.Call e) {
-            String args = e.arguments.stream().map(this::exprText).reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
-            return exprText(e.callee) + "(" + args + ")";
+            String args = e.arguments().stream().map(this::exprText).reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
+            return exprText(e.callee()) + "(" + args + ")";
         }
-        if (expr instanceof Expr.ArrayGet e)  return exprText(e.array) + "[" + exprText(e.index) + "]";
-        if (expr instanceof Expr.ArraySet e)  return exprText(e.array) + "[" + exprText(e.index) + "] = " + exprText(e.value);
+        if (expr instanceof Expr.ArrayGet e)  return exprText(e.array()) + "[" + exprText(e.index()) + "]";
+        if (expr instanceof Expr.ArraySet e)  return exprText(e.array()) + "[" + exprText(e.index()) + "] = " + exprText(e.value());
         return "?";
     }
 }

@@ -2,13 +2,9 @@ package codefab.core;
 
 import java.util.List;
 
-/**
- * Statement AST nodes. A Stmt may hold Exprs, other Stmts and Tokens as fields. Traversal uses the
- * visitor pattern.
- */
-public abstract class Stmt {
+public sealed interface Stmt {
 
-    public interface Visitor<R> {
+    interface Visitor<R> {
 
         R visitExpressionStmt(ExpressionStmt stmt);
 
@@ -27,151 +23,74 @@ public abstract class Stmt {
         R visitFunctionStmt(FunctionStmt stmt);
 
         R visitReturnStmt(ReturnStmt stmt);
-
     }
 
-    public abstract <R> R accept(Visitor<R> visitor);
+    <R> R accept(Visitor<R> visitor);
 
-    public static final class ExpressionStmt extends Stmt {
-
-        public final Expr expression;
-
-        public ExpressionStmt(Expr expression) {
-            this.expression = expression;
-        }
-
+    record ExpressionStmt(Expr expression) implements Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitExpressionStmt(this);
         }
     }
 
-    public static final class PrintStmt extends Stmt {
-
-        public final Expr expression;
-
-        public PrintStmt(Expr expression) {
-            this.expression = expression;
-        }
-
+    record PrintStmt(Expr expression) implements Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitPrintStmt(this);
         }
     }
 
-    public static final class VarStmt extends Stmt {
-
-        public final Token name;
-        public final Expr initializer; // nullable
-
-        public VarStmt(Token name, Expr initializer) {
-            this.name = name;
-            this.initializer = initializer;
-        }
-
+    /** {@code initializer}는 nullable (초기값 없는 선언). */
+    record VarStmt(Token name, Expr initializer) implements Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitVarStmt(this);
         }
     }
 
-    public static final class BlockStmt extends Stmt {
-
-        public final List<Stmt> statements;
-
-        public BlockStmt(List<Stmt> statements) {
-            this.statements = statements;
-        }
-
+    record BlockStmt(List<Stmt> statements) implements Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitBlockStmt(this);
         }
     }
 
-    public static final class IfStmt extends Stmt {
-
-        public final Expr condition;
-        public final Stmt thenBranch;
-        public final Stmt elseBranch; // nullable
-
-        public IfStmt(Expr condition, Stmt thenBranch, Stmt elseBranch) {
-            this.condition = condition;
-            this.thenBranch = thenBranch;
-            this.elseBranch = elseBranch;
-        }
-
+    /** {@code elseBranch}는 nullable. */
+    record IfStmt(Expr condition, Stmt thenBranch, Stmt elseBranch) implements Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitIfStmt(this);
         }
     }
 
-    public static final class ForStmt extends Stmt {
-
-        public final Stmt initializer;  // nullable
-        public final Expr condition;    // nullable
-        public final Expr increment;    // nullable
-        public final Stmt body;
-
-        public ForStmt(Stmt initializer, Expr condition, Expr increment, Stmt body) {
-            this.initializer = initializer;
-            this.condition = condition;
-            this.increment = increment;
-            this.body = body;
-        }
-
+    /** {@code initializer}/{@code condition}/{@code increment} 모두 nullable. */
+    record ForStmt(Stmt initializer, Expr condition, Expr increment, Stmt body) implements Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitForStmt(this);
         }
     }
 
-    public static final class WhileStmt extends Stmt {
-
-        public final Expr condition;
-        public final Stmt body;
-
-        public WhileStmt(Expr condition, Stmt body) {
-            this.condition = condition;
-            this.body = body;
-        }
-
+    record WhileStmt(Expr condition, Stmt body) implements Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitWhileStmt(this);
         }
     }
 
-    public static final class FunctionStmt extends Stmt {
-
-        public final Token name;
-        public final List<Token> params;
-        public final List<Stmt> body;
-
-        public FunctionStmt(Token name, List<Token> params, List<Stmt> body) {
-            this.name = name;
-            this.params = params;
-            this.body = body;
-        }
-
+    record FunctionStmt(Token name, List<Token> params, List<Stmt> body) implements Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitFunctionStmt(this);
         }
     }
 
-    public static final class ReturnStmt extends Stmt {
-
-        public final Token keyword;    // 'return' 토큰 — 오류 위치 보고용
-        public final Expr value;       // nullable (return; 은 null)
-
-        public ReturnStmt(Token keyword, Expr value) {
-            this.keyword = keyword;
-            this.value = value;
-        }
-
+    /**
+     * {@code keyword}: 'return' 토큰 — 오류 위치 보고용.
+     * {@code value}: nullable (return; 은 null).
+     */
+    record ReturnStmt(Token keyword, Expr value) implements Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitReturnStmt(this);
