@@ -114,7 +114,7 @@ public final class DebugShell {
         }
 
         this.outputSink = new CollectingOutputSink();
-        this.executor = new Executor(outputSink, new Environment());
+        this.executor = new Executor(outputSink, Executor.newGlobalScope());
 
         out.println("[DEBUG] 소스코드 로딩: " + filePath);
         printCurrentStmt();
