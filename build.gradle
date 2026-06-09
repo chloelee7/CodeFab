@@ -7,13 +7,16 @@ group = 'codefab'
 version = '1.0.0'
 
 java {
-    // Compile to Java 17 compatible bytecode using whichever JDK runs Gradle.
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    // Pin the build to JDK 17 via a toolchain so the build is independent of the
+    // JDK that launches Gradle. Gradle locates an installed JDK 17 (even if Gradle
+    // itself runs on another version), avoiding cryptic failures when run with an
+    // older JDK such as Java 11 ('--release 17' is unsupported by javac 11).
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.release = 17
     options.encoding = 'UTF-8'
 }
 
