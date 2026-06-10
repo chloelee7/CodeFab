@@ -74,6 +74,7 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     @Override
     public Void visitVariable(Variable expr) {
         checkDeclared(expr.name);
+        resolveDistance(expr, expr.name);
         return null;
     }
 
@@ -81,6 +82,7 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     public Void visitAssign(Assign expr) {
         expr.value.accept(this);
         checkDeclared(expr.name);
+        resolveDistance(expr, expr.name);
         return null;
     }
 
@@ -265,6 +267,38 @@ public class Checker implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
             error(name.line, "Already a variable with this name in this scope.");
         }
         current.add(name.lexeme);
+    }
+
+    /**
+     * 정적 바인딩 거리(distance)를 노드 필드에 기록한다(계약 §9-1). scopes를 안쪽(peek)부터
+     * 바깥으로 훑어 이름을 가진 첫 프레임의 인덱스(0 = 현재 스코프)를 expr.distance에 적는다.
+     * 어떤 프레임에도 없으면 필드를 건드리지 않아 -1(센티널)이 유지되고, Executor가 전역
+     * 환경으로 폴백한다(네이티브 Array, 이전 REPL run에서 넘어온 바인딩 등).
+     *
+     * <p>자기 초기화 읽기 오류(`var a = a;`의 우변)면 거리를 기록하지 않는다. checkDeclared가
+     * 이미 진단을 보고했고, 그 참조는 가리킬 올바른 바인딩이 없는 잘못된 참조이기 때문이다.
+     * 진단 동작(declare/checkDeclared/replMode/initializingVar)은 일절 변경하지 않는다.
+     */
+    private void resolveDistance(Expr expr, Token name) {
+        if (name.lexeme.equals(this.initializingVar)) {
+            return;
+        }
+        int distance = 0;
+        for (Set<String> scope : this.scopes) {
+            if (scope.contains(name.lexeme)) {
+                setDistance(expr, distance);
+                return;
+            }
+            distance++;
+        }
+    }
+
+    private void setDistance(Expr expr, int distance) {
+        if (expr instanceof Variable variable) {
+            variable.distance = distance;
+        } else if (expr instanceof Assign assign) {
+            assign.distance = distance;
+        }
     }
 
     private void checkDeclared(Token name) {

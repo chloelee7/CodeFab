@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class Environment {
+public class Environment {
     final Environment enclosing;
     private final Map<String, Object> values = new HashMap<>();
     /** builtin 스코프(네이티브 함수 전용)인지 여부. 기본 false. (계약 §8-0) */
@@ -46,12 +46,23 @@ public final class Environment {
         values.put(name, value);
     }
 
+    /**
+     * 체인을 한 칸 올라간 둘러싼 환경을 돌려준다. 한 칸 상승하는 모든 조회 경로
+     * (get/assign/ancestor)가 이 seam을 경유한다. 기본 구현은 enclosing을 그대로
+     * 반환하므로 동작 의미는 불변이며, Test Double이 오버라이드해 체인 상승 횟수(hop)를
+     * 관측하는 데 쓴다(계약 §9-3).
+     */
+    protected Environment step() {
+        return enclosing;
+    }
+
     public Object get(Token name) {
         if (values.containsKey(name.lexeme)) {
             return values.get(name.lexeme);
         }
-        if (enclosing != null) {
-            return enclosing.get(name);
+        Environment next = step();
+        if (next != null) {
+            return next.get(name);
         }
         throw new InterpreterRuntimeError(name, "Undefined variable '" + name.lexeme + "'.");
     }
@@ -65,8 +76,9 @@ public final class Environment {
             values.put(name.lexeme, value);
             return;
         }
-        if (enclosing != null) {
-            enclosing.assign(name, value);
+        Environment next = step();
+        if (next != null) {
+            next.assign(name, value);
             return;
         }
         throw new InterpreterRuntimeError(name, "Undefined variable '" + name.lexeme + "'.");
@@ -85,7 +97,7 @@ public final class Environment {
     private Environment ancestor(int distance) {
         Environment env = this;
         for (int i = 0; i < distance; i++) {
-            env = env.enclosing;
+            env = env.step();
         }
         return env;
     }
